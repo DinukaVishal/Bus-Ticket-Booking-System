@@ -1,0 +1,1 @@
+ALTER TABLE public.routes ADD COLUMN arrival_time TEXT DEFAULT NULL;
