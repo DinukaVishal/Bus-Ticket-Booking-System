@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Booking } from '@/types/booking';
 import { useEffect } from 'react';
-import { useAuthContext } from '@/contexts/AuthContext';
 
 export function useBookings() {
   const queryClient = useQueryClient();
@@ -55,7 +54,6 @@ export function useBookings() {
 }
 
 export function useMyBookings() {
-  const { user } = useAuthContext();
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -69,7 +67,7 @@ export function useMyBookings() {
           table: 'bookings',
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['my-bookings', user?.id] });
+          queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
         }
       )
       .subscribe();
@@ -77,12 +75,12 @@ export function useMyBookings() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient, user?.id]);
+  }, [queryClient]);
 
   return useQuery({
-    queryKey: ['my-bookings', user?.id],
-    enabled: !!user,
+    queryKey: ['my-bookings'],
     queryFn: async (): Promise<Booking[]> => {
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
 
       const { data, error } = await supabase
@@ -282,7 +280,6 @@ export function useAddBooking() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['booked-seats'] });
-      queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
     },
   });
 }
@@ -302,7 +299,6 @@ export function useUpdateBookingStatus() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['booked-seats'] });
-      queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
     },
   });
 }
