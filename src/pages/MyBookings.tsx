@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,8 +27,7 @@ import { toast } from '@/hooks/use-toast';
 import { Ticket, Loader2, Calendar, MapPin, Armchair, XCircle, Download, User, Trash2 } from 'lucide-react';
 import { generateTicketPDF } from '@/lib/pdfTicketGenerator';
 import { Booking } from '@/types/booking';
-import QRCode from 'react-qr-code';
-const QRCodeComponent = (QRCode as any)?.default ?? QRCode;
+import QRCode from "react-qr-code";
 import { supabase } from '@/integrations/supabase/client';
 
 const MyBookings = () => {
@@ -37,14 +36,16 @@ const MyBookings = () => {
   const updateStatusMutation = useUpdateBookingStatus();
   const [cancellingGroupKey, setCancellingGroupKey] = useState<string | null>(null);
 
+  // --- GROUPING LOGIC ---
   const groupedBookings = bookings.reduce((groups: any, booking: Booking) => {
     const key = `${booking.routeId}-${booking.date}-${booking.status}`;
+    
     if (!groups[key]) {
       groups[key] = {
         ...booking,
-        seatNumbers: [booking.seatNumber],
-        bookingIds: [booking.id],
-        allBookings: [booking],
+        seatNumbers: [booking.seatNumber], 
+        bookingIds: [booking.id], 
+        allBookings: [booking] 
       };
     } else {
       groups[key].seatNumbers.push(booking.seatNumber);
@@ -56,8 +57,10 @@ const MyBookings = () => {
 
   const bookingGroups = Object.values(groupedBookings) as any[];
 
+  // ----------------------------------------------
+
   const handleDownloadTicket = (group: any) => {
-    const route = routes.find((r) => r.id === group.routeId);
+    const route = routes.find(r => r.id === group.routeId);
     if (route) {
       const ticketData = group.allBookings.map((b: Booking) => ({ booking: b, route }));
       generateTicketPDF(ticketData);
@@ -73,14 +76,15 @@ const MyBookings = () => {
   const handleCancelGroup = async (groupKey: string, bookingIds: string[]) => {
     setCancellingGroupKey(groupKey);
     try {
-      await Promise.all(
-        bookingIds.map((id) => updateStatusMutation.mutateAsync({ bookingId: id, status: 'cancelled' }))
-      );
+      await Promise.all(bookingIds.map(id => 
+        updateStatusMutation.mutateAsync({ bookingId: id, status: 'cancelled' })
+      ));
+      
       toast({
         title: 'Booking Cancelled',
         description: 'Your bookings have been cancelled successfully.',
       });
-      refetch();
+      refetch(); 
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -94,20 +98,27 @@ const MyBookings = () => {
 
   const handleDeleteHistory = async (bookingIds: string[]) => {
     try {
-      const { error } = await supabase.from('bookings').delete().in('booking_id', bookingIds);
+      const { error } = await supabase
+        .from('bookings')
+        .delete()
+        .in('booking_id', bookingIds);
+
       if (error) throw error;
+      
       toast({ title: 'Deleted', description: 'Booking history removed.' });
-      refetch();
+      refetch(); 
     } catch (error: any) {
       console.error('Delete error:', error);
       toast({ title: 'Error', description: 'Failed to delete.', variant: 'destructive' });
     }
   };
 
+  // Upcoming Trips
   const upcomingGroups = bookingGroups.filter(
     (g) => g.status === 'confirmed' && new Date(g.date) >= new Date(new Date().toDateString())
   );
 
+  // Past & Cancelled Trips
   const pastGroups = bookingGroups.filter(
     (g) => g.status !== 'confirmed' || new Date(g.date) < new Date(new Date().toDateString())
   );
@@ -115,6 +126,7 @@ const MyBookings = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+
       <main className="container mx-auto px-4 py-8">
         <div className="flex items-center gap-3 mb-8">
           <Ticket className="w-8 h-8 text-primary" />
@@ -130,16 +142,19 @@ const MyBookings = () => {
             <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
               <Ticket className="w-10 h-10 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-display font-semibold text-foreground mb-2">No Bookings Yet</h3>
+            <h3 className="text-lg font-display font-semibold text-foreground mb-2">
+              No Bookings Yet
+            </h3>
             <p className="text-muted-foreground max-w-sm mx-auto mb-6">
               You haven't made any bookings yet. Start by booking your first bus ticket!
             </p>
-            <Button onClick={() => (window.location.href = '/')}>
+            <Button onClick={() => window.location.href = '/'}>
               Book a Ticket
             </Button>
           </div>
         ) : (
           <div className="space-y-8">
+            {/* Upcoming Bookings */}
             {upcomingGroups.length > 0 && (
               <section>
                 <h2 className="text-lg font-display font-semibold mb-4 flex items-center gap-2">
@@ -161,10 +176,11 @@ const MyBookings = () => {
                               IDs: {group.bookingIds.join(', ')}
                             </p>
                           </div>
+                          
                           <div className="bg-white p-1.5 rounded-lg border border-gray-100 ml-2 shadow-sm shrink-0">
-                            <QRCodeComponent
+                            <QRCode 
                               size={64}
-                              style={{ height: 'auto', maxWidth: '100%', width: '100%' }}
+                              style={{ height: "auto", maxWidth: "100%", width: "100%" }}
                               value={`IDs: ${group.bookingIds.join(', ')} | Seats: ${group.seatNumbers.join(', ')}`}
                               viewBox={`0 0 256 256`}
                             />
@@ -183,15 +199,19 @@ const MyBookings = () => {
                               })}
                             </span>
                           </div>
+                          
                           <div className="flex items-start gap-2 text-sm">
                             <Armchair className="w-4 h-4 text-muted-foreground mt-0.5" />
                             <div>
                               <span className="font-semibold text-primary">
-                                Seats: {group.seatNumbers.sort((a: number, b: number) => a - b).map((s: number) => `#${s}`).join(', ')}
+                                Seats: {group.seatNumbers.sort((a:number, b:number) => a - b).map((s:number) => `#${s}`).join(', ')}
                               </span>
-                              <span className="text-xs text-muted-foreground ml-2">({group.seatNumbers.length} seats)</span>
+                              <span className="text-xs text-muted-foreground ml-2">
+                                ({group.seatNumbers.length} seats)
+                              </span>
                             </div>
                           </div>
+
                           <div className="flex items-center gap-2 text-sm">
                             <User className="w-4 h-4 text-muted-foreground" />
                             <span>{group.passengerName}</span>
@@ -199,13 +219,22 @@ const MyBookings = () => {
                         </div>
 
                         <div className="flex gap-2">
-                          <Button variant="default" size="sm" className="flex-1" onClick={() => handleDownloadTicket(group)}>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => handleDownloadTicket(group)}
+                          >
                             <Download className="w-4 h-4 mr-2" />
                             Download
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="outline" size="sm" className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                              >
                                 <XCircle className="w-4 h-4 mr-2" />
                                 Cancel
                               </Button>
@@ -214,12 +243,16 @@ const MyBookings = () => {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Cancel this booking?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to cancel bookings for seats: <b>{group.seatNumbers.join(', ')}</b>? This action cannot be undone.
+                                  Are you sure you want to cancel bookings for seats: <b>{group.seatNumbers.join(', ')}</b>? 
+                                  This action cannot be undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Keep Booking</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleCancelGroup(groupKey, group.bookingIds)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                <AlertDialogAction
+                                  onClick={() => handleCancelGroup(groupKey, group.bookingIds)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
                                   {cancellingGroupKey === groupKey ? (
                                     <>
                                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -240,9 +273,12 @@ const MyBookings = () => {
               </section>
             )}
 
+            {/* Past & Cancelled Bookings */}
             {pastGroups.length > 0 && (
               <section>
-                <h2 className="text-lg font-display font-semibold mb-4 text-muted-foreground">Past & Cancelled Bookings ({pastGroups.length})</h2>
+                <h2 className="text-lg font-display font-semibold mb-4 text-muted-foreground">
+                  Past & Cancelled Bookings ({pastGroups.length})
+                </h2>
                 <div className="bg-card rounded-xl shadow-card overflow-hidden">
                   <div className="overflow-x-auto">
                     <Table>
@@ -253,6 +289,7 @@ const MyBookings = () => {
                           <TableHead>Date</TableHead>
                           <TableHead>Seats</TableHead>
                           <TableHead>Status</TableHead>
+                          {/* මෙන්න වෙනස: text-right අයින් කළා */}
                           <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -271,15 +308,24 @@ const MyBookings = () => {
                               })}
                             </TableCell>
                             <TableCell className="font-medium">
-                              {group.seatNumbers.sort((a: number, b: number) => a - b).map((s: number) => `#${s}`).join(', ')}
+                              {group.seatNumbers.sort((a:number, b:number) => a - b).map((s:number) => `#${s}`).join(', ')}
                             </TableCell>
                             <TableCell>
-                              <Badge variant={group.status === 'cancelled' ? 'destructive' : 'secondary'}>
+                              <Badge
+                                variant={group.status === 'cancelled' ? 'destructive' : 'secondary'}
+                              >
                                 {group.status === 'confirmed' ? 'Completed' : 'Cancelled'}
                               </Badge>
                             </TableCell>
+                            {/* මෙන්න වෙනස: text-right අයින් කළා */}
                             <TableCell>
-                              <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500 hover:bg-red-50" onClick={() => handleDeleteHistory(group.bookingIds)} title="Remove from history">
+                              <Button 
+                                size="icon" 
+                                variant="ghost" 
+                                className="h-8 w-8 text-red-500 hover:bg-red-50" 
+                                onClick={() => handleDeleteHistory(group.bookingIds)}
+                                title="Remove from history"
+                              >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </TableCell>
