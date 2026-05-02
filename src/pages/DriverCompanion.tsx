@@ -31,7 +31,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils'; // <--- MEKA THAMAI MISS WELA THIBBE!
 
 const DriverCompanion = () => {
-  const { user, isLoading: authLoading } = useAuthContext();
+  const { user, isLoading: authLoading, isDriver } = useAuthContext();
   const { data: routes = [], isLoading: routesLoading } = useRoutes();
   
   // Save selected route in localStorage so it survives page navigation
@@ -136,6 +136,11 @@ const DriverCompanion = () => {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // If user is a driver, redirect to dashboard
+  if (isDriver) {
+    return <Navigate to="/driver/dashboard" replace />;
   }
 
   return (
