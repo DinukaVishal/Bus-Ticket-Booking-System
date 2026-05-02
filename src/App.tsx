@@ -18,6 +18,11 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import LiveTracking from "./pages/LiveTracking";
 import DriverCompanion from "./pages/DriverCompanion";
+import DriverDashboard from "./pages/DriverDashboard";
+import DriverSignup from "./pages/DriverSignup";
+import DriverLogin from "./pages/DriverLogin";
+import DriverAddBus from "./pages/DriverAddBus";
+import DriverProfile from "./pages/DriverProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -80,6 +85,23 @@ const App = () => (
             <Route path="/driver" element={
               <ProtectedRoute>
                 <DriverCompanion />
+              </ProtectedRoute>
+            } />
+            <Route path="/driver/dashboard" element={
+              <ProtectedRoute requireDriver>
+                <DriverDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/driver/signup" element={<DriverSignup />} />
+            <Route path="/driver/login" element={<DriverLogin />} />
+            <Route path="/driver/add-bus" element={
+              <ProtectedRoute requireDriver>
+                <DriverAddBus />
+              </ProtectedRoute>
+            } />
+            <Route path="/driver/profile" element={
+              <ProtectedRoute requireDriver>
+                <DriverProfile />
               </ProtectedRoute>
             } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
