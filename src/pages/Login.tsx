@@ -3,12 +3,14 @@ import { useNavigate, Link } from 'react-router-dom'; // අලුතින් u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Bus, Loader2, Mail, Lock, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const Login = () => {
   const navigate = useNavigate(); // Navigate එක Setup කළා
+  const { isDriver, isLoading: authLoading } = useAuthContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -19,21 +21,28 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
 
+      // Check if user is a driver
+      const { data: isDriverData } = await supabase
+        .rpc('has_role', { _user_id: data.user.id, _role: 'driver' });
+
       toast({
         title: 'Welcome back!',
         description: 'You have successfully logged in.',
       });
-      
-      // මෙන්න වෙනස: මුළු පිටුවම Refresh කරන්නේ නැතුව Smooth විදිහට Booking එකට යවනවා!
-      // මේකෙන් Token එක මැකිලා යන්නේ නෑ.
-      navigate('/booking');
+
+      // Redirect based on user role
+      if (isDriverData) {
+        navigate('/driver/dashboard');
+      } else {
+        navigate('/booking');
+      }
 
     } catch (error: any) {
       toast({
