@@ -130,14 +130,57 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 4. Bottom CTA */}
-      <section className="py-16 bg-blue-900 text-center px-4">
-        <h2 className="text-3xl font-bold text-white mb-6">Ready to start your journey?</h2>
-        <Link to="/booking">
-          <Button size="lg" className="bg-blue-500 hover:bg-blue-400 text-white font-bold rounded-full px-8 py-6 shadow-lg transition-transform hover:scale-105">
-            Find Buses Now
-          </Button>
-        </Link>
+      {/* 5. Driver Section */}
+      <section className="py-20 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">Are You a Bus Driver?</h2>
+            <p className="text-lg md:text-xl mb-8 opacity-90 max-w-2xl mx-auto">
+              Join our driver network and start earning. Register your bus, manage bookings, and provide live tracking to passengers.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+              <div className="bg-white/10 backdrop-blur-md p-6 rounded-xl">
+                <Bus className="w-12 h-12 mx-auto mb-4 text-blue-200" />
+                <h3 className="text-xl font-bold mb-2">Register Your Bus</h3>
+                <p className="text-blue-100">Add your bus details and start accepting bookings</p>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md p-6 rounded-xl">
+                <MapPin className="w-12 h-12 mx-auto mb-4 text-blue-200" />
+                <h3 className="text-xl font-bold mb-2">Live GPS Tracking</h3>
+                <p className="text-blue-100">Share your location with passengers in real-time</p>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md p-6 rounded-xl">
+                <ShieldCheck className="w-12 h-12 mx-auto mb-4 text-blue-200" />
+                <h3 className="text-xl font-bold mb-2">Manage Bookings</h3>
+                <p className="text-blue-100">View passenger details and seat bookings</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link to="/driver/signup">
+                <Button
+                  size="lg"
+                  className="bg-white text-blue-900 hover:bg-blue-50 font-bold text-lg px-8 py-6 rounded-full shadow-2xl transition-all duration-300 hover:scale-105"
+                >
+                  Sign Up as Driver
+                </Button>
+              </Link>
+
+              <Link to="/driver/login">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="border-white text-white hover:bg-white hover:text-blue-900 font-bold text-lg px-8 py-6 rounded-full shadow-2xl transition-all duration-300 hover:scale-105"
+                >
+                  Driver Login
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
       </section>
 
     </div>
