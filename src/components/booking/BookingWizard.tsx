@@ -114,7 +114,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Step Progress Bar with Animations */}
+      {/* Step Progress Bar with Animation */}
       <div className="bg-card rounded-xl p-4 shadow-card">
         <div className="flex items-center justify-between">
           {STEPS.map((s, index) => (
