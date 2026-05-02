@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Header from '@/components/layout/Header';
 import BookingWizard from '@/components/booking/BookingWizard';
 import BookingConfirmation from '@/components/booking/BookingConfirmation';
-import { Route, Booking } from '@/types/booking';
+import { Route, Booking, Trip } from '@/types/booking';
 import { useRoutes } from '@/hooks/useRoutes';
 import { Bus, Loader2 } from 'lucide-react';
 
@@ -10,25 +10,29 @@ const Index = () => {
   const { data: routes = [], isLoading: routesLoading } = useRoutes();
   const [confirmedBookings, setConfirmedBookings] = useState<Booking[]>([]);
   const [confirmedRoute, setConfirmedRoute] = useState<Route | null>(null);
+  const [confirmedTrip, setConfirmedTrip] = useState<Trip | null>(null);
 
-  const handleBookingComplete = (bookings: Booking[], route: Route) => {
+  const handleBookingComplete = (bookings: Booking[], route: Route, trip: Trip) => {
     setConfirmedBookings(bookings);
     setConfirmedRoute(route);
+    setConfirmedTrip(trip);
   };
 
   const handleNewBooking = () => {
     setConfirmedBookings([]);
     setConfirmedRoute(null);
+    setConfirmedTrip(null);
   };
 
   // Show confirmation page
-  if (confirmedBookings.length > 0 && confirmedRoute) {
+  if (confirmedBookings.length > 0 && confirmedRoute && confirmedTrip) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <BookingConfirmation
           bookings={confirmedBookings}
           route={confirmedRoute}
+          trip={confirmedTrip}
           onNewBooking={handleNewBooking}
         />
       </div>
