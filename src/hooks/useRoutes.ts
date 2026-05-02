@@ -6,30 +6,52 @@ export function useRoutes() {
   return useQuery({
     queryKey: ['routes'],
     queryFn: async (): Promise<Route[]> => {
-      const { data, error } = await supabase
+      // Fetch all routes
+      const { data: routesData, error: routesError } = await supabase
         .from('routes')
         .select('*')
         .order('name');
       
-      if (error) throw error;
+      if (routesError) throw routesError;
       
-      return data.map(route => ({
-        id: route.id,
-        name: route.name,
-        from: route.from_city,
-        to: route.to_city,
-        departureTime: route.departure_time,
-        arrivalTime: route.arrival_time || undefined,
-        price: route.price,
-        busType: (route.bus_type || 'normal') as BusType,
-        totalSeats: route.total_seats || 40,
-        busNumber: route.bus_number || undefined,
-        driverName: route.driver_name || undefined,
-        driverPhone: route.driver_phone || undefined,
-        conductorName: route.conductor_name || undefined,
-        conductorPhone: route.conductor_phone || undefined,
-        viaPoints: (route as { via_points?: string[] }).via_points || [],
-      }));
+      // Fetch all trips
+      const { data: tripsData, error: tripsError } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('is_active', true)
+        .order('departure_time');
+      
+      if (tripsError) throw tripsError;
+      
+      // Map routes and group trips
+      return routesData.map(route => {
+        const routeTrips = (tripsData || []).filter(trip => trip.route_id === route.id);
+        
+        const firstTrip = routeTrips[0];
+        return {
+          id: route.id,
+          name: route.name,
+          from: route.from_city,
+          to: route.to_city,
+          busType: (route.bus_type || 'normal') as BusType,
+          totalSeats: route.total_seats || 40,
+          departureTime: firstTrip?.departure_time || route.departure_time,
+          arrivalTime: firstTrip?.arrival_time || route.arrival_time || undefined,
+          price: firstTrip?.price ?? route.price,
+          trips: routeTrips.map(trip => ({
+            id: trip.id,
+            departureTime: trip.departure_time,
+            arrivalTime: trip.arrival_time || undefined,
+            price: trip.price,
+            busNumber: trip.bus_number || undefined,
+            driverName: trip.driver_name || undefined,
+            driverPhone: trip.driver_phone || undefined,
+            conductorName: trip.conductor_name || undefined,
+            conductorPhone: trip.conductor_phone || undefined,
+          })),
+          viaPoints: (route as { via_points?: string[] }).via_points || [],
+        };
+      });
     },
   });
 }

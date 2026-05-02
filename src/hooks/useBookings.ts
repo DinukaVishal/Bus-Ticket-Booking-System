@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Booking } from '@/types/booking';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 
 export function useBookings() {
   const queryClient = useQueryClient();
@@ -41,6 +42,7 @@ export function useBookings() {
       return data.map(booking => ({
         id: booking.booking_id,
         routeId: booking.route_id,
+        tripId: booking.trip_id,
         routeName: booking.route_name,
         date: booking.date,
         seatNumber: booking.seat_number,
@@ -55,6 +57,7 @@ export function useBookings() {
 
 export function useMyBookings() {
   const queryClient = useQueryClient();
+  const { user, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
     const channel = supabase
@@ -67,7 +70,7 @@ export function useMyBookings() {
           table: 'bookings',
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
+          queryClient.invalidateQueries({ queryKey: ['my-bookings', user?.id] });
         }
       )
       .subscribe();
@@ -75,12 +78,12 @@ export function useMyBookings() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, user?.id]);
 
-  return useQuery({
-    queryKey: ['my-bookings'],
+  const query = useQuery({
+    queryKey: ['my-bookings', user?.id],
+    enabled: !authLoading && !!user,
     queryFn: async (): Promise<Booking[]> => {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return [];
 
       const { data, error } = await supabase
@@ -89,11 +92,16 @@ export function useMyBookings() {
         .eq('user_id', user.id)
         .order('date', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching bookings:', error);
+        return [];
+      }
       
+      console.log('useMyBookings - fetched bookings:', data.length, data);
       return data.map(booking => ({
         id: booking.booking_id,
         routeId: booking.route_id,
+        tripId: booking.trip_id,
         routeName: booking.route_name,
         date: booking.date,
         seatNumber: booking.seat_number,
@@ -104,17 +112,26 @@ export function useMyBookings() {
       }));
     },
   });
+
+  return {
+    data: query.data || [],
+    isLoading: authLoading || query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+    isSuccess: query.isSuccess,
+    isError: query.isError,
+  };
 }
 
-export function useBookedSeats(routeId: string | undefined, date: string | undefined) {
+export function useBookedSeats(tripId: string | undefined, date: string | undefined) {
   const queryClient = useQueryClient();
 
-  // Set up realtime subscription for this specific route/date
+  // Set up realtime subscription for this specific trip/date
   useEffect(() => {
-    if (!routeId || !date) return;
+    if (!tripId || !date) return;
 
     const channel = supabase
-      .channel(`booked-seats-${routeId}-${date}`)
+      .channel(`booked-seats-${tripId}-${date}`)
       .on(
         'postgres_changes',
         {
@@ -123,7 +140,7 @@ export function useBookedSeats(routeId: string | undefined, date: string | undef
           table: 'bookings',
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['booked-seats', routeId, date] });
+          queryClient.invalidateQueries({ queryKey: ['booked-seats', tripId, date] });
         }
       )
       .subscribe();
@@ -131,17 +148,17 @@ export function useBookedSeats(routeId: string | undefined, date: string | undef
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [routeId, date, queryClient]);
+  }, [tripId, date, queryClient]);
 
   return useQuery({
-    queryKey: ['booked-seats', routeId, date],
+    queryKey: ['booked-seats', tripId, date],
     queryFn: async (): Promise<number[]> => {
-      if (!routeId || !date) return [];
+      if (!tripId || !date) return [];
       
       // Use the secure RPC function that only returns seat numbers (no personal data)
       const { data, error } = await supabase
         .rpc('get_booked_seats', {
-          _route_id: routeId,
+          _trip_id: tripId,
           _date: date,
         });
       
@@ -149,7 +166,7 @@ export function useBookedSeats(routeId: string | undefined, date: string | undef
       
       return data.map((b: { seat_number: number }) => b.seat_number);
     },
-    enabled: !!routeId && !!date,
+    enabled: !!tripId && !!date,
   });
 }
 
@@ -159,6 +176,7 @@ async function generateBookingId(): Promise<string> {
 }
 
 interface MultipleBookingInput {
+  tripId: string;
   routeId: string;
   routeName: string;
   date: string;
@@ -186,6 +204,7 @@ export function useAddMultipleBookings() {
       const bookingsToInsert = input.seatNumbers.map((seatNumber, index) => ({
         booking_id: `${baseId}-${index + 1}`,
         route_id: input.routeId,
+        trip_id: input.tripId,
         route_name: input.routeName,
         date: input.date,
         seat_number: seatNumber,
@@ -211,6 +230,7 @@ export function useAddMultipleBookings() {
       return data.map(booking => ({
         id: booking.booking_id,
         routeId: booking.route_id,
+        tripId: booking.trip_id,
         routeName: booking.route_name,
         date: booking.date,
         seatNumber: booking.seat_number,

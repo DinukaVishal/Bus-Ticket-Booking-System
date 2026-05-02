@@ -14,6 +14,7 @@ interface AuthState {
   session: Session | null;
   profile: Profile | null;
   isAdmin: boolean;
+  isDriver: boolean;
   isLoading: boolean;
 }
 
@@ -23,6 +24,7 @@ export function useAuth() {
     session: null,
     profile: null,
     isAdmin: false,
+    isDriver: false,
     isLoading: true,
   });
 
@@ -38,6 +40,10 @@ export function useAuth() {
     const { data: isAdminData } = await supabase
       .rpc('has_role', { _user_id: userId, _role: 'admin' });
 
+    // Check if user is driver using the has_role function
+    const { data: isDriverData } = await supabase
+      .rpc('has_role', { _user_id: userId, _role: 'driver' });
+
     return {
       profile: profileData ? {
         id: profileData.id,
@@ -46,6 +52,7 @@ export function useAuth() {
         avatarUrl: profileData.avatar_url,
       } : null,
       isAdmin: isAdminData || false,
+      isDriver: isDriverData || false,
     };
   }, []);
 
@@ -62,6 +69,7 @@ export function useAuth() {
               session,
               profile: userData.profile,
               isAdmin: userData.isAdmin,
+              isDriver: userData.isDriver,
               isLoading: false,
             });
           }, 0);
@@ -71,6 +79,7 @@ export function useAuth() {
             session: null,
             profile: null,
             isAdmin: false,
+            isDriver: false,
             isLoading: false,
           });
         }
@@ -86,6 +95,7 @@ export function useAuth() {
           session,
           profile: userData.profile,
           isAdmin: userData.isAdmin,
+          isDriver: userData.isDriver,
           isLoading: false,
         });
       } else {
