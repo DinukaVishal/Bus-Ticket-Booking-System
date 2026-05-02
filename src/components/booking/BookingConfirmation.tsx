@@ -1,4 +1,4 @@
-import { Booking, Route } from '@/types/booking';
+import { Booking, Route, Trip } from '@/types/booking';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Home, Ticket, Download } from 'lucide-react';
 import { generateTicketPDF } from '@/lib/pdfTicketGenerator';
@@ -6,13 +6,14 @@ import { generateTicketPDF } from '@/lib/pdfTicketGenerator';
 interface BookingConfirmationProps {
   bookings: Booking[];
   route: Route;
+  trip: Trip;
   onNewBooking: () => void;
 }
 
-const BookingConfirmation = ({ bookings, route, onNewBooking }: BookingConfirmationProps) => {
+const BookingConfirmation = ({ bookings, route, trip, onNewBooking }: BookingConfirmationProps) => {
   const firstBooking = bookings[0];
   const seatNumbers = bookings.map(b => b.seatNumber).sort((a, b) => a - b);
-  const totalPrice = route.price * bookings.length;
+  const totalPrice = trip.price * bookings.length;
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-4">
@@ -83,8 +84,14 @@ const BookingConfirmation = ({ bookings, route, onNewBooking }: BookingConfirmat
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Departure</span>
-              <span className="font-medium">{route.departureTime}</span>
+              <span className="font-medium">{trip.departureTime}</span>
             </div>
+            {trip.arrivalTime && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Arrival</span>
+                <span className="font-medium">{trip.arrivalTime}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm items-start">
               <span className="text-muted-foreground">
                 {bookings.length === 1 ? 'Seat' : 'Seats'}
@@ -109,7 +116,7 @@ const BookingConfirmation = ({ bookings, route, onNewBooking }: BookingConfirmat
         <div className="space-y-3">
           <Button 
             onClick={() => {
-              const tickets = bookings.map(booking => ({ booking, route }));
+              const tickets = bookings.map(booking => ({ booking, route, trip }));
               generateTicketPDF(tickets);
             }} 
             className="w-full h-12"

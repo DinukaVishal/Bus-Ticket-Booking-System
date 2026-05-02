@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Route, Booking } from '@/types/booking';
+import { Route, Booking, Trip } from '@/types/booking';
 import { useBookedSeats, useAddMultipleBookings } from '@/hooks/useBookings';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,7 @@ import RouteMap from './RouteMap';
 
 interface BookingWizardProps {
   routes: Route[];
-  onBookingComplete: (bookings: Booking[], route: Route) => void;
+  onBookingComplete: (bookings: Booking[], route: Route, trip: Trip) => void;
 }
 
 const STEPS = [
@@ -37,17 +37,24 @@ const STEPS = [
 const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
   const [step, setStep] = useState(1);
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
 
   const dateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined;
-  const { data: bookedSeats = [], isLoading: seatsLoading } = useBookedSeats(selectedRoute?.id, dateStr);
+  const { data: bookedSeats = [], isLoading: seatsLoading } = useBookedSeats(selectedTrip?.id, dateStr);
   const addBookingsMutation = useAddMultipleBookings();
 
-  // Reset seat selection when route or date changes
+  // Reset selections when route changes
+  useEffect(() => {
+    setSelectedTrip(null);
+    setSelectedSeats([]);
+  }, [selectedRoute]);
+
+  // Reset seats when trip or date changes
   useEffect(() => {
     setSelectedSeats([]);
-  }, [selectedRoute, selectedDate]);
+  }, [selectedTrip, selectedDate]);
 
   const handleSeatSelect = (seatNumber: number) => {
     setSelectedSeats(prev => {
@@ -60,12 +67,13 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
   };
 
   const handleBookingSubmit = async (data: { passengerName: string; phoneNumber: string }) => {
-    if (!selectedRoute || !selectedDate || selectedSeats.length === 0) return;
+    if (!selectedRoute || !selectedTrip || !selectedDate || selectedSeats.length === 0) return;
 
     try {
       const bookings = await addBookingsMutation.mutateAsync({
+        tripId: selectedTrip.id,
         routeId: selectedRoute.id,
-        routeName: selectedRoute.name,
+        routeName: `${selectedRoute.from} → ${selectedRoute.to}`,
         date: dateStr!,
         seatNumbers: selectedSeats,
         passengerName: data.passengerName,
@@ -73,7 +81,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
         status: 'confirmed',
       });
 
-      onBookingComplete(bookings, selectedRoute);
+      onBookingComplete(bookings, selectedRoute, selectedTrip);
     } catch (error: any) {
       toast({
         title: 'Booking Failed',
@@ -87,7 +95,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
 
   const canGoNext = () => {
     switch (step) {
-      case 1: return !!selectedRoute;
+      case 1: return !!selectedRoute && !!selectedTrip;
       case 2: return !!selectedDate;
       case 3: return selectedSeats.length > 0;
       default: return true;
@@ -176,7 +184,9 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
               <RouteSelector
                 routes={routes}
                 selectedRoute={selectedRoute}
+                selectedTrip={selectedTrip}
                 onRouteSelect={setSelectedRoute}
+                onTripSelect={setSelectedTrip}
               />
             </div>
           </div>
@@ -191,10 +201,20 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
                 <Calendar className="w-5 h-5 text-primary" />
                 Select Travel Date
               </h2>
-              {selectedRoute && (
-                <div className="mb-4 p-3 bg-muted/50 rounded-lg text-sm">
-                  <span className="text-muted-foreground">Selected Route: </span>
-                  <span className="font-medium">{selectedRoute.name}</span>
+              {selectedRoute && selectedTrip && (
+                <div className="mb-4 p-3 bg-muted/50 rounded-lg text-sm space-y-2">
+                  <div>
+                    <span className="text-muted-foreground">Selected Route: </span>
+                    <span className="font-medium">{selectedRoute.from} → {selectedRoute.to}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Trip: </span>
+                    <span className="font-medium">{selectedTrip.departureTime} - {selectedTrip.arrivalTime || 'TBA'}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Price: </span>
+                    <span className="font-medium">LKR {selectedTrip.price.toLocaleString()}</span>
+                  </div>
                 </div>
               )}
               <DateSelector date={selectedDate} onDateSelect={setSelectedDate} />
@@ -212,7 +232,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
                   <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
                   <p className="text-muted-foreground mt-4">Loading seats...</p>
                 </div>
-              ) : selectedRoute && selectedDate ? (
+              ) : selectedRoute && selectedTrip && selectedDate ? (
                 <>
                   <SeatLayout
                     bookedSeats={bookedSeats}
@@ -234,7 +254,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
                         <div className="text-right">
                           <p className="text-sm text-muted-foreground">Total Price</p>
                           <p className="font-bold text-2xl text-primary">
-                            LKR {(selectedRoute.price || 0) * selectedSeats.length}
+                            LKR {(selectedTrip?.price || 0) * selectedSeats.length}
                           </p>
                         </div>
                       </div>
@@ -244,7 +264,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
               ) : (
                 <div className="bg-card rounded-xl p-12 shadow-card text-center">
                   <Bus className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Please select a route and date first</p>
+                  <p className="text-muted-foreground">Please select a route, trip, and date first</p>
                 </div>
               )}
             </div>
