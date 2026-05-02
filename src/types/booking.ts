@@ -1,28 +1,40 @@
 export type BusType = 'rosa' | 'luxury_ac' | 'super_long' | 'normal';
 
-export interface Route {
+export interface Trip {
   id: string;
-  name: string;
-  from: string;
-  to: string;
   departureTime: string;
   arrivalTime?: string;
   price: number;
-  busType: BusType;
-  totalSeats: number;
-  // Vehicle details
   busNumber?: string;
   driverName?: string;
   driverPhone?: string;
   conductorName?: string;
   conductorPhone?: string;
+}
+
+export interface Route {
+  id: string;
+  name: string;
+  from: string;
+  to: string;
+  busType: BusType;
+  totalSeats: number;
+  // Route-level fallback values for legacy components
+  departureTime?: string;
+  arrivalTime?: string;
+  price?: number;
+  // Multiple trips per route
+  trips: Trip[];
   // Via points (intermediate stops)
   viaPoints?: string[];
+  // Driver's bus information
+  driverId?: string;
 }
 
 export interface Booking {
   id: string;
-  routeId: string;
+  routeId?: string;
+  tripId: string;
   routeName: string;
   date: string;
   seatNumber: number;
