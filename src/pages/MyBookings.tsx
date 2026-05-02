@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useMyBookings, useUpdateBookingStatus } from '@/hooks/useBookings';
 import { useRoutes } from '@/hooks/useRoutes';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { Ticket, Loader2, Calendar, MapPin, Armchair, XCircle, Download, User, Trash2 } from 'lucide-react';
 import { generateTicketPDF } from '@/lib/pdfTicketGenerator';
@@ -30,22 +31,66 @@ import { Booking } from '@/types/booking';
 import QRCode from "react-qr-code";
 import { supabase } from '@/integrations/supabase/client';
 
+const QRCodeComponent = (QRCode as any)?.default ?? QRCode;
+
 const MyBookings = () => {
   const { data: bookings = [], isLoading, refetch } = useMyBookings();
   const { data: routes = [] } = useRoutes();
+  const { user } = useAuth();
   const updateStatusMutation = useUpdateBookingStatus();
   const [cancellingGroupKey, setCancellingGroupKey] = useState<string | null>(null);
 
+  // Debug logging
+  console.log('MyBookings - user:', user?.id, 'bookings:', bookings.length, 'isLoading:', isLoading, 'routes:', routes.length);
+  console.log('MyBookings - bookings data:', bookings);
+  console.log('MyBookings - user object:', user);
+
+  // If not authenticated, show message
+  if (!user && !isLoading) {
+    console.log('MyBookings - showing auth message');
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="bg-card rounded-xl p-12 shadow-card text-center">
+            <h3 className="text-lg font-display font-semibold text-foreground mb-2">
+              Please sign in to view your bookings
+            </h3>
+            <Button onClick={() => window.location.href = '/login'} className="mt-4">
+              Sign In
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Show loading state
+  if (isLoading) {
+    console.log('MyBookings - showing loading state');
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   // --- GROUPING LOGIC ---
   const groupedBookings = bookings.reduce((groups: any, booking: Booking) => {
-    const key = `${booking.routeId}-${booking.date}-${booking.status}`;
-    
+    const identifier = booking.tripId || booking.routeId || booking.routeName;
+    const key = `${identifier}-${booking.date}-${booking.status}`;
+
     if (!groups[key]) {
       groups[key] = {
         ...booking,
-        seatNumbers: [booking.seatNumber], 
-        bookingIds: [booking.id], 
-        allBookings: [booking] 
+        seatNumbers: [booking.seatNumber],
+        bookingIds: [booking.id],
+        allBookings: [booking],
       };
     } else {
       groups[key].seatNumbers.push(booking.seatNumber);
@@ -57,12 +102,18 @@ const MyBookings = () => {
 
   const bookingGroups = Object.values(groupedBookings) as any[];
 
+  console.log('MyBookings - bookingGroups:', bookingGroups.length, bookingGroups);
+
   // ----------------------------------------------
 
   const handleDownloadTicket = (group: any) => {
-    const route = routes.find(r => r.id === group.routeId);
-    if (route) {
-      const ticketData = group.allBookings.map((b: Booking) => ({ booking: b, route }));
+    const route = routes.find(r => r.id === group.routeId) || routes.find(r => r.name === group.routeName);
+    const trip = route?.trips.find((t) => t.id === group.tripId);
+    if (route && trip) {
+      const ticketData = group.allBookings.map((b: Booking) => ({ booking: b, route, trip }));
+      generateTicketPDF(ticketData);
+    } else if (route) {
+      const ticketData = group.allBookings.map((b: Booking) => ({ booking: b, route, trip: route.trips[0] || { id: '', departureTime: '', price: 0 } }));
       generateTicketPDF(ticketData);
     } else {
       toast({
@@ -123,6 +174,8 @@ const MyBookings = () => {
     (g) => g.status !== 'confirmed' || new Date(g.date) < new Date(new Date().toDateString())
   );
 
+  console.log('MyBookings - upcomingGroups:', upcomingGroups.length, 'pastGroups:', pastGroups.length);
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -163,7 +216,8 @@ const MyBookings = () => {
                 </h2>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {upcomingGroups.map((group, index) => {
-                    const groupKey = `${group.routeId}-${group.date}-${group.status}`;
+                    const identifier = group.tripId || group.routeId || group.routeName;
+                    const groupKey = `${identifier}-${group.date}-${group.status}`;
                     return (
                       <div
                         key={index}
@@ -178,7 +232,7 @@ const MyBookings = () => {
                           </div>
                           
                           <div className="bg-white p-1.5 rounded-lg border border-gray-100 ml-2 shadow-sm shrink-0">
-                            <QRCode 
+                            <QRCodeComponent 
                               size={64}
                               style={{ height: "auto", maxWidth: "100%", width: "100%" }}
                               value={`IDs: ${group.bookingIds.join(', ')} | Seats: ${group.seatNumbers.join(', ')}`}
@@ -334,6 +388,53 @@ const MyBookings = () => {
                       </TableBody>
                     </Table>
                   </div>
+                </div>
+              </section>
+            )}
+
+            {bookingGroups.length > 0 && upcomingGroups.length === 0 && pastGroups.length === 0 && (
+              <section>
+                <h2 className="text-lg font-display font-semibold mb-4">
+                  Your Bookings ({bookingGroups.length})
+                </h2>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {bookingGroups.map((group, index) => {
+                    const identifier = group.tripId || group.routeId || group.routeName;
+                    return (
+                      <div
+                        key={index}
+                        className="bg-card rounded-xl p-6 shadow-card border-l-4 border-primary relative overflow-hidden"
+                      >
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-lg">{group.routeName}</h3>
+                            <p className="text-xs text-muted-foreground mt-1 break-all">
+                              IDs: {group.bookingIds.join(', ')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="space-y-2 mb-4 text-sm">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-muted-foreground" />
+                            <span>{group.date}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Armchair className="w-4 h-4 text-muted-foreground" />
+                            <span>{group.seatNumbers.sort((a:number, b:number) => a - b).map((s:number) => `#${s}`).join(', ')}</span>
+                          </div>
+                        </div>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => handleDownloadTicket(group)}
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Download Ticket
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </section>
             )}
