@@ -14,13 +14,16 @@ import {
   UserCircle, 
   Check,
   Loader2,
-  Bus
+  Bus,
+  CreditCard
 } from 'lucide-react';
 import RouteSelector from './RouteSelector';
 import DateSelector from './DateSelector';
 import SeatLayout from './SeatLayout';
 import BookingForm from './BookingForm';
 import RouteMap from './RouteMap';
+import PaymentStep from './PaymentStep';
+import { isReturningFromPayment, verifyPayHerePayment, getPaymentReturnInfo } from '@/lib/payments/payHere';
 
 interface BookingWizardProps {
   routes: Route[];
@@ -32,6 +35,7 @@ const STEPS = [
   { id: 2, title: 'Date', icon: Calendar },
   { id: 3, title: 'Seats', icon: Armchair },
   { id: 4, title: 'Details', icon: UserCircle },
+  { id: 5, title: 'Payment', icon: CreditCard },
 ];
 
 const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
@@ -39,6 +43,8 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
+  const [confirmedBookings, setConfirmedBookings] = useState<Booking[]>([]);
+  const [passengerInfo, setPassengerInfo] = useState<{ passengerName: string; phoneNumber: string } | null>(null);
 
   const dateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined;
   const { data: bookedSeats = [], isLoading: seatsLoading } = useBookedSeats(selectedRoute?.id, dateStr);
@@ -59,8 +65,20 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
     });
   };
 
-  const handleBookingSubmit = async (data: { passengerName: string; phoneNumber: string }) => {
+const handleBookingSubmit = async (data: { passengerName: string; phoneNumber: string }) => {
     if (!selectedRoute || !selectedDate || selectedSeats.length === 0) return;
+
+    // Save passenger info and proceed to payment step
+    setPassengerInfo(data);
+    // Go to payment step (step 5) - bookings created when clicking Proceed to Payment
+    setStep(5);
+  };
+
+  // Also update the PaymentStep to show basic payment form even without confirmed bookings
+  const showBasicPaymentForm = step === 5 && confirmedBookings.length === 0 && passengerInfo && selectedRoute;
+
+  const handleProceedToPayment = async () => {
+    if (!selectedRoute || !selectedDate || selectedSeats.length === 0 || !passengerInfo) return;
 
     try {
       const bookings = await addBookingsMutation.mutateAsync({
@@ -68,12 +86,14 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
         routeName: selectedRoute.name,
         date: dateStr!,
         seatNumbers: selectedSeats,
-        passengerName: data.passengerName,
-        phoneNumber: data.phoneNumber,
+        passengerName: passengerInfo.passengerName,
+        phoneNumber: passengerInfo.phoneNumber,
         status: 'confirmed',
       });
 
-      onBookingComplete(bookings, selectedRoute);
+      setConfirmedBookings(bookings);
+      // Proceed to payment step
+      setStep(5);
     } catch (error: any) {
       toast({
         title: 'Booking Failed',
@@ -82,6 +102,12 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
       });
       setStep(3);
       setSelectedSeats([]);
+    }
+  };
+
+  const handlePaymentComplete = () => {
+    if (confirmedBookings.length > 0 && selectedRoute) {
+      onBookingComplete(confirmedBookings, selectedRoute);
     }
   };
 
@@ -250,7 +276,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
             </div>
           </div>
 
-          {/* Step 4: Passenger Details */}
+{/* Step 4: Passenger Details */}
           <div className={cn(
             "absolute inset-0 transition-all duration-500 ease-out",
             step === 4 ? "translate-x-0 opacity-100 pointer-events-auto" : "translate-x-full opacity-0 pointer-events-none"
@@ -265,24 +291,42 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
               />
             )}
           </div>
-        </div>
 
-        {/* Route Map */}
-        <div className="lg:sticky lg:top-4 h-fit">
-          <div className="bg-card rounded-xl shadow-card overflow-hidden">
-            <div className="p-4 border-b border-border">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-primary" />
-                <h2 className="text-lg font-display font-semibold">Route Map</h2>
-              </div>
-            </div>
-            <RouteMap route={selectedRoute} className="h-[300px] lg:h-[400px]" />
+{/* Step 5: Payment */}
+          <div className={cn(
+            "absolute inset-0 transition-all duration-500 ease-out",
+            step === 5 ? "translate-x-0 opacity-100 pointer-events-auto" : "translate-x-full opacity-0 pointer-events-none"
+          )}>
+            {selectedRoute && selectedDate && selectedSeats.length > 0 && (
+              <PaymentStep
+                route={selectedRoute}
+                bookings={confirmedBookings.length > 0 ? confirmedBookings : []}
+                selectedDate={selectedDate}
+                selectedSeats={selectedSeats}
+                onPaymentComplete={handlePaymentComplete}
+              />
+            )}
           </div>
         </div>
+
+{/* Route Map - Hidden on Payment Step */}
+        {step !== 5 && (
+          <div className="lg:sticky lg:top-4 h-fit">
+            <div className="bg-card rounded-xl shadow-card overflow-hidden">
+              <div className="p-4 border-b border-border">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-primary" />
+                  <h2 className="text-lg font-display font-semibold">Route Map</h2>
+                </div>
+              </div>
+              <RouteMap route={selectedRoute} className="h-[300px] lg:h-[400px]" />
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Navigation Buttons */}
-      {step < 4 && (
+{/* Navigation Buttons */}
+      {step < 5 && (
         <div className="flex justify-between gap-4">
           <Button
             variant="outline"
@@ -294,14 +338,34 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
             Back
           </Button>
           
-          <Button
-            onClick={handleNext}
-            disabled={!canGoNext()}
-            className="px-8"
-          >
-            Continue
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
+          {step === 4 ? (
+            <Button
+              onClick={handleProceedToPayment}
+              disabled={addBookingsMutation.isPending}
+              className="px-8"
+            >
+              {addBookingsMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  Proceed to Payment
+                  <CreditCard className="w-4 h-4 ml-2" />
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button
+              onClick={handleNext}
+              disabled={!canGoNext()}
+              className="px-8"
+            >
+              Continue
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          )}
         </div>
       )}
     </div>
