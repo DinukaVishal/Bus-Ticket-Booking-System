@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
-import { Booking, Route } from '@/types/booking';
+import { Booking, Route, Trip } from '@/types/booking';
 
 // ─── Type Extensions ─────────────────────────────────────────────────────────
 interface RouteStop {
@@ -23,6 +23,7 @@ interface ExtendedRoute extends Route {
 interface TicketData {
   booking: Booking;
   route: ExtendedRoute;
+  trip: Trip;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -106,9 +107,9 @@ export const generateTicketPDF = async (tickets: TicketData[]): Promise<void> =>
   const ORANGE_STRIP = [240, 150, 0] as const;
   const TEXT_MUTED = [100, 100, 100] as const;
 
-  const { booking: fb, route } = tickets[0];
+  const { booking: fb, route, trip } = tickets[0];
   const seatNumbers = tickets.map(t => t.booking.seatNumber).sort((a, b) => a - b);
-  const totalPrice = route.price * tickets.length;
+  const totalPrice = trip.price * tickets.length;
   const bookingIds = tickets.map(t => t.booking.id);
   
   const baseId = fb.id.toString().toUpperCase();
@@ -136,13 +137,13 @@ export const generateTicketPDF = async (tickets: TicketData[]): Promise<void> =>
   }
 
   const allStops = [
-    { name: route.from, time: route.departureTime, type: 'origin' },
+    { name: route.from, time: trip.departureTime, type: 'origin' },
     ...rawStops.map(s => ({ ...s, type: 'via' })),
-    { name: route.to, time: route.arrivalTime ?? '11:00 AM', type: 'destination' },
+    { name: route.to, time: trip.arrivalTime ?? route.arrivalTime ?? '11:00 AM', type: 'destination' },
   ];
 
   const boardingPoint = route.boardingPoint ?? 'Kandy Central Bus Stand, Bay 14';
-  const arrivalTime = route.arrivalTime ?? '11:00 AM';
+  const arrivalTime = trip.arrivalTime ?? route.arrivalTime ?? '11:00 AM';
   const duration = route.duration ?? '8h 30m';
 
   let yPos = M;
