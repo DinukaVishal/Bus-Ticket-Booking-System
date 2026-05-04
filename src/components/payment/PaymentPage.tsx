@@ -6,9 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+<<<<<<< HEAD
 import { Shield, Lock, CreditCard, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { PaymentIntent, CardDetails, PAYHERE_CONFIG } from '@/types/payment';
 import { Booking } from '@/types/booking';
+=======
+import { Shield, Lock, CreditCard, CheckCircle, AlertCircle } from 'lucide-react';
+import { PaymentIntent, CardDetails, PAYHERE_CONFIG } from '@/types/payment';
+>>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
 import { usePayment } from '@/hooks/usePayment';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
@@ -35,7 +40,11 @@ interface PaymentPageProps {
     phoneNumber: string;
     totalAmount: number;
   };
+<<<<<<< HEAD
   onPaymentSuccess: (bookings: Booking[]) => void;
+=======
+  onPaymentSuccess: (bookings: any[]) => void;
+>>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
   onCancel: () => void;
 }
 
@@ -56,7 +65,11 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
     bookingData: {
       ...bookingData,
       totalAmount: bookingData.totalAmount,
+<<<<<<< HEAD
       seatNumbers: bookingData.seatNumbers.split(', ').map(Number).sort((a,b)=>a-b),
+=======
+      seatNumbers: bookingData.seatNumbers.split(',').map(Number).sort((a,b)=>a-b),
+>>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
     } 
   });
 
@@ -71,7 +84,14 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
     const paymentResult = await processPayment(cardDetails);
     
     if (paymentResult?.status === 'success') {
+<<<<<<< HEAD
       const bookings = await completeBookingAfterPayment(paymentResult);
+=======
+      const bookings = await completeBookingAfterPayment(paymentResult, {
+        ...bookingData,
+        seatNumbers: bookingData.seatNumbers.split(',').map(Number).sort((a,b)=>a-b),
+      });
+>>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
       
       if (bookings) {
         onPaymentSuccess(bookings);
@@ -80,6 +100,7 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
   };
 
   return (
+<<<<<<< HEAD
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop with blur */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"></div>
@@ -183,18 +204,85 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
                   <span>Total Amount</span>
                   <span>LKR {bookingData.totalAmount.toLocaleString()}</span>
                 </div>
+=======
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/50 py-12 px-4">
+      <div className="container max-w-2xl mx-auto">
+        {/* Header */}
+        <Card className="mb-8 shadow-card hover:shadow-card-hover transition-all">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-3 mb-4">
+              <Shield className="w-8 h-8 text-primary" />
+              <div>
+                <CardTitle className="text-2xl">Secure Payment</CardTitle>
+                <CardDescription>Complete your booking with secure payment</CardDescription>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
+                <Lock className="w-3 h-3 mr-1" /> PCI-DSS Level 1
+              </Badge>
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800 border-blue-200">
+                SSL Encrypted
+              </Badge>
+              <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-purple-200">
+                PayHere Certified
+              </Badge>
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* Main Payment Card */}
+        <Card className="shadow-2xl border-0 max-w-md mx-auto animate-scale-in">
+          <CardHeader className="text-center pb-2">
+            <h2 className="text-2xl font-display font-bold bg-gradient-to-r from-primary to-primary-foreground bg-clip-text text-transparent">
+              Review & Pay LKR {bookingData.totalAmount.toLocaleString()}
+            </h2>
+            <p className="text-muted-foreground text-sm mt-1">
+              {bookingData.seatNumbers} • {bookingData.routeName} • {new Date(bookingData.date).toLocaleDateString()}
+            </p>
+          </CardHeader>
+
+          <CardContent className="space-y-6 p-8">
+            {/* Booking Summary */}
+            <div className="space-y-3 p-4 bg-muted/50 rounded-xl">
+              <div className="flex justify-between text-sm font-medium">
+                <span>Seat{bookingData.seatNumbers.includes(',') ? 's' : ''}</span>
+                <span>#{bookingData.seatNumbers}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Route</span>
+                <span className="font-medium">{bookingData.routeName}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Date</span>
+                <span>{new Date(bookingData.date).toLocaleDateString('en-LK')}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>Passenger</span>
+                <span>{bookingData.passengerName}</span>
+              </div>
+              <div className="h-px bg-border my-2" />
+              <div className="flex justify-between text-lg font-bold text-primary">
+                <span>Total</span>
+                <span>LKR {bookingData.totalAmount.toLocaleString()}</span>
+>>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
               </div>
             </div>
 
             {/* Payment Form */}
             <Form {...form}>
+<<<<<<< HEAD
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
                 {/* Cardholder Name */}
+=======
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+>>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
                 <FormField
                   control={form.control}
                   name="cardholderName"
                   render={({ field }) => (
                     <FormItem>
+<<<<<<< HEAD
                       <FormLabel className="text-gray-700 font-semibold text-sm">Cardholder Name</FormLabel>
                       <FormControl>
                         <div className="relative">
@@ -207,18 +295,28 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
                             <span className="text-purple-600 font-bold text-xs">👤</span>
                           </div>
                         </div>
+=======
+                      <FormLabel>Cardholder Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="John Doe" {...field} />
+>>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+<<<<<<< HEAD
 
                 {/* Card Number */}
+=======
+                
+>>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
                 <FormField
                   control={form.control}
                   name="cardNumber"
                   render={({ field }) => (
                     <FormItem>
+<<<<<<< HEAD
                       <FormLabel className="text-gray-700 font-semibold text-sm">Card Number</FormLabel>
                       <FormControl>
                         <div className="relative">
@@ -229,6 +327,18 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
                             {...field}
                             onChange={(e) => {
                               const value = e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim();
+=======
+                      <FormLabel>Card Number</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input 
+                            className="pl-10" 
+                            placeholder="1234 5678 9012 3456"
+                            {...field}
+                            onChange={(e) => {
+                              let value = e.target.value.replace(/\\D/g, '').replace(/(.{4})/g, '$1 ').trim();
+>>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
                               field.onChange(value);
                             }}
                           />
@@ -238,14 +348,20 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
                     </FormItem>
                   )}
                 />
+<<<<<<< HEAD
 
                 {/* Expiry and CVC */}
                 <div className="grid grid-cols-2 gap-3">
+=======
+                
+                <div className="grid grid-cols-2 gap-4">
+>>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
                   <FormField
                     control={form.control}
                     name="expiry"
                     render={({ field }) => (
                       <FormItem>
+<<<<<<< HEAD
                         <FormLabel className="text-gray-700 font-semibold text-sm">Expiry Date</FormLabel>
                         <FormControl>
                           <Input
@@ -256,6 +372,17 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
                             onChange={(e) => {
                               let value = e.target.value;
                               if (/^\d{2}$/.test(value)) value += '/';
+=======
+                        <FormLabel>Expiry</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="MM/YY"
+                            maxLength={5}
+                            {...field}
+                            onChange={(e) => {
+                              let value = e.target.value;
+                              if (/^\\d{2}$/.test(value)) value += '/';
+>>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
                               field.onChange(value);
                             }}
                           />
@@ -264,12 +391,17 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
                       </FormItem>
                     )}
                   />
+<<<<<<< HEAD
 
+=======
+                  
+>>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
                   <FormField
                     control={form.control}
                     name="cvc"
                     render={({ field }) => (
                       <FormItem>
+<<<<<<< HEAD
                         <FormLabel className="text-gray-700 font-semibold text-sm">CVC</FormLabel>
                         <FormControl>
                           <Input
@@ -277,6 +409,14 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
                             placeholder="123"
                             maxLength={4}
                             className="h-11 text-base border-2 border-gray-200 focus:border-purple-500 rounded-xl font-mono transition-all duration-200 focus:ring-2 focus:ring-purple-500/20"
+=======
+                        <FormLabel>CVC</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="password"
+                            placeholder="123"
+                            maxLength={4}
+>>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
                             {...field}
                           />
                         </FormControl>
@@ -286,6 +426,7 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
                   />
                 </div>
 
+<<<<<<< HEAD
                 {/* Pay Button */}
                 <Button
                   type="submit"
@@ -296,6 +437,13 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
                     <>
                       <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                       Processing Payment...
+=======
+                <Button type="submit" className="w-full h-14 text-lg font-semibold shadow-lg" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Processing...
+>>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
                     </>
                   ) : (
                     <>
@@ -308,6 +456,7 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
             </Form>
 
             {/* Security Footer */}
+<<<<<<< HEAD
             <div className="mt-6 pt-4 border-t border-gray-200/50 text-center">
               <div className="flex items-center justify-center gap-2 mb-2 text-gray-600">
                 <Shield className="w-4 h-4 text-green-500" />
@@ -333,6 +482,31 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
             disabled={loading}
           >
             ← Back to Booking Details
+=======
+            <div className="pt-6 border-t border-border text-xs text-muted-foreground text-center space-y-1">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Shield className="w-4 h-4" />
+                <span>Your payment is protected with bank-grade encryption</span>
+              </div>
+              <div className="flex flex-wrap justify-center gap-1">
+                <span>Powered by</span>
+                <span className="font-semibold text-primary">PayHere</span>
+                <span>• Secure payments for Sri Lanka</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Cancel Button */}
+        <div className="text-center mt-8">
+          <Button 
+            variant="ghost" 
+            onClick={onCancel}
+            className="text-muted-foreground hover:text-foreground"
+            disabled={loading}
+          >
+            Cancel & Edit Booking
+>>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
           </Button>
         </div>
       </div>

@@ -40,7 +40,9 @@ export interface Booking {
   seatNumber: number;
   passengerName: string;
   phoneNumber: string;
-  status: 'confirmed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'cancelled';
+  payment_status?: 'pending' | 'paid' | 'failed' | 'refunded';
+  payment_id?: string;
   createdAt: string;
 }
 
