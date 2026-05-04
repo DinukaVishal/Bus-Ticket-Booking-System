@@ -1,7 +1,9 @@
+import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Bus, LayoutDashboard, LogOut, User, Ticket, Radio, Navigation, ChevronDown, UserCircle, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useScrollPosition } from '@/hooks/useScrollPosition';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -14,10 +16,18 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-const Header = () => {
+interface HeaderProps {
+  isHomePage?: boolean;
+}
+
+const Header = ({ isHomePage = false }: HeaderProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, isAdmin, signOut } = useAuthContext();
+  const scrollPosition = useScrollPosition();
+
+  // Determine if header should be transparent (only on home page and when scrolled less than 100px)
+  const isTransparent = isHomePage && scrollPosition < 100;
 
   const handleSignOut = async () => {
     try {
@@ -44,9 +54,19 @@ const Header = () => {
   };
 
   return (
-    <header className="gradient-hero text-primary-foreground sticky top-0 z-50">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+    <header 
+      className={`text-white z-50 transition-all duration-300 ${isHomePage && isTransparent ? 'fixed' : 'sticky'} top-0 left-0 right-0 w-full`}
+      style={{
+        background: isTransparent 
+          ? 'transparent' 
+          : 'linear-gradient(135deg, hsla(222, 60%, 25%, 0.95) 0%, hsla(222, 60%, 35%, 0.95) 100%)',
+        backdropFilter: isTransparent ? 'none' : 'blur(12px)',
+        borderBottom: isTransparent ? 'none' : '1px solid rgba(255, 255, 255, 0.15)',
+        boxShadow: isTransparent ? 'none' : '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+      }}
+    >
+      <div className="container mx-auto px-4 py-2">
+        <div className="flex items-center justify-between h-16 gap-4">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 font-display font-bold text-xl hover:scale-105 transition-transform">
             <Bus className="w-6 h-6" />
@@ -95,21 +115,6 @@ const Header = () => {
               </Link>
             )}
 
-            {user && (
-              <Link
-                to="/driver"
-                className={cn(
-                  'px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 text-emerald-100 hover:text-white',
-                  location.pathname === '/driver'
-                    ? 'bg-emerald-500/40 text-white'
-                    : 'hover:bg-emerald-500/20'
-                )}
-              >
-                <Navigation className="w-4 h-4" />
-                <span className="hidden sm:inline">Driver</span>
-              </Link>
-            )}
-            
             {isAdmin && (
               <Link
                 to="/admin"
