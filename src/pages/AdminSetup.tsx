@@ -113,7 +113,7 @@ const AdminSetup = () => {
 
   if (authLoading || checkingAdmins) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background/60 backdrop-blur-xl flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -121,7 +121,7 @@ const AdminSetup = () => {
 
   if (hasAdmins && !isAdmin) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background/60 backdrop-blur-xl flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
             <Shield className="w-8 h-8 text-muted-foreground" />
@@ -137,7 +137,7 @@ const AdminSetup = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background/60 backdrop-blur-xl flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">

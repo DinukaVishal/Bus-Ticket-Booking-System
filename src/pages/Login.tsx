@@ -56,7 +56,7 @@ const Login = () => {
 
   return (
     <div className="w-full min-h-screen grid lg:grid-cols-2">
-      <div className="hidden lg:block relative h-full bg-black overflow-hidden">
+      <div className="hidden lg:block relative h-full overflow-hidden">
         <video autoPlay loop muted playsInline className="absolute inset-0 h-full w-full object-cover opacity-80">
           <source src="/qickvideo12.mp4" />
         </video>
@@ -77,7 +77,7 @@ const Login = () => {
         </div>
       </div>
 
-      <div className="flex items-center justify-center p-8 lg:p-12 bg-background animate-in slide-in-from-right duration-500">
+      <div className="flex items-center justify-center p-8 lg:p-12 bg-background/60 backdrop-blur-xl animate-in slide-in-from-right duration-500">
         <div className="mx-auto flex w-full flex-col justify-center space-y-6 max-w-[400px]">
           <div className="flex flex-col space-y-2 text-center lg:text-left">
             <h1 className="text-3xl font-bold tracking-tight">Welcome back</h1>

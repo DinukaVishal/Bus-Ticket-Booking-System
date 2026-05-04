@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Route, BusType } from '@/types/booking';
+import { Route, RouteRow, BusType } from '@/types/booking';
 
 export function useRoutes() {
   return useQuery({
@@ -35,6 +35,11 @@ export function useRoutes() {
           to: route.to_city,
           busType: (route.bus_type || 'normal') as BusType,
           totalSeats: route.total_seats || 40,
+          busNumber: route.bus_number || undefined,
+          driverName: route.driver_name || undefined,
+          driverPhone: route.driver_phone || undefined,
+          conductorName: route.conductor_name || undefined,
+          conductorPhone: route.conductor_phone || undefined,
           departureTime: firstTrip?.departure_time || route.departure_time,
           arrivalTime: firstTrip?.arrival_time || route.arrival_time || undefined,
           price: firstTrip?.price ?? route.price,
@@ -60,7 +65,7 @@ export function useAddRoute() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (route: Omit<Route, 'id'>) => {
+    mutationFn: async (route: RouteRow) => {
       const { data, error } = await supabase
         .from('routes')
         .insert({
@@ -95,7 +100,7 @@ export function useUpdateRoute() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (route: Route) => {
+    mutationFn: async (route: RouteRow) => {
       const { data, error } = await supabase
         .from('routes')
         .update({

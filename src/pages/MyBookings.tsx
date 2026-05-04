@@ -49,7 +49,7 @@ const MyBookings = () => {
   if (!user && !isLoading) {
     console.log('MyBookings - showing auth message');
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background/60 backdrop-blur-xl">
         <Header />
         <main className="container mx-auto px-4 py-8">
           <div className="bg-card rounded-xl p-12 shadow-card text-center">
@@ -69,7 +69,7 @@ const MyBookings = () => {
   if (isLoading) {
     console.log('MyBookings - showing loading state');
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background/60 backdrop-blur-xl">
         <Header />
         <main className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center py-12">
@@ -177,7 +177,7 @@ const MyBookings = () => {
   console.log('MyBookings - upcomingGroups:', upcomingGroups.length, 'pastGroups:', pastGroups.length);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background/60 backdrop-blur-xl">
       <Header />
 
       <main className="container mx-auto px-4 py-8">

@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import Header from '@/components/layout/Header';
 import { Bus, ShieldCheck, Clock, MapPin, Search, CreditCard, ChevronRight, Star } from 'lucide-react';
 
 const Home = () => {
   return (
-    <div className="min-h-screen bg-background flex flex-col font-sans">
-      
+    <div className="min-h-screen bg-background/60 backdrop-blur-xl flex flex-col font-sans">
+      <Header isHomePage={true} />
       {/* 1. Hero Section (Video Background සමඟ) */}
       <section className="relative text-white py-24 lg:py-32 overflow-hidden flex items-center min-h-[85vh]">
         
@@ -92,7 +93,7 @@ const Home = () => {
       </section>
 
       {/* 3. Features Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-background/30 backdrop-blur-xl">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-800 mb-16">Why Choose QuickBus?</h2>
           

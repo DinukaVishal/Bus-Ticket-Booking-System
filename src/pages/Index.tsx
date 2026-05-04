@@ -27,7 +27,7 @@ const Index = () => {
   // Show confirmation page
   if (confirmedBookings.length > 0 && confirmedRoute && confirmedTrip) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background/60 backdrop-blur-xl">
         <Header />
         <BookingConfirmation
           bookings={confirmedBookings}
@@ -40,7 +40,7 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background/60 backdrop-blur-xl">
       <Header />
       
       {/* Hero Section */}

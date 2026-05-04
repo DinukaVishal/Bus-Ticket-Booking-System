@@ -128,7 +128,7 @@ const DriverCompanion = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background/60 backdrop-blur-xl flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -138,13 +138,8 @@ const DriverCompanion = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // If user is a driver, redirect to dashboard
-  if (isDriver) {
-    return <Navigate to="/driver/dashboard" replace />;
-  }
-
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background/60 backdrop-blur-xl flex flex-col">
       <Header />
 
       <div className="flex-1 container mx-auto px-4 py-8 max-w-lg animate-in fade-in slide-in-from-bottom-4 duration-500">

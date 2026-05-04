@@ -254,7 +254,7 @@ const LiveTracking = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background/60 backdrop-blur-xl flex flex-col">
       <Header />
 
       <div className="flex-1 flex relative">
