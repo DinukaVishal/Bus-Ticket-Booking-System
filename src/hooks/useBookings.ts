@@ -184,6 +184,8 @@ interface MultipleBookingInput {
   passengerName: string;
   phoneNumber: string;
   status: 'confirmed' | 'cancelled';
+  paymentId?: string;
+  paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded';
 }
 
 export function useAddMultipleBookings() {
@@ -212,6 +214,8 @@ export function useAddMultipleBookings() {
         phone_number: input.phoneNumber,
         status: input.status,
         user_id: user.id,
+        payment_id: input.paymentId || null,
+        payment_status: input.paymentStatus || 'pending',
       }));
 
       const { data, error } = await supabase
@@ -237,6 +241,8 @@ export function useAddMultipleBookings() {
         passengerName: booking.passenger_name,
         phoneNumber: booking.phone_number,
         status: booking.status as 'confirmed' | 'cancelled',
+        payment_status: booking.payment_status as 'pending' | 'paid' | 'failed' | 'refunded',
+        payment_id: booking.payment_id,
         createdAt: booking.created_at,
       }));
     },
@@ -288,6 +294,7 @@ export function useAddBooking() {
       return {
         id: data.booking_id,
         routeId: data.route_id,
+        tripId: data.trip_id,
         routeName: data.route_name,
         date: data.date,
         seatNumber: data.seat_number,

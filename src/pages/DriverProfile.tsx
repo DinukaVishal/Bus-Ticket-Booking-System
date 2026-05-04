@@ -156,14 +156,14 @@ const DriverProfile = () => {
 
   if (isFetching) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background/60 backdrop-blur-xl flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background/60 backdrop-blur-xl flex flex-col">
       <Header />
 
       <div className="flex-1 container mx-auto px-4 py-8 max-w-2xl">

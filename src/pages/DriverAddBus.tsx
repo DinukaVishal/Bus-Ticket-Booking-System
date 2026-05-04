@@ -1,20 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useRoutes } from '@/hooks/useRoutes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { Bus, Loader2, ArrowLeft, Save } from 'lucide-react';
+import { Bus, Loader2, ArrowLeft, Save, MapPin } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const DriverAddBus = () => {
   const { user } = useAuthContext();
   const navigate = useNavigate();
+  const { data: allRoutes = [] } = useRoutes();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedRoute, setSelectedRoute] = useState<string>('');
   const [formData, setFormData] = useState({
     busNumber: '',
     busType: '',
@@ -52,10 +55,11 @@ const DriverAddBus = () => {
 
     // Validation
     if (!formData.busNumber || !formData.busType || !formData.totalSeats ||
-        !formData.registrationNumber || !formData.insuranceExpiry || !formData.fitnessCertificateExpiry) {
+        !formData.registrationNumber || !formData.insuranceExpiry || !formData.fitnessCertificateExpiry ||
+        !selectedRoute) {
       toast({
         title: 'Missing Information',
-        description: 'Please fill in all required fields.',
+        description: 'Please fill in all required fields including selecting a route.',
         variant: 'destructive',
       });
       return;
@@ -73,7 +77,8 @@ const DriverAddBus = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase
+      // Insert the bus
+      const { data: busData, error: busError } = await supabase
         .from('driver_buses')
         .insert({
           driver_user_id: user.id,
@@ -83,9 +88,29 @@ const DriverAddBus = () => {
           registration_number: formData.registrationNumber,
           insurance_expiry: formData.insuranceExpiry,
           fitness_certificate_expiry: formData.fitnessCertificateExpiry,
+          is_active: false,
+        })
+        .select();
+
+      if (busError) throw busError;
+
+      if (!busData || busData.length === 0) {
+        throw new Error('Failed to create bus');
+      }
+
+      const busId = busData[0].id;
+
+      // Create driver_routes record to link bus to route
+      const { error: routeError } = await supabase
+        .from('driver_routes')
+        .insert({
+          driver_user_id: user.id,
+          route_id: selectedRoute,
+          bus_id: busId,
+          is_active: true, // Driver selected the route when adding the bus
         });
 
-      if (error) throw error;
+      if (routeError) throw routeError;
 
       toast({
         title: 'Bus Added Successfully',
@@ -106,7 +131,7 @@ const DriverAddBus = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background/60 backdrop-blur-xl flex flex-col">
       <Header />
 
       <div className="flex-1 container mx-auto px-4 py-8 max-w-2xl">
@@ -138,6 +163,39 @@ const DriverAddBus = () => {
 
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="route">Select Route *</Label>
+                <Select value={selectedRoute} onValueChange={setSelectedRoute}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a route to operate..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allRoutes.map((route) => (
+                      <SelectItem key={route.id} value={route.id}>
+                        {route.name} ({route.from} → {route.to})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Each bus can operate on only one route</p>
+              </div>
+
+              {selectedRoute && (
+                <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                  {allRoutes.find(r => r.id === selectedRoute) && (
+                    <div className="flex items-start gap-2">
+                      <MapPin className="w-4 h-4 text-primary mt-1 flex-shrink-0" />
+                      <div>
+                        <p className="font-semibold">{allRoutes.find(r => r.id === selectedRoute)?.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {allRoutes.find(r => r.id === selectedRoute)?.from} → {allRoutes.find(r => r.id === selectedRoute)?.to}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="busNumber">Bus Number *</Label>

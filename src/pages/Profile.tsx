@@ -221,7 +221,7 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-12">
+    <div className="min-h-screen bg-background/60 backdrop-blur-xl pb-12">
       <Header />
       <main className="container mx-auto px-4 py-8 md:py-12 animate-in fade-in slide-in-from-bottom-5 duration-500">
         

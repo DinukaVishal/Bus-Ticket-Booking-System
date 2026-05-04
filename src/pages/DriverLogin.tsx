@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,17 +7,53 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { Bus, Loader2, Mail, Lock, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 const DriverLogin = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [justLoggedIn, setJustLoggedIn] = useState(false);
+  const { user, isAdmin, isDriver, isLoading } = useAuthContext(); // Add user check
+
+  // Handle redirect after login
+  useEffect(() => {
+    if (justLoggedIn && !isLoading && user) {
+      console.log('Redirecting after driver login. User:', user, 'isAdmin:', isAdmin, 'isDriver:', isDriver);
+
+      if (isDriver) {
+        console.log('Driver verified, redirecting to /driver/dashboard');
+        toast({
+          title: 'Welcome back!',
+          description: 'You have successfully logged in as a driver.',
+        });
+        window.location.href = '/driver/dashboard';
+      } else if (isAdmin) {
+        console.log('Admin logged in via driver login, redirecting to /admin');
+        toast({
+          title: 'Welcome back!',
+          description: 'You have successfully logged in as an admin.',
+        });
+        window.location.href = '/admin';
+      } else {
+        console.log('Not a driver or admin, access denied');
+        toast({
+          title: 'Access Denied',
+          description: 'This account is not authorized for driver access.',
+          variant: 'destructive',
+        });
+        // Sign out and redirect
+        supabase.auth.signOut();
+        window.location.href = '/login';
+      }
+    }
+  }, [justLoggedIn, isLoading, user, isAdmin, isDriver]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading) return;
-    setIsLoading(true);
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -27,28 +63,13 @@ const DriverLogin = () => {
 
       if (error) throw error;
 
-      // Verify that the user is actually a driver
-      const { data: isDriverData } = await supabase
-        .rpc('has_role', { _user_id: data.user.id, _role: 'driver' });
-
-      if (!isDriverData) {
-        toast({
-          title: 'Access Denied',
-          description: 'This account is not registered as a driver. Please use the regular login.',
-          variant: 'destructive',
-        });
-        // Sign out the user since they're not a driver
-        await supabase.auth.signOut();
-        setIsLoading(false);
-        return;
-      }
-
+      // Mark that login was successful, let useEffect handle redirect
+      console.log('Driver login successful, marking for redirect...');
       toast({
-        title: 'Welcome back!',
-        description: 'You have successfully logged in as a driver.',
+        title: 'Login Successful',
+        description: 'Verifying your account type...',
       });
-
-      navigate('/driver/dashboard');
+      setJustLoggedIn(true);
 
     } catch (error: any) {
       toast({
@@ -56,12 +77,12 @@ const DriverLogin = () => {
         description: error.message || 'Invalid email or password.',
         variant: 'destructive',
       });
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background/60 backdrop-blur-xl flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
@@ -105,8 +126,8 @@ const DriverLogin = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Signing in...

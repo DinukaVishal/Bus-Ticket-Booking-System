@@ -73,7 +73,7 @@ const TicketScanner = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background/60 backdrop-blur-xl">
       <Header />
       <div className="container mx-auto p-4 flex flex-col items-center justify-center min-h-[80vh]">
         <div className="w-full max-w-md space-y-6">

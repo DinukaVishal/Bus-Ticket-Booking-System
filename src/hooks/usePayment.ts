@@ -3,6 +3,7 @@ import { PaymentIntent, CardDetails, PayHereResponse, PAYHERE_CONFIG, PaymentSta
 import { Booking } from '@/types/booking';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useAddMultipleBookings } from './useBookings';
 
 interface UsePaymentProps {
   bookingData: {
@@ -21,6 +22,7 @@ export const usePayment = ({ bookingData }: UsePaymentProps) => {
   const [loading, setLoading] = useState(false);
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntent | null>(null);
   const navigate = useNavigate();
+  const addBookingsMutation = useAddMultipleBookings();
 
   // Simulate creating payment intent (in production: call Supabase)
   const createPaymentIntent = useCallback(async (): Promise<PaymentIntent> => {
@@ -98,40 +100,42 @@ export const usePayment = ({ bookingData }: UsePaymentProps) => {
 
   // Complete booking after payment (call from parent component)
   const completeBookingAfterPayment = useCallback(async (
-    paymentResult: PayHereResponse | null,
-    bookingData: any // useBookings mutation expects this
+    paymentResult: PayHereResponse | null
   ): Promise<Booking[] | null> => {
     if (!paymentResult?.status || paymentResult.status !== 'success') {
       return null;
     }
 
-    // TODO: Call useAddMultipleBookings mutation here
-    // Pass payment_id: paymentResult.order_id
-    console.log('✅ Booking creation with payment:', { paymentResult, bookingData });
-    
-    // Mock successful bookings
-    const mockBookings: Booking[] = bookingData.seatNumbers.map((seatNum: number, index: number) => ({
-      id: `booking_${Date.now()}_${index}`,
-      tripId: bookingData.tripId,
-      routeId: bookingData.routeId,
-      routeName: bookingData.routeName,
-      date: bookingData.date,
-      seatNumber: seatNum,
-      passengerName: bookingData.passengerName,
-      phoneNumber: bookingData.phoneNumber,
-      status: 'confirmed' as const,
-      payment_status: 'paid' as const,
-      payment_id: paymentResult.order_id,
-      createdAt: new Date().toISOString(),
-    }));
+    try {
+      // Create the actual bookings in the database
+      const bookings = await addBookingsMutation.mutateAsync({
+        tripId: bookingData.tripId,
+        routeId: bookingData.routeId,
+        routeName: bookingData.routeName,
+        date: bookingData.date,
+        seatNumbers: bookingData.seatNumbers,
+        passengerName: bookingData.passengerName,
+        phoneNumber: bookingData.phoneNumber,
+        status: 'confirmed',
+        paymentId: paymentResult.order_id,
+        paymentStatus: 'paid',
+      });
 
-    toast({
-      title: 'Booking Confirmed!',
-      description: `Seats ${bookingData.seatNumbers.join(', ')} reserved successfully!`,
-    });
+      toast({
+        title: 'Booking Confirmed!',
+        description: `Seats ${bookingData.seatNumbers.join(', ')} reserved successfully!`,
+      });
 
-    return mockBookings;
-  }, []);
+      return bookings;
+    } catch (error: any) {
+      toast({
+        title: 'Booking Failed',
+        description: error.message || 'Could not create booking after payment.',
+        variant: 'destructive',
+      });
+      return null;
+    }
+  }, [bookingData, addBookingsMutation]);
 
   return {
     paymentIntent,
