@@ -57,7 +57,7 @@ const RouteMap = ({ route, className = '' }: RouteMapProps) => {
   const polylineRef = useRef<L.Polyline | null>(null);
   const busMarkerRef = useRef<L.Marker | null>(null);
   const [viaPoints, setViaPoints] = useState<CityCoordinate[]>([]);
-  const [showLiveTracking, setShowLiveTracking] = useState(false);
+  const [showLiveTracking, setShowLiveTracking] = useState(!!route);
   const [allRoutePoints, setAllRoutePoints] = useState<CityCoordinate[]>([]);
 
   // Bus animation hook
@@ -208,6 +208,11 @@ const RouteMap = ({ route, className = '' }: RouteMapProps) => {
 
   }, [route]);
 
+  // Update live tracking when route changes
+  useEffect(() => {
+    setShowLiveTracking(!!route);
+  }, [route]);
+
   // Bus marker animation effect
   useEffect(() => {
     if (!mapInstanceRef.current || !showLiveTracking || !busPosition || !route) {
@@ -295,24 +300,9 @@ const RouteMap = ({ route, className = '' }: RouteMapProps) => {
         </div>
       )}
 
-      {/* Live Tracking Toggle */}
-      {route && (
-        <button
-          onClick={() => setShowLiveTracking(!showLiveTracking)}
-          className={`absolute top-3 left-3 z-[1000] flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg text-xs font-semibold transition-all ${
-            showLiveTracking
-              ? 'bg-emerald-500 text-white'
-              : 'bg-card/95 backdrop-blur-sm text-foreground hover:bg-card'
-          }`}
-        >
-          <Radio className={`w-4 h-4 ${showLiveTracking ? 'animate-pulse' : ''}`} />
-          {showLiveTracking ? 'LIVE' : 'Live Track'}
-        </button>
-      )}
-
       {/* Live tracking info badge */}
       {route && showLiveTracking && busPosition && (
-        <div className="absolute top-14 left-3 z-[1000] bg-card/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg text-xs">
+        <div className="absolute top-3 left-3 z-[1000] bg-card/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg text-xs">
           <div className="flex items-center gap-2 mb-1">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="font-semibold text-foreground">Bus Location</span>

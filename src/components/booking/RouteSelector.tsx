@@ -69,7 +69,7 @@ const RouteSelector = ({ routes, selectedRoute, selectedTrip, onRouteSelect, onT
   };
 
   const hasVehicleDetails = (route: Route) => {
-    return !!(route.busNumber || route.driverName || route.conductorName);
+    return !!(route.trips && route.trips.length > 0 && (route.trips[0].busNumber || route.trips[0].driverName || route.trips[0].conductorName));
   };
 
   return (
