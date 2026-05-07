@@ -292,7 +292,6 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
       </div>
 
       {/* Step 5: Payment */}
-<<<<<<< HEAD
       {step === 5 && selectedRoute && selectedTrip && selectedDate && passengerDetails && selectedSeats.length > 0 && (
         <PaymentPage
           bookingData={{
@@ -312,7 +311,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
           onCancel={() => setStep(4)}
         />
       )}
-=======
+
       <div className={cn(
         "absolute inset-0 transition-all duration-500 ease-out",
         step === 5 ? "translate-x-0 opacity-100 pointer-events-auto" : "translate-x-full opacity-0 pointer-events-none"
@@ -337,7 +336,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
           />
         )}
       </div>
->>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
+
 
       {/* Navigation Buttons */}
       {step < 5 && (
