@@ -31,7 +31,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils'; // <--- MEKA THAMAI MISS WELA THIBBE!
 
 const DriverCompanion = () => {
-  const { user, isLoading: authLoading, isDriver } = useAuthContext();
+  const { user, isLoading: authLoading } = useAuthContext();
   const { data: routes = [], isLoading: routesLoading } = useRoutes();
   
   // Save selected route in localStorage so it survives page navigation
@@ -68,7 +68,7 @@ const DriverCompanion = () => {
       const { data } = await supabase
         .from('bus_locations')
         .select('id')
-        .eq('driver_user_id', user.id)
+        .eq('bus_owner_id', user.id)
         .eq('is_active', true);
 
       // If there are active records in DB but local tracking is off
@@ -94,7 +94,7 @@ const DriverCompanion = () => {
       await supabase
         .from('bus_locations')
         .update({ is_active: false })
-        .eq('driver_user_id', user.id)
+        .eq('bus_owner_id', user.id)
         .eq('is_active', true);
 
       setHasGhostSession(false);

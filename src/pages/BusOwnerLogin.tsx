@@ -9,38 +9,38 @@ import { Bus, Loader2, Mail, Lock, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthContext } from '@/contexts/AuthContext';
 
-const DriverLogin = () => {
+const BusOwnerLogin = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [justLoggedIn, setJustLoggedIn] = useState(false);
-  const { user, isAdmin, isDriver, isLoading } = useAuthContext(); // Add user check
+  const { user, isAdmin, isBusOwner, isLoading } = useAuthContext();
 
   // Handle redirect after login
   useEffect(() => {
     if (justLoggedIn && !isLoading && user) {
-      console.log('Redirecting after driver login. User:', user, 'isAdmin:', isAdmin, 'isDriver:', isDriver);
+      console.log('Redirecting after bus owner login. User:', user, 'isAdmin:', isAdmin, 'isBusOwner:', isBusOwner);
 
-      if (isDriver) {
-        console.log('Driver verified, redirecting to /driver/dashboard');
+      if (isBusOwner) {
+        console.log('Bus owner verified, redirecting to /bus-owner/dashboard');
         toast({
           title: 'Welcome back!',
-          description: 'You have successfully logged in as a driver.',
+          description: 'You have successfully logged in as a bus owner.',
         });
-        window.location.href = '/driver/dashboard';
+        window.location.href = '/bus-owner/dashboard';
       } else if (isAdmin) {
-        console.log('Admin logged in via driver login, redirecting to /admin');
+        console.log('Admin logged in via bus owner login, redirecting to /admin');
         toast({
           title: 'Welcome back!',
           description: 'You have successfully logged in as an admin.',
         });
         window.location.href = '/admin';
       } else {
-        console.log('Not a driver or admin, access denied');
+        console.log('Not a bus owner or admin, access denied');
         toast({
           title: 'Access Denied',
-          description: 'This account is not authorized for driver access.',
+          description: 'This account is not authorized for bus owner access.',
           variant: 'destructive',
         });
         // Sign out and redirect
@@ -48,7 +48,7 @@ const DriverLogin = () => {
         window.location.href = '/login';
       }
     }
-  }, [justLoggedIn, isLoading, user, isAdmin, isDriver]);
+  }, [justLoggedIn, isLoading, user, isAdmin, isBusOwner]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +64,7 @@ const DriverLogin = () => {
       if (error) throw error;
 
       // Mark that login was successful, let useEffect handle redirect
-      console.log('Driver login successful, marking for redirect...');
+      console.log('Bus owner login successful, marking for redirect...');
       toast({
         title: 'Login Successful',
         description: 'Verifying your account type...',
@@ -88,8 +88,8 @@ const DriverLogin = () => {
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
             <Bus className="w-8 h-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold">Driver Login</CardTitle>
-          <p className="text-muted-foreground">Sign in to your driver account</p>
+          <CardTitle className="text-2xl font-bold">Bus Owner Login</CardTitle>
+          <p className="text-muted-foreground">Sign in to your bus owner account</p>
         </CardHeader>
 
         <CardContent>
@@ -141,19 +141,19 @@ const DriverLogin = () => {
             </Button>
 
             <div className="text-center space-y-2">
-              <Link to="/driver/forgot-password" className="text-sm text-primary hover:underline">
+              <Link to="/forgot-password" className="text-sm text-primary hover:underline">
                 Forgot your password?
               </Link>
 
               <p className="text-sm text-muted-foreground">
                 Don't have an account?{' '}
-                <Link to="/driver/signup" className="text-primary hover:underline">
+                <Link to="/bus-owner/signup" className="text-primary hover:underline">
                   Sign up here
                 </Link>
               </p>
 
               <p className="text-sm text-muted-foreground">
-                Not a driver?{' '}
+                Not a bus owner?{' '}
                 <Link to="/login" className="text-primary hover:underline">
                   Sign in as passenger
                 </Link>
@@ -166,4 +166,4 @@ const DriverLogin = () => {
   );
 };
 
-export default DriverLogin;
+export default BusOwnerLogin;

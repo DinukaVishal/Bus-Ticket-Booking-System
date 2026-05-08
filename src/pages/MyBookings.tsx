@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,7 +26,7 @@ import { useMyBookings, useUpdateBookingStatus } from '@/hooks/useBookings';
 import { useRoutes } from '@/hooks/useRoutes';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { Ticket, Loader2, Calendar, MapPin, Armchair, XCircle, Download, User, Trash2 } from 'lucide-react';
+import { Ticket, Loader2, Calendar, MapPin, Armchair, XCircle, Download, User, Trash2, Radio } from 'lucide-react';
 import { generateTicketPDF } from '@/lib/pdfTicketGenerator';
 import { Booking } from '@/types/booking';
 import QRCode from "react-qr-code";
@@ -39,6 +40,7 @@ const MyBookings = () => {
   const { user } = useAuth();
   const updateStatusMutation = useUpdateBookingStatus();
   const [cancellingGroupKey, setCancellingGroupKey] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Debug logging
   console.log('MyBookings - user:', user?.id, 'bookings:', bookings.length, 'isLoading:', isLoading, 'routes:', routes.length);
@@ -273,6 +275,15 @@ const MyBookings = () => {
                         </div>
 
                         <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => navigate(`/tracking/${group.routeId}/${group.bookingIds[0]}`)}
+                          >
+                            <Radio className="w-4 h-4 mr-2" />
+                            Live Track
+                          </Button>
                           <Button
                             variant="default"
                             size="sm"

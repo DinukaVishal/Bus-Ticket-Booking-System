@@ -131,55 +131,82 @@ const Home = () => {
         </div>
       </section>
 
-      {/* 5. Driver Section */}
+      {/* 5. Bus Owner Section */}
       <section className="py-20 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">Are You a Bus Driver?</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">Are You a Bus Owner?</h2>
             <p className="text-lg md:text-xl mb-8 opacity-90 max-w-2xl mx-auto">
-              Join our driver network and start earning. Register your bus, manage bookings, and provide live tracking to passengers.
+              Manage your fleet, add buses, and keep driver/conductor details in one place.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
               <div className="bg-white/10 backdrop-blur-md p-6 rounded-xl">
                 <Bus className="w-12 h-12 mx-auto mb-4 text-blue-200" />
                 <h3 className="text-xl font-bold mb-2">Register Your Bus</h3>
-                <p className="text-blue-100">Add your bus details and start accepting bookings</p>
+                <p className="text-blue-100">Add your bus and staff details to start accepting bookings</p>
               </div>
 
               <div className="bg-white/10 backdrop-blur-md p-6 rounded-xl">
                 <MapPin className="w-12 h-12 mx-auto mb-4 text-blue-200" />
-                <h3 className="text-xl font-bold mb-2">Live GPS Tracking</h3>
-                <p className="text-blue-100">Share your location with passengers in real-time</p>
+                <h3 className="text-xl font-bold mb-2">Route Management</h3>
+                <p className="text-blue-100">Choose routes for your bus and track your services.</p>
               </div>
 
               <div className="bg-white/10 backdrop-blur-md p-6 rounded-xl">
                 <ShieldCheck className="w-12 h-12 mx-auto mb-4 text-blue-200" />
                 <h3 className="text-xl font-bold mb-2">Manage Bookings</h3>
-                <p className="text-blue-100">View passenger details and seat bookings</p>
+                <p className="text-blue-100">View your bus bookings and monitor seat availability.</p>
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/driver/signup">
+              <Link to="/bus-owner/signup">
                 <Button
                   size="lg"
                   className="bg-white text-blue-900 hover:bg-blue-50 font-bold text-lg px-8 py-6 rounded-full shadow-2xl transition-all duration-300 hover:scale-105"
                 >
-                  Sign Up as Driver
+                  Sign Up as Bus Owner
                 </Button>
               </Link>
 
-              <Link to="/driver/login">
+              <Link to="/bus-owner/login">
                 <Button
                   size="lg"
                   variant="outline"
                   className="border-white text-white hover:bg-white hover:text-blue-900 font-bold text-lg px-8 py-6 rounded-full shadow-2xl transition-all duration-300 hover:scale-105"
                 >
-                  Driver Login
+                  Bus Owner Login
                 </Button>
               </Link>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. Staff Login Section */}
+      <section className="py-20 bg-gradient-to-r from-purple-600 to-purple-800 text-white">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-md border border-white/30 mb-6">
+              <ShieldCheck className="w-4 h-4 text-purple-200" />
+              <span className="text-sm font-medium tracking-wide">For Bus Staff</span>
+            </div>
+            
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">Staff Dashboard Access</h2>
+            <p className="text-lg md:text-xl mb-10 opacity-90 max-w-2xl mx-auto">
+              Quick access to your bus dashboard. Monitor seat bookings, track passengers, and manage your trip in real-time.
+            </p>
+
+            <Link to="/staff/login">
+              <Button
+                size="lg"
+                className="bg-white text-purple-900 hover:bg-purple-50 font-bold text-lg px-10 py-7 rounded-full shadow-2xl transition-all duration-300 hover:scale-105 hover:-translate-y-1 group"
+              >
+                Staff Login
+                <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
