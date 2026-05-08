@@ -10,6 +10,7 @@ export interface Trip {
   driverPhone?: string;
   conductorName?: string;
   conductorPhone?: string;
+  stopArrivalTimes?: string[];
 }
 
 export interface Route {
@@ -40,6 +41,7 @@ export interface Booking {
   seatNumber: number;
   passengerName: string;
   phoneNumber: string;
+  gender: 'male' | 'female';
   status: 'pending' | 'confirmed' | 'cancelled';
   payment_status?: 'pending' | 'paid' | 'failed' | 'refunded';
   payment_id?: string;
@@ -113,3 +115,21 @@ export const BUS_TYPE_CONFIGS: Record<BusType, BusTypeConfig> = {
     backRowSeats: 6,
   },
 };
+
+export function normalizeBusType(value?: string): BusType {
+  if (!value) return 'normal';
+  const normalized = value.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  switch (normalized) {
+    case 'ac':
+    case 'luxury_ac':
+    case 'luxuryac':
+      return 'luxury_ac';
+    case 'super_long':
+    case 'superlong':
+      return 'super_long';
+    case 'rosa':
+      return 'rosa';
+    default:
+      return 'normal';
+  }
+}
