@@ -2,26 +2,28 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Route } from '@/types/booking';
-import { User, Phone, Armchair, Loader2 } from 'lucide-react';
+import { User, Phone, Armchair, Loader2, Users } from 'lucide-react';
 
 interface BookingFormProps {
   route: Route;
   date: Date;
   selectedSeats: number[];
-  onSubmit: (data: { passengerName: string; phoneNumber: string }) => void;
+  onSubmit: (data: { passengerName: string; phoneNumber: string; gender: 'male' | 'female' }) => void;
   isSubmitting?: boolean;
 }
 
 const BookingForm = ({ route, date, selectedSeats, onSubmit, isSubmitting }: BookingFormProps) => {
   const [passengerName, setPassengerName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
+  const [gender, setGender] = useState<'male' | 'female'>('male');
+  const [errors, setErrors] = useState<{ name?: string; phone?: string; gender?: string }>({});
 
   const totalPrice = route.price * selectedSeats.length;
 
   const validateForm = () => {
-    const newErrors: { name?: string; phone?: string } = {};
+    const newErrors: { name?: string; phone?: string; gender?: string } = {};
     
     if (!passengerName.trim()) {
       newErrors.name = 'Please enter passenger name';
@@ -31,8 +33,12 @@ const BookingForm = ({ route, date, selectedSeats, onSubmit, isSubmitting }: Boo
 
     if (!phoneNumber.trim()) {
       newErrors.phone = 'Please enter phone number';
-    } else if (!/^[\d\s\+\-()]{8,15}$/.test(phoneNumber)) {
+    } else if (!/^[\d\s+\-()]{8,15}$/.test(phoneNumber)) {
       newErrors.phone = 'Please enter a valid phone number';
+    }
+
+    if (!gender) {
+      newErrors.gender = 'Please select your gender';
     }
 
     setErrors(newErrors);
@@ -42,7 +48,11 @@ const BookingForm = ({ route, date, selectedSeats, onSubmit, isSubmitting }: Boo
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      onSubmit({ passengerName: passengerName.trim(), phoneNumber: phoneNumber.trim() });
+      onSubmit({ 
+        passengerName: passengerName.trim(), 
+        phoneNumber: phoneNumber.trim(),
+        gender 
+      });
     }
   };
 
@@ -125,6 +135,25 @@ const BookingForm = ({ route, date, selectedSeats, onSubmit, isSubmitting }: Boo
           />
           {errors.phone && (
             <p className="text-sm text-destructive">{errors.phone}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="gender" className="flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Gender
+          </Label>
+          <Select value={gender} onValueChange={(value: 'male' | 'female') => setGender(value)}>
+            <SelectTrigger className={errors.gender ? 'border-destructive' : ''}>
+              <SelectValue placeholder="Select your gender" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="male">Male</SelectItem>
+              <SelectItem value="female">Female</SelectItem>
+            </SelectContent>
+          </Select>
+          {errors.gender && (
+            <p className="text-sm text-destructive">{errors.gender}</p>
           )}
         </div>
       </div>

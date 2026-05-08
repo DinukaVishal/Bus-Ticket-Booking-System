@@ -18,9 +18,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface HeaderProps {
   isHomePage?: boolean;
+  isStaff?: boolean;
 }
 
-const Header = ({ isHomePage = false }: HeaderProps) => {
+const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, isAdmin, signOut } = useAuthContext();
@@ -74,87 +75,68 @@ const Header = ({ isHomePage = false }: HeaderProps) => {
           </Link>
 
           {/* Navigation */}
-          <nav className="flex items-center gap-1 md:gap-2">
-            <Link
-              to="/booking"
-              className={cn(
-                'px-3 py-2 rounded-lg text-sm font-medium transition-colors hidden sm:flex items-center',
-                location.pathname === '/booking' || location.pathname === '/'
-                  ? 'bg-white/20'
-                  : 'hover:bg-white/10'
-              )}
-            >
-              Book Tickets
-            </Link>
-
-            <Link
-              to="/tracking"
-              className={cn(
-                'px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
-                location.pathname === '/tracking'
-                  ? 'bg-white/20'
-                  : 'hover:bg-white/10'
-              )}
-            >
-              <Radio className="w-4 h-4" />
-              <span className="hidden sm:inline">Live Track</span>
-            </Link>
-
-            {user && (
+          {!isStaff && (
+            <nav className="flex items-center gap-1 md:gap-2">
               <Link
-                to="/my-bookings"
+                to="/booking"
                 className={cn(
-                  'px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
-                  location.pathname === '/my-bookings'
+                  'px-3 py-2 rounded-lg text-sm font-medium transition-colors hidden sm:flex items-center',
+                  location.pathname === '/booking' || location.pathname === '/'
                     ? 'bg-white/20'
                     : 'hover:bg-white/10'
                 )}
               >
-                <Ticket className="w-4 h-4" />
-                <span className="hidden sm:inline">My Bookings</span>
+                Book Tickets
               </Link>
-            )}
 
-            {isAdmin && (
-              <Link
-                to="/admin"
-                className={cn(
-                  'px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 bg-rose-500/20 text-rose-100 hover:bg-rose-500/40',
-                  location.pathname === '/admin' ? 'bg-rose-500/50' : ''
-                )}
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                <span className="hidden sm:inline">Admin</span>
-              </Link>
-            )}
+              {user && (
+                <Link
+                  to="/my-bookings"
+                  className={cn(
+                    'px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
+                    location.pathname === '/my-bookings'
+                      ? 'bg-white/20'
+                      : 'hover:bg-white/10'
+                  )}
+                >
+                  <Ticket className="w-4 h-4" />
+                  <span className="hidden sm:inline">My Bookings</span>
+                </Link>
+              )}
 
-            {/* User Menu - MODERN DROPDOWN */}
-            {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    className="relative h-10 w-auto px-2 ml-1 flex items-center gap-2 rounded-full hover:bg-white/10 transition-all group border border-white/10"
-                  >
-                    <Avatar className="h-7 w-7 rounded-full border border-white/20 shadow-sm transition-transform duration-300 group-hover:scale-110 bg-primary-foreground text-primary">
-                      {/* @ts-ignore */}
-                      <AvatarImage src={profile?.avatarUrl || profile?.avatar_url || ''} className="object-cover" />
-                      <AvatarFallback className="font-bold text-xs">{getFallback()}</AvatarFallback>
-                    </Avatar>
-                    
-                    <div className="hidden md:flex flex-col items-start">
-                      <span className="text-sm font-semibold truncate max-w-[120px]">
-                        {displayName}
-                      </span>
-                    </div>
-                    <ChevronDown className="w-3.5 h-3.5 opacity-70" />
-                  </Button>
-                </DropdownMenuTrigger>
-                
-                {/* WIDENED DROPDOWN TO w-72 */}
-                <DropdownMenuContent className="w-72 mt-2 p-1.5 rounded-xl shadow-xl border-2" align="end">
-                  <DropdownMenuLabel className="p-3">
-                    <div className="flex items-center gap-3">
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className={cn(
+                    'px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 bg-rose-500/20 text-rose-100 hover:bg-rose-500/40',
+                    location.pathname === '/admin' ? 'bg-rose-500/50' : ''
+                  )}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span className="hidden sm:inline">Admin</span>
+                </Link>
+              )}
+
+              {/* User Menu - MODERN DROPDOWN */}
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      className="relative h-10 w-10 p-0 ml-1 flex items-center justify-center rounded-full hover:bg-white/10 transition-all group border border-white/10"
+                    >
+                      <Avatar className="h-7 w-7 rounded-full border border-white/20 shadow-sm transition-transform duration-300 group-hover:scale-110 bg-primary-foreground text-primary">
+                        {/* @ts-ignore */}
+                        <AvatarImage src={profile?.avatarUrl || profile?.avatar_url || ''} className="object-cover" />
+                        <AvatarFallback className="font-bold text-xs">{getFallback()}</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  
+                  {/* WIDENED DROPDOWN TO w-72 */}
+                  <DropdownMenuContent className="w-72 mt-2 p-1.5 rounded-xl shadow-xl border-2" align="end">
+                    <DropdownMenuLabel className="p-3">
+                      <div className="flex items-center gap-3">
                       {/* Avatar size slightly increased and shrink-0 added */}
                       <Avatar className="h-11 w-11 rounded-full border shadow-sm shrink-0">
                         {/* @ts-ignore */}
@@ -213,7 +195,8 @@ const Header = ({ isHomePage = false }: HeaderProps) => {
                 </Button>
               </div>
             )}
-          </nav>
+            </nav>
+          )}
         </div>
       </div>
     </header>
