@@ -15,6 +15,7 @@ interface TripData {
   arrivalTime: string;
   price: string;
   busNumber: string;
+  stopArrivalTimes: string[];
 }
 
 interface TripWizardProps {
@@ -24,7 +25,13 @@ interface TripWizardProps {
     busNumber?: string;
   };
   existingTrips?: Trip[];
+  defaultDriverName?: string;
+  defaultConductorName?: string;
+  disableStaffFields?: boolean;
+  includeBusId?: boolean;
+  isOwnerBus?: boolean;
   onSubmit: () => void;
+  onCancel?: () => void;
   isSubmitting: boolean;
 }
 
@@ -34,10 +41,22 @@ const STEPS = [
   { id: 3, title: 'Trips', icon: Bus },
 ];
 
-const TripWizard = ({ route, bus, existingTrips = [], onSubmit, isSubmitting }: TripWizardProps) => {
+const TripWizard = ({
+  route,
+  bus,
+  existingTrips = [],
+  defaultDriverName,
+  defaultConductorName,
+  disableStaffFields = false,
+  includeBusId = true,
+  isOwnerBus = false,
+  onSubmit,
+  onCancel,
+  isSubmitting,
+}: TripWizardProps) => {
   const [step, setStep] = useState(1);
-  const [driverName, setDriverName] = useState(existingTrips[0]?.driverName || '');
-  const [conductorName, setConductorName] = useState(existingTrips[0]?.conductorName || '');
+  const [driverName, setDriverName] = useState(defaultDriverName || existingTrips[0]?.driverName || '');
+  const [conductorName, setConductorName] = useState(defaultConductorName || existingTrips[0]?.conductorName || '');
   const [trips, setTrips] = useState<TripData[]>(
     existingTrips.length > 0
       ? existingTrips.map((trip) => ({
@@ -46,19 +65,22 @@ const TripWizard = ({ route, bus, existingTrips = [], onSubmit, isSubmitting }: 
           arrivalTime: trip.arrivalTime || '',
           price: trip.price.toString(),
           busNumber: trip.busNumber || bus.busNumber || '',
+          stopArrivalTimes: trip.stopArrivalTimes || route.viaPoints?.map(() => '') || [],
         }))
       : [{
           departureTime: '',
           arrivalTime: '',
           price: '',
           busNumber: bus.busNumber || '',
+          stopArrivalTimes: route.viaPoints?.map(() => '') || [],
         }]
   );
+  const [deletedTripIds, setDeletedTripIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    setDriverName(existingTrips[0]?.driverName || '');
-    setConductorName(existingTrips[0]?.conductorName || '');
+    setDriverName(defaultDriverName || existingTrips[0]?.driverName || '');
+    setConductorName(defaultConductorName || existingTrips[0]?.conductorName || '');
     setTrips(
       existingTrips.length > 0
         ? existingTrips.map((trip) => ({
@@ -67,13 +89,9 @@ const TripWizard = ({ route, bus, existingTrips = [], onSubmit, isSubmitting }: 
             arrivalTime: trip.arrivalTime || '',
             price: trip.price.toString(),
             busNumber: trip.busNumber || bus.busNumber || '',
+            stopArrivalTimes: trip.stopArrivalTimes || route.viaPoints?.map(() => '') || [],
           }))
-        : [{
-            departureTime: '',
-            arrivalTime: '',
-            price: '',
-            busNumber: bus.busNumber || '',
-          }]
+        : [createEmptyTrip()]
     );
   }, [existingTrips, bus.busNumber]);
 
@@ -90,6 +108,7 @@ const TripWizard = ({ route, bus, existingTrips = [], onSubmit, isSubmitting }: 
     arrivalTime: '',
     price: '',
     busNumber: bus.busNumber || '',
+    stopArrivalTimes: route.viaPoints?.map(() => '') || [],
   });
 
   const addTrip = () => {
@@ -97,14 +116,22 @@ const TripWizard = ({ route, bus, existingTrips = [], onSubmit, isSubmitting }: 
   };
 
   const removeTrip = (index: number) => {
-    if (trips.length > 1) {
-      setTrips(trips.filter((_, i) => i !== index));
+    const tripToRemove = trips[index];
+    if (tripToRemove?.id) {
+      setDeletedTripIds((current) => [...current, tripToRemove.id!]);
     }
+    setTrips(trips.filter((_, i) => i !== index));
   };
 
   const updateTrip = (index: number, field: keyof TripData, value: string) => {
     const newTrips = [...trips];
     newTrips[index][field] = value;
+    setTrips(newTrips);
+  };
+
+  const updateStopArrivalTime = (tripIndex: number, stopIndex: number, value: string) => {
+    const newTrips = [...trips];
+    newTrips[tripIndex].stopArrivalTimes[stopIndex] = value;
     setTrips(newTrips);
   };
 
@@ -149,9 +176,15 @@ const TripWizard = ({ route, bus, existingTrips = [], onSubmit, isSubmitting }: 
             driver_name: driverName,
             conductor_name: conductorName,
           };
-          // Only include bus_id if it's available (migration might not be applied yet)
-          if (bus.id) {
-            updateRow.bus_id = bus.id;
+          if (route.viaPoints?.length && trip.stopArrivalTimes?.some((time) => time)) {
+            updateRow.via_stop_arrival_times = trip.stopArrivalTimes;
+          }
+          if (bus.id && includeBusId !== false) {
+            if (isOwnerBus) {
+              updateRow.owner_bus_id = bus.id;
+            } else {
+              updateRow.bus_id = bus.id;
+            }
           }
           console.log('Updating existing trip:', trip.id, updateRow);
           return supabase
@@ -171,32 +204,29 @@ const TripWizard = ({ route, bus, existingTrips = [], onSubmit, isSubmitting }: 
         console.log('Updates completed successfully');
       }
 
-      const newTrips = trips.filter((trip) => !trip.id).map((trip) => ({
-        route_id: route.id,
-        departure_time: formatTime(trip.departureTime),
-        arrival_time: formatTime(trip.arrivalTime),
-        price: parseInt(trip.price),
-        bus_number: trip.busNumber || bus.busNumber || null,
-        driver_name: driverName,
-        conductor_name: conductorName,
-      }));
+      const newTripsToInsert = trips.filter((trip) => !trip.id);
+      console.log('New trips to insert:', newTripsToInsert.length, newTripsToInsert);
 
-      console.log('New trips to insert:', newTrips.length, newTrips);
-
-      if (newTrips.length > 0) {
-        const newTripsData = newTrips.map((trip) => {
+      if (newTripsToInsert.length > 0) {
+        const newTripsData = newTripsToInsert.map((trip) => {
           const insertRow: any = {
             route_id: route.id,
-            departure_time: trip.departure_time,  // Already formatted
-            arrival_time: trip.arrival_time,     // Already formatted
-            price: trip.price,
-            bus_number: trip.bus_number,
-            driver_name: trip.driver_name,
-            conductor_name: trip.conductor_name,
+            departure_time: formatTime(trip.departureTime),
+            arrival_time: formatTime(trip.arrivalTime),
+            price: parseInt(trip.price),
+            bus_number: trip.busNumber || bus.busNumber || null,
+            driver_name: driverName,
+            conductor_name: conductorName,
           };
-          // Only include bus_id if it's available (migration might not be applied yet)
-          if (bus.id) {
-            insertRow.bus_id = bus.id;
+          if (route.viaPoints?.length && trip.stopArrivalTimes?.some((time) => time)) {
+            insertRow.via_stop_arrival_times = trip.stopArrivalTimes;
+          }
+          if (bus.id && includeBusId !== false) {
+            if (isOwnerBus) {
+              insertRow.owner_bus_id = bus.id;
+            } else {
+              insertRow.bus_id = bus.id;
+            }
           }
           return insertRow;
         });
@@ -212,6 +242,20 @@ const TripWizard = ({ route, bus, existingTrips = [], onSubmit, isSubmitting }: 
           throw insertError;
         }
         console.log('Inserts completed successfully');
+      }
+
+      if (deletedTripIds.length > 0) {
+        console.log('Deleting trips:', deletedTripIds);
+        const { error: deleteError } = await supabase
+          .from('trips')
+          .delete()
+          .in('id', deletedTripIds);
+
+        if (deleteError) {
+          console.error('Delete error:', deleteError);
+          throw deleteError;
+        }
+        console.log('Deletes completed successfully');
       }
 
       console.log('All operations completed successfully');
@@ -236,7 +280,9 @@ const TripWizard = ({ route, bus, existingTrips = [], onSubmit, isSubmitting }: 
 
   const isStep1Valid = true;
   const isStep2Valid = driverName.trim() && conductorName.trim();
-  const isStep3Valid = trips.every((t) => t.departureTime && t.arrivalTime && t.price && t.busNumber);
+  const isStep3Valid = trips.length > 0
+    ? trips.every((t) => t.departureTime && t.arrivalTime && t.price && t.busNumber)
+    : existingTrips.length > 0; // Allow saving when editing existing trips
 
   return (
     <div className="space-y-6">
@@ -292,6 +338,7 @@ const TripWizard = ({ route, bus, existingTrips = [], onSubmit, isSubmitting }: 
                   value={driverName}
                   onChange={(e) => setDriverName(e.target.value)}
                   placeholder="Enter driver name"
+                  disabled={disableStaffFields}
                 />
               </div>
               <div>
@@ -301,27 +348,39 @@ const TripWizard = ({ route, bus, existingTrips = [], onSubmit, isSubmitting }: 
                   value={conductorName}
                   onChange={(e) => setConductorName(e.target.value)}
                   placeholder="Enter conductor name"
+                  disabled={disableStaffFields}
                 />
               </div>
+              {disableStaffFields && (
+                <p className="text-xs text-muted-foreground">
+                  Existing driver and conductor names are already assigned to this bus.
+                </p>
+              )}
             </div>
           )}
 
           {step === 3 && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Trip Details</h3>
-                <Button type="button" variant="outline" size="sm" onClick={addTrip}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Trip
-                </Button>
+                <h3 className="text-lg font-semibold">
+                  {existingTrips.length > 0 ? 'Edit Trip Details' : 'Trip Details'}
+                </h3>
+                {existingTrips.length === 0 && (
+                  <Button type="button" variant="outline" size="sm" onClick={addTrip}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Trip
+                  </Button>
+                )}
               </div>
 
               {trips.map((trip, index) => (
                 <Card key={index} className="border-2">
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-center">
-                      <CardTitle className="text-base">Trip {index + 1}</CardTitle>
-                      {trips.length > 1 && (
+                      <CardTitle className="text-base">
+                        {existingTrips.length > 0 ? 'Trip Details' : `Trip ${index + 1}`}
+                      </CardTitle>
+                      {existingTrips.length === 0 && trips.length > 1 && (
                         <Button
                           type="button"
                           variant="ghost"
@@ -353,6 +412,23 @@ const TripWizard = ({ route, bus, existingTrips = [], onSubmit, isSubmitting }: 
                         />
                       </div>
                     </div>
+                    {route.viaPoints?.length ? (
+                      <div className="space-y-3">
+                        <p className="text-sm font-medium">Intermediate stop arrival times</p>
+                        <div className="grid gap-3">
+                          {route.viaPoints.map((stop, stopIndex) => (
+                            <div key={stopIndex} className="grid grid-cols-1 gap-1">
+                              <Label>{stop}</Label>
+                              <Input
+                                type="time"
+                                value={trip.stopArrivalTimes[stopIndex] || ''}
+                                onChange={(e) => updateStopArrivalTime(index, stopIndex, e.target.value)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label>Price (LKR)</Label>
@@ -383,15 +459,27 @@ const TripWizard = ({ route, bus, existingTrips = [], onSubmit, isSubmitting }: 
 
       {/* Navigation */}
       <div className="flex justify-between">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handlePrev}
-          disabled={step === 1}
-        >
-          <ChevronLeft className="w-4 h-4 mr-2" />
-          Previous
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handlePrev}
+            disabled={step === 1}
+          >
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            Previous
+          </Button>
+          {onCancel && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onCancel}
+              disabled={isSubmitting || submitting}
+            >
+              Cancel
+            </Button>
+          )}
+        </div>
 
         {step < STEPS.length ? (
           <Button
@@ -415,7 +503,7 @@ const TripWizard = ({ route, bus, existingTrips = [], onSubmit, isSubmitting }: 
             ) : (
               <Check className="w-4 h-4 mr-2" />
             )}
-            {existingTrips.length > 0 ? 'Save Trips' : 'Add Trips'}
+            {existingTrips.length > 0 ? 'Save Trip' : 'Add Trip'}
           </Button>
         )}
       </div>

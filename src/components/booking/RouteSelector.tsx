@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Route, Trip, BUS_TYPE_CONFIGS } from '@/types/booking';
+import { Route, Trip, BUS_TYPE_CONFIGS, normalizeBusType } from '@/types/booking';
 import {
   Command,
   CommandEmpty,
@@ -43,7 +43,8 @@ const RouteSelector = ({ routes, selectedRoute, selectedTrip, onRouteSelect, onT
   };
 
   const getBusTypeBadgeStyle = (busType: string) => {
-    switch (busType) {
+    const normalized = normalizeBusType(busType);
+    switch (normalized) {
       case 'rosa':
         return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200";
       case 'luxury_ac':
@@ -56,16 +57,18 @@ const RouteSelector = ({ routes, selectedRoute, selectedTrip, onRouteSelect, onT
   };
 
   const getBusTypeIcon = (busType: string) => {
-    const config = BUS_TYPE_CONFIGS[busType as keyof typeof BUS_TYPE_CONFIGS];
-    if (config?.isAC) {
+    const normalized = normalizeBusType(busType);
+    const config = BUS_TYPE_CONFIGS[normalized];
+    if (config.isAC) {
       return <Snowflake className="w-4 h-4 transition-transform duration-500 group-hover:rotate-180" />;
     }
     return <Wind className="w-4 h-4 transition-transform duration-500 group-hover:scale-110" />;
   };
 
   const getBusTypeName = (busType: string) => {
-    const config = BUS_TYPE_CONFIGS[busType as keyof typeof BUS_TYPE_CONFIGS];
-    return config ? config.name : 'Normal';
+    const normalized = normalizeBusType(busType);
+    const config = BUS_TYPE_CONFIGS[normalized];
+    return config.name;
   };
 
   const hasVehicleDetails = (route: Route) => {
@@ -237,7 +240,7 @@ const RouteSelector = ({ routes, selectedRoute, selectedTrip, onRouteSelect, onT
       )}
       {/* Selected Trip Details */}
       {selectedRoute && selectedTrip && (
-        <div className="bg-background border-2 rounded-xl shadow-sm hover:shadow-lg transition-all duration-500 animate-in fade-in slide-in-from-bottom-4 flex flex-col max-h-[400px] overflow-hidden group">
+        <div className="bg-background border-2 rounded-xl shadow-sm hover:shadow-lg transition-all duration-500 animate-in fade-in slide-in-from-bottom-4 flex flex-col max-h-[800px] overflow-hidden group">
           
           {/* Header Section */}
           <div className="bg-gradient-to-r from-muted/50 to-muted/10 p-4 border-b-2 flex justify-between items-start gap-4 sticky top-0 z-10 shrink-0 backdrop-blur-sm">

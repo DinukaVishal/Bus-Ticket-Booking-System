@@ -5,11 +5,11 @@ import { Loader2 } from 'lucide-react';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
-  requireDriver?: boolean;
+  requireBusOwner?: boolean;
 }
 
-const ProtectedRoute = ({ children, requireAdmin = false, requireDriver = false }: ProtectedRouteProps) => {
-  const { user, isAdmin, isDriver, isLoading } = useAuthContext();
+const ProtectedRoute = ({ children, requireAdmin = false, requireBusOwner = false }: ProtectedRouteProps) => {
+  const { user, isAdmin, isBusOwner, isLoading } = useAuthContext();
 
   if (isLoading) {
     return (
@@ -27,7 +27,7 @@ const ProtectedRoute = ({ children, requireAdmin = false, requireDriver = false 
     return <Navigate to="/" replace />;
   }
 
-  if (requireDriver && !isDriver) {
+  if (requireBusOwner && !isBusOwner) {
     return <Navigate to="/" replace />;
   }
 

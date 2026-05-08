@@ -25,9 +25,10 @@ import RouteFormWizard from './RouteFormWizard';
 
 interface RouteCardProps {
   route: Route;
+  allowEdit?: boolean;
 }
 
-const RouteCard = ({ route }: RouteCardProps) => {
+const RouteCard = ({ route, allowEdit = true }: RouteCardProps) => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
@@ -139,14 +140,16 @@ const RouteCard = ({ route }: RouteCardProps) => {
               {getBusTypeLabel(route.busType)}
             </span>
             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => setIsEditOpen(true)}
-              >
-                <Pencil className="h-3 w-3" />
-              </Button>
+              {allowEdit && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setIsEditOpen(true)}
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"

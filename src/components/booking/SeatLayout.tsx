@@ -1,13 +1,14 @@
 import { cn } from '@/lib/utils';
 import { SeatStatus, BusType, BUS_TYPE_CONFIGS } from '@/types/booking';
-import { User, DoorOpen, Wind, Snowflake, Armchair } from 'lucide-react';
+import { User, DoorOpen, Wind, Snowflake, Armchair, UserCheck, UserX } from 'lucide-react';
 
 interface SeatLayoutProps {
-  bookedSeats: number[];
+  bookedSeats: {seatNumber: number, gender: 'male' | 'female'}[];
   selectedSeats: number[];
   onSeatSelect: (seatNumber: number) => void;
   totalSeats?: number;
   busType?: BusType;
+  readOnly?: boolean;
 }
 
 const SeatLayout = ({ 
@@ -15,7 +16,8 @@ const SeatLayout = ({
   selectedSeats, 
   onSeatSelect, 
   totalSeats,
-  busType = 'normal'
+  busType = 'normal',
+  readOnly = true
 }: SeatLayoutProps) => {
   
   const config = BUS_TYPE_CONFIGS[busType] || BUS_TYPE_CONFIGS.normal;
@@ -25,63 +27,87 @@ const SeatLayout = ({
 
   // Check if all main seats are booked (needed for jump seat availability)
   const allMainSeatsBooked = Array.from({ length: mainSeats }, (_, i) => i + 1)
-    .every(seat => bookedSeats.includes(seat) || selectedSeats.includes(seat));
+    .every(seat => bookedSeats.some(b => b.seatNumber === seat) || selectedSeats.includes(seat));
 
   const isJumpSeat = (seatNumber: number): boolean => {
     return jumpSeats > 0 && seatNumber > mainSeats && seatNumber <= effectiveTotalSeats;
   };
 
   const getSeatStatus = (seatNumber: number): SeatStatus => {
-    if (bookedSeats.includes(seatNumber)) return 'booked';
+    if (bookedSeats.some(b => b.seatNumber === seatNumber)) return 'booked';
     if (selectedSeats.includes(seatNumber)) return 'selected';
     return 'available';
   };
 
+  const getSeatGender = (seatNumber: number): 'male' | 'female' | null => {
+    const booking = bookedSeats.find(b => b.seatNumber === seatNumber);
+    return booking ? booking.gender : null;
+  };
+
   const handleSeatClick = (seatNumber: number) => {
-    if (bookedSeats.includes(seatNumber)) return;
+    // If staff is viewing (readOnly=false), allow clicking on booked seats
+    if (!readOnly) {
+      onSeatSelect(seatNumber);
+      return;
+    }
+    
+    // Normal booking behavior: don't allow clicking booked seats
+    if (bookedSeats.some(b => b.seatNumber === seatNumber)) return;
     if (isJumpSeat(seatNumber) && !allMainSeatsBooked) return;
     onSeatSelect(seatNumber);
   };
 
   const renderSeat = (seatNumber: number, isWindow: boolean = false, isJump: boolean = false, size: 'normal' | 'small' = 'normal') => {
     const status = getSeatStatus(seatNumber);
+    const gender = getSeatGender(seatNumber);
     const jumpSeatLocked = isJump && !allMainSeatsBooked;
+    const isStaffViewingBooked = !readOnly && status === 'booked';
     
     return (
-      <button
-        key={seatNumber}
-        onClick={() => handleSeatClick(seatNumber)}
-        disabled={status === 'booked' || jumpSeatLocked}
-        className={cn(
-          'seat relative group flex items-center justify-center transition-all shadow-sm rounded-lg',
-          size === 'small' ? 'w-9 h-9' : 'w-10 h-10',
-          status === 'available' && !jumpSeatLocked && 'seat-available hover:-translate-y-0.5',
-          status === 'booked' && 'seat-booked cursor-not-allowed opacity-70',
-          status === 'selected' && 'seat-selected shadow-md scale-105 ring-2 ring-primary',
-          isWindow && status === 'available' && !isJump && 'ring-2 ring-sky-400/60',
-          isJump && !jumpSeatLocked && status === 'available' && 'ring-2 ring-amber-400/60 bg-amber-50',
-          isJump && jumpSeatLocked && 'bg-zinc-100 cursor-not-allowed opacity-50 border-dashed'
-        )}
-        aria-label={`${isJump ? 'Jump ' : ''}Seat ${seatNumber}${jumpSeatLocked ? ' (locked)' : ''}`}
-        title={jumpSeatLocked ? 'Available when all main seats are booked' : undefined}
-      >
-        <span className={cn(
-          "font-bold group-hover:text-foreground",
-          size === 'small' ? "text-[10px]" : "text-xs",
-          jumpSeatLocked ? "text-zinc-400" : "text-foreground/80"
-        )}>
-          {isJump ? `J${seatNumber}` : seatNumber}
-        </span>
-        {isWindow && !isJump && (
-          <Wind className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 text-sky-500 bg-background rounded-full p-0.5 shadow-sm border border-sky-200" />
-        )}
-        {isJump && (
-          <Armchair className={cn(
-            "absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-background rounded-full p-0.5 shadow-sm border",
-            jumpSeatLocked ? "text-zinc-400 border-zinc-300" : "text-amber-500 border-amber-200"
-          )} />
-        )}
-      </button>
+      <div className="relative">
+        <button
+          key={seatNumber}
+          onClick={() => handleSeatClick(seatNumber)}
+          disabled={status === 'booked' && readOnly || jumpSeatLocked}
+          className={cn(
+            'seat relative group flex items-center justify-center transition-all shadow-sm rounded-lg',
+            size === 'small' ? 'w-9 h-9' : 'w-10 h-10',
+            status === 'available' && !jumpSeatLocked && 'seat-available hover:-translate-y-0.5',
+            status === 'booked' && gender === 'female' && (isStaffViewingBooked ? 'bg-pink-300 border-pink-400 hover:bg-pink-400 hover:shadow-lg hover:scale-105 cursor-pointer text-white' : 'bg-pink-300 border-pink-400 hover:bg-pink-400 text-white'),
+            status === 'booked' && gender === 'male' && (isStaffViewingBooked ? 'bg-blue-300 border-blue-400 hover:bg-blue-400 hover:shadow-lg hover:scale-105 cursor-pointer text-white' : 'bg-blue-300 border-blue-400 hover:bg-blue-400 text-white'),
+            status === 'booked' && !gender && (isStaffViewingBooked ? 'seat-booked cursor-pointer opacity-90 hover:opacity-100 hover:shadow-lg hover:scale-105' : 'seat-booked cursor-not-allowed opacity-70'),
+            status === 'selected' && 'seat-selected shadow-md scale-105 ring-2 ring-primary',
+            isWindow && status === 'available' && !isJump && 'ring-2 ring-sky-400/60',
+            isJump && !jumpSeatLocked && status === 'available' && 'ring-2 ring-amber-400/60 bg-amber-50',
+            isJump && jumpSeatLocked && 'bg-zinc-100 cursor-not-allowed opacity-50 border-dashed'
+          )}
+          aria-label={`${isJump ? 'Jump ' : ''}Seat ${seatNumber}${jumpSeatLocked ? ' (locked)' : ''}${gender ? ` (${gender})` : ''}`}
+          title={jumpSeatLocked ? 'Available when all main seats are booked' : gender ? `${gender === 'female' ? 'Booked by woman' : 'Booked by man'}` : undefined}
+        >
+          <span className={cn(
+            "font-bold group-hover:text-foreground",
+            size === 'small' ? "text-[10px]" : "text-xs",
+            jumpSeatLocked ? "text-zinc-400" : status === 'booked' && gender ? "text-white" : "text-foreground/80"
+          )}>
+            {isJump ? `J${seatNumber}` : seatNumber}
+          </span>
+          {status === 'booked' && gender === 'female' && (
+            <UserCheck className="absolute -top-1.5 -left-1.5 w-3.5 h-3.5 text-pink-100 bg-pink-600 rounded-full p-0.5 shadow-sm border border-pink-500" />
+          )}
+          {status === 'booked' && gender === 'male' && (
+            <UserX className="absolute -top-1.5 -left-1.5 w-3.5 h-3.5 text-blue-100 bg-blue-600 rounded-full p-0.5 shadow-sm border border-blue-500" />
+          )}
+          {isWindow && !isJump && (
+            <Wind className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 text-sky-500 bg-background rounded-full p-0.5 shadow-sm border border-sky-200" />
+          )}
+          {isJump && (
+            <Armchair className={cn(
+              "absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-background rounded-full p-0.5 shadow-sm border",
+              jumpSeatLocked ? "text-zinc-400 border-zinc-300" : "text-amber-500 border-amber-200"
+            )} />
+          )}
+        </button>
+      </div>
     );
   };
 
@@ -94,7 +120,7 @@ const SeatLayout = ({
     
     // Row 1: Seat 1 on left, empty aisle space, seats 2-3 on right
     rows.push(
-      <div key="row-1" className="flex justify-center items-center mb-3">
+      <div key="row-1" className="flex justify-center items-center mb-6">
         <span className="w-5 text-[10px] text-muted-foreground text-right font-mono">1</span>
         <div className="flex items-center ml-2" style={{ width: '220px' }}>
           <div className="w-10">{renderSeat(1, true)}</div>
@@ -121,7 +147,7 @@ const SeatLayout = ({
 
     regularRowSeats.forEach((row, index) => {
       rows.push(
-        <div key={`row-${index + 2}`} className="flex justify-center items-center mb-3">
+        <div key={`row-${index + 2}`} className="flex justify-center items-center mb-6">
           <span className="w-5 text-[10px] text-muted-foreground text-right font-mono">{index + 2}</span>
           <div className="flex items-center ml-2" style={{ width: '220px' }}>
             <div className="w-10">{renderSeat(row.left, true)}</div>
@@ -139,7 +165,7 @@ const SeatLayout = ({
 
     // Back row: seats 22-26
     rows.push(
-      <div key="back-row" className="flex justify-center items-center mt-2 mb-3">
+      <div key="back-row" className="flex justify-center items-center mt-2 mb-6">
         <span className="w-5 text-[10px] text-muted-foreground text-right font-mono">8</span>
         <div className="flex gap-1.5 justify-center ml-2" style={{ width: '220px' }}>
           {renderSeat(22, true, false, 'small')}
@@ -180,7 +206,7 @@ const SeatLayout = ({
       }
 
       rows.push(
-        <div key={rowIndex} className="flex justify-center items-center gap-3 mb-3">
+        <div key={rowIndex} className="flex justify-center items-center gap-3 mb-6">
           <span className="w-4 text-[10px] text-muted-foreground text-right font-mono">{rowIndex + 1}</span>
           <div className="flex gap-2 w-[5.5rem] justify-end">{leftSeats}</div>
           <div className="w-10" />
@@ -192,7 +218,7 @@ const SeatLayout = ({
 
     // Back row (5 seats: 41-45)
     rows.push(
-      <div key="back-row" className="flex justify-center items-center gap-1 mb-3 mt-2">
+      <div key="back-row" className="flex justify-center items-center gap-1 mb-6 mt-2">
         <span className="w-4 text-[10px] text-muted-foreground text-right font-mono">11</span>
         <div className="flex gap-1 justify-center">
           {renderSeat(41, true, false, 'small')}
@@ -226,7 +252,7 @@ const SeatLayout = ({
         }
 
         rows.push(
-          <div key={rowIndex} className="flex justify-center items-center gap-3 mb-3">
+          <div key={rowIndex} className="flex justify-center items-center gap-3 mb-6">
             <span className="w-4 text-[10px] text-muted-foreground text-right font-mono">{rowIndex + 1}</span>
             <div className="w-[5.5rem] h-10 rounded-lg bg-emerald-50/80 border border-dashed border-emerald-300 flex items-center justify-center">
               <div className="flex flex-col items-center opacity-80">
@@ -258,7 +284,7 @@ const SeatLayout = ({
         }
 
         rows.push(
-          <div key={rowIndex} className="flex justify-center items-center gap-3 mb-3">
+          <div key={rowIndex} className="flex justify-center items-center gap-3 mb-6">
             <span className="w-4 text-[10px] text-muted-foreground text-right font-mono">{rowIndex + 1}</span>
             <div className="flex gap-2 w-[5.5rem] justify-end">{leftSeats}</div>
             <div className="w-8" />
@@ -271,7 +297,7 @@ const SeatLayout = ({
 
     // Back row (6 seats: 49-54)
     rows.push(
-      <div key="back-row" className="flex justify-center items-center gap-1 mb-3 mt-2">
+      <div key="back-row" className="flex justify-center items-center gap-1 mb-6 mt-2">
         <span className="w-4 text-[10px] text-muted-foreground text-right font-mono">11</span>
         <div className="flex gap-1 justify-center">
           {renderSeat(49, true, false, 'small')}
@@ -313,7 +339,7 @@ const SeatLayout = ({
       }
 
       rows.push(
-        <div key={rowIndex} className="flex justify-center items-center gap-3 mb-3">
+        <div key={rowIndex} className="flex justify-center items-center gap-3 mb-6">
           <span className="w-4 text-[10px] text-muted-foreground text-right font-mono">{rowIndex + 1}</span>
           <div className="flex gap-2 w-[5.5rem] justify-end">{leftSeats}</div>
           <div className="w-10" />
@@ -325,7 +351,7 @@ const SeatLayout = ({
 
     // Back row (6 seats: 49-54)
     rows.push(
-      <div key="back-row" className="flex justify-center items-center gap-1 mb-3 mt-2">
+      <div key="back-row" className="flex justify-center items-center gap-1 mb-6 mt-2">
         <span className="w-4 text-[10px] text-muted-foreground text-right font-mono">13</span>
         <div className="flex gap-1 justify-center">
           {renderSeat(49, true, false, 'small')}
@@ -431,12 +457,16 @@ const SeatLayout = ({
           <span className="text-xs text-zinc-600 font-medium">Available</span>
         </div>
         <div className="flex items-center gap-2.5">
-          <div className="w-4 h-4 rounded bg-seat-booked opacity-60" />
-          <span className="text-xs text-zinc-600 font-medium">Booked</span>
-        </div>
-        <div className="flex items-center gap-2.5">
           <div className="w-4 h-4 rounded bg-seat-selected shadow-sm" />
           <span className="text-xs text-zinc-600 font-medium">Your Seat</span>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <div className="w-4 h-4 rounded bg-pink-400 shadow-sm border border-pink-500" />
+          <span className="text-xs text-zinc-600 font-medium">Booked by woman</span>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <div className="w-4 h-4 rounded bg-blue-400 shadow-sm border border-blue-500" />
+          <span className="text-xs text-zinc-600 font-medium">Booked by man</span>
         </div>
         <div className="flex items-center gap-2.5">
           <div className="w-4 h-4 rounded bg-white ring-2 ring-sky-400/60 shadow-sm flex items-center justify-center">

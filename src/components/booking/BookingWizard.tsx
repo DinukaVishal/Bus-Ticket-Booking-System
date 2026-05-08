@@ -45,7 +45,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
-  const [passengerDetails, setPassengerDetails] = useState<{ passengerName: string; phoneNumber: string } | null>(null); // Store for payment
+  const [passengerDetails, setPassengerDetails] = useState<{ passengerName: string; phoneNumber: string; gender: 'male' | 'female' } | null>(null); // Store for payment
 
 
   const dateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined;
@@ -74,7 +74,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
   };
 
   // Store passenger details and go to payment
-  const handleBookingSubmit = async (data: { passengerName: string; phoneNumber: string }) => {
+  const handleBookingSubmit = async (data: { passengerName: string; phoneNumber: string; gender: 'male' | 'female' }) => {
     setPassengerDetails(data);
     setStep(5); // Go to payment step
   };
@@ -160,7 +160,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
       {/* Content Area */}
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Main Content */}
-        <div className="relative min-h-[400px]">
+        <div className="relative min-h-[600px]">
           {/* Step 1: Route Selection */}
           <div className={cn(
             "absolute inset-0 transition-all duration-500 ease-out",
@@ -292,7 +292,6 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
       </div>
 
       {/* Step 5: Payment */}
-<<<<<<< HEAD
       {step === 5 && selectedRoute && selectedTrip && selectedDate && passengerDetails && selectedSeats.length > 0 && (
         <PaymentPage
           bookingData={{
@@ -303,6 +302,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
               seatNumbers: selectedSeats.sort((a,b)=>a-b).join(', '),
             passengerName: passengerDetails.passengerName,
             phoneNumber: passengerDetails.phoneNumber,
+            gender: passengerDetails.gender,
             totalAmount: (selectedTrip.price || 0) * selectedSeats.length,
           }}
           onPaymentSuccess={(bookings) => {
@@ -312,32 +312,6 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
           onCancel={() => setStep(4)}
         />
       )}
-=======
-      <div className={cn(
-        "absolute inset-0 transition-all duration-500 ease-out",
-        step === 5 ? "translate-x-0 opacity-100 pointer-events-auto" : "translate-x-full opacity-0 pointer-events-none"
-      )}>
-        {selectedRoute && selectedTrip && selectedDate && passengerDetails && selectedSeats.length > 0 && (
-          <PaymentPage
-            bookingData={{
-              tripId: selectedTrip.id,
-              routeId: selectedRoute.id,
-              routeName: `${selectedRoute.from} → ${selectedRoute.to}`,
-              date: dateStr!,
-              seatNumbers: selectedSeats.sort((a,b)=>a-b).join(', #'),
-              passengerName: passengerDetails.passengerName,
-              phoneNumber: passengerDetails.phoneNumber,
-              totalAmount: (selectedTrip.price || 0) * selectedSeats.length,
-            }}
-            onPaymentSuccess={(bookings) => {
-              // Simulate booking success
-              onBookingComplete(bookings, selectedRoute, selectedTrip);
-            }}
-            onCancel={() => setStep(4)}
-          />
-        )}
-      </div>
->>>>>>> 5e54379d30877fd2fc51b66114eb90c82a2f6220
 
       {/* Navigation Buttons */}
       {step < 5 && (
