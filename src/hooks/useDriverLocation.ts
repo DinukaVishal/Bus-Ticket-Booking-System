@@ -10,7 +10,7 @@ interface DriverLocationState {
   accuracy: number | null;
 }
 
-export function useDriverLocation(routeId: string | null) {
+export function useDriverLocation(routeId: string | null, isStaff?: boolean) {
   const { user } = useAuthContext();
   const [state, setState] = useState<DriverLocationState>({
     isSharing: false,
@@ -34,8 +34,15 @@ export function useDriverLocation(routeId: string | null) {
   };
 
   const startSharing = useCallback(async () => {
-    if (!user || !routeId) {
+    if (!routeId) {
       setState(s => ({ ...s, error: 'Route එකක් select කරන්න' }));
+      return;
+    }
+    
+    // For staff, use staff session; for drivers, use auth user
+    const userId = isStaff ? (JSON.parse(localStorage.getItem('bus_staff_session') || '{}').busId) : user?.id;
+    if (!userId) {
+      setState(s => ({ ...s, error: 'User not authenticated' }));
       return;
     }
 
@@ -55,21 +62,22 @@ export function useDriverLocation(routeId: string | null) {
         });
       });
 
-      const { data, error } = await supabase
-        .from('bus_locations')
-        .insert({
-          route_id: routeId,
-          driver_user_id: user.id,
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          speed: pos.coords.speed || 0,
-          is_active: true,
-        })
-        .select('id')
-        .single();
+      const { data, error } = await supabase.rpc(
+        'insert_staff_gps_location',
+        {
+          _route_id: routeId,
+          _bus_owner_id: userId,
+          _latitude: pos.coords.latitude,
+          _longitude: pos.coords.longitude,
+          _speed: pos.coords.speed || 0,
+          _bearing: 0,
+          _accuracy: pos.coords.accuracy
+        }
+      );
 
       if (error) throw error;
-      locationRecordIdRef.current = data.id;
+      // RPC returns { id: uuid }
+      locationRecordIdRef.current = data?.id || data;
       lastPosRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
 
       setState(s => ({
@@ -101,16 +109,17 @@ export function useDriverLocation(routeId: string | null) {
         setState(s => ({ ...s, latitude, longitude, accuracy }));
 
         if (locationRecordIdRef.current) {
-          await supabase
-            .from('bus_locations')
-            .update({
-              latitude,
-              longitude,
-              bearing,
-              speed: speed || 0,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', locationRecordIdRef.current);
+          await supabase.rpc(
+            'update_staff_gps_location',
+            {
+              _location_id: locationRecordIdRef.current,
+              _latitude: latitude,
+              _longitude: longitude,
+              _bearing: bearing,
+              _speed: speed || 0,
+              _accuracy: accuracy
+            }
+          );
         }
       },
       (err) => {

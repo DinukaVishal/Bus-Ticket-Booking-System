@@ -48,6 +48,7 @@ export function useBookings() {
         seatNumber: booking.seat_number,
         passengerName: booking.passenger_name,
         phoneNumber: booking.phone_number,
+        gender: booking.gender as 'male' | 'female',
         status: booking.status as 'confirmed' | 'cancelled',
         createdAt: booking.created_at,
       }));
@@ -107,6 +108,7 @@ export function useMyBookings() {
         seatNumber: booking.seat_number,
         passengerName: booking.passenger_name,
         phoneNumber: booking.phone_number,
+        gender: booking.gender as 'male' | 'female',
         status: booking.status as 'confirmed' | 'cancelled',
         createdAt: booking.created_at,
       }));
@@ -152,10 +154,9 @@ export function useBookedSeats(tripId: string | undefined, date: string | undefi
 
   return useQuery({
     queryKey: ['booked-seats', tripId, date],
-    queryFn: async (): Promise<number[]> => {
+    queryFn: async (): Promise<{seatNumber: number, gender: 'male' | 'female'}[]> => {
       if (!tripId || !date) return [];
       
-      // Use the secure RPC function that only returns seat numbers (no personal data)
       const { data, error } = await supabase
         .rpc('get_booked_seats', {
           _trip_id: tripId,
@@ -164,7 +165,10 @@ export function useBookedSeats(tripId: string | undefined, date: string | undefi
       
       if (error) throw error;
       
-      return data.map((b: { seat_number: number }) => b.seat_number);
+      return (data || []).map((b: any) => ({
+        seatNumber: b.seat_number,
+        gender: b.gender && String(b.gender).toLowerCase() === 'female' ? 'female' : 'male',
+      }));
     },
     enabled: !!tripId && !!date,
   });
@@ -183,6 +187,7 @@ interface MultipleBookingInput {
   seatNumbers: number[];
   passengerName: string;
   phoneNumber: string;
+  gender: 'male' | 'female';
   status: 'confirmed' | 'cancelled';
   paymentId?: string;
   paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded';
@@ -212,6 +217,7 @@ export function useAddMultipleBookings() {
         seat_number: seatNumber,
         passenger_name: input.passengerName,
         phone_number: input.phoneNumber,
+        gender: input.gender,
         status: input.status,
         user_id: user.id,
         payment_id: input.paymentId || null,
@@ -240,6 +246,7 @@ export function useAddMultipleBookings() {
         seatNumber: booking.seat_number,
         passengerName: booking.passenger_name,
         phoneNumber: booking.phone_number,
+        gender: booking.gender as 'male' | 'female',
         status: booking.status as 'confirmed' | 'cancelled',
         payment_status: booking.payment_status as 'pending' | 'paid' | 'failed' | 'refunded',
         payment_id: booking.payment_id,
@@ -300,6 +307,7 @@ export function useAddBooking() {
         seatNumber: data.seat_number,
         passengerName: data.passenger_name,
         phoneNumber: data.phone_number,
+        gender: data.gender || 'male',
         status: data.status as 'confirmed' | 'cancelled',
         createdAt: data.created_at,
       };

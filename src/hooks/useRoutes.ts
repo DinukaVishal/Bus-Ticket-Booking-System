@@ -1,6 +1,24 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Route, RouteRow, BusType } from '@/types/booking';
+import { Route, BusType, normalizeBusType, BUS_TYPE_CONFIGS } from '@/types/booking';
+
+interface RouteRow {
+  id?: string;
+  name: string;
+  from: string;
+  to: string;
+  departureTime: string;
+  arrivalTime?: string;
+  price: number;
+  busType: BusType;
+  totalSeats: number;
+  busNumber?: string;
+  driverName?: string;
+  driverPhone?: string;
+  conductorName?: string;
+  conductorPhone?: string;
+  viaPoints?: string[];
+}
 
 export function useRoutes() {
   return useQuery({
@@ -22,9 +40,31 @@ export function useRoutes() {
         .order('departure_time');
       
       if (tripsError) throw tripsError;
+
+      // For passengers, show all routes that have active trips
+      // For bus owners/admins, filter by their owned routes
+      const { data: { user } } = await supabase.auth.getUser();
+      const isBusOwner = user?.user_metadata?.role === 'bus_owner';
+      const isAdmin = user?.user_metadata?.role === 'admin';
+
+      let filteredRoutesData = routesData;
+
+      if (isBusOwner || isAdmin) {
+        // Bus owners and admins should be able to see all routes in the system,
+        // including newly created routes and those that are not yet assigned to an approved bus.
+        filteredRoutesData = routesData;
+      } else {
+        // For passengers, show only routes that currently have active trips.
+        const routesWithTrips = new Set(
+          (tripsData || []).map(trip => trip.route_id)
+        );
+        filteredRoutesData = routesData.filter(route => routesWithTrips.has(route.id));
+      }
+      
+      console.log('Filtered routes:', filteredRoutesData.length);
       
       // Map routes and group trips
-      return routesData.map(route => {
+      return filteredRoutesData.map(route => {
         const routeTrips = (tripsData || []).filter(trip => trip.route_id === route.id);
         
         const firstTrip = routeTrips[0];
@@ -33,8 +73,8 @@ export function useRoutes() {
           name: route.name,
           from: route.from_city,
           to: route.to_city,
-          busType: (route.bus_type || 'normal') as BusType,
-          totalSeats: route.total_seats || 40,
+          busType: normalizeBusType(route.bus_type),
+          totalSeats: BUS_TYPE_CONFIGS[normalizeBusType(route.bus_type)]?.defaultSeats || 54,
           busNumber: route.bus_number || undefined,
           driverName: route.driver_name || undefined,
           driverPhone: route.driver_phone || undefined,
@@ -53,6 +93,7 @@ export function useRoutes() {
             driverPhone: trip.driver_phone || undefined,
             conductorName: trip.conductor_name || undefined,
             conductorPhone: trip.conductor_phone || undefined,
+            stopArrivalTimes: trip.via_stop_arrival_times || [],
           })),
           viaPoints: (route as { via_points?: string[] }).via_points || [],
         };

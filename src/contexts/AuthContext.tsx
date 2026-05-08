@@ -14,7 +14,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   isAdmin: boolean;
-  isDriver: boolean;
+  isBusOwner: boolean;
   isLoading: boolean;
   signUp: (email: string, password: string, displayName?: string) => Promise<any>;
   signIn: (email: string, password: string) => Promise<any>;

@@ -14,7 +14,7 @@ interface AuthState {
   session: Session | null;
   profile: Profile | null;
   isAdmin: boolean;
-  isDriver: boolean;
+  isBusOwner: boolean;
   isLoading: boolean;
 }
 
@@ -24,7 +24,7 @@ export function useAuth() {
     session: null,
     profile: null,
     isAdmin: false,
-    isDriver: false,
+    isBusOwner: false,
     isLoading: true,
   });
 
@@ -40,9 +40,9 @@ export function useAuth() {
     const { data: isAdminData } = await supabase
       .rpc('has_role', { _user_id: userId, _role: 'admin' });
 
-    // Check if user is driver using the has_role function
-    const { data: isDriverData } = await supabase
-      .rpc('has_role', { _user_id: userId, _role: 'driver' });
+    // Check if user is bus owner using the has_role function
+    const { data: isBusOwnerData } = await supabase
+      .rpc('has_role', { _user_id: userId, _role: 'bus_owner' });
 
     return {
       profile: profileData ? {
@@ -52,7 +52,7 @@ export function useAuth() {
         avatarUrl: profileData.avatar_url,
       } : null,
       isAdmin: isAdminData || false,
-      isDriver: isDriverData || false,
+      isBusOwner: isBusOwnerData || false,
     };
   }, []);
 
@@ -69,7 +69,7 @@ export function useAuth() {
               session,
               profile: userData.profile,
               isAdmin: userData.isAdmin,
-              isDriver: userData.isDriver,
+              isBusOwner: userData.isBusOwner,
               isLoading: false,
             });
           }, 0);
@@ -79,7 +79,7 @@ export function useAuth() {
             session: null,
             profile: null,
             isAdmin: false,
-            isDriver: false,
+            isBusOwner: false,
             isLoading: false,
           });
         }
@@ -95,7 +95,7 @@ export function useAuth() {
           session,
           profile: userData.profile,
           isAdmin: userData.isAdmin,
-          isDriver: userData.isDriver,
+          isBusOwner: userData.isBusOwner,
           isLoading: false,
         });
       } else {
