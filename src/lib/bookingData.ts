@@ -6,11 +6,11 @@ const SCHEDULES_KEY = 'bus_schedules';
 
 // Default routes
 const defaultRoutes: Route[] = [
-  { id: 'r1', name: 'Colombo to Kandy', from: 'Colombo', to: 'Kandy', departureTime: '08:00 AM', price: 1200, busType: 'luxury_ac', totalSeats: 45 },
-  { id: 'r2', name: 'Colombo to Galle', from: 'Colombo', to: 'Galle', departureTime: '09:30 AM', price: 450, busType: 'normal', totalSeats: 54 },
-  { id: 'r3', name: 'Kandy to Jaffna', from: 'Kandy', to: 'Jaffna', departureTime: '06:00 AM', price: 2200, busType: 'super_long', totalSeats: 54 },
-  { id: 'r4', name: 'Colombo to Negombo', from: 'Colombo', to: 'Negombo', departureTime: '07:00 AM', price: 180, busType: 'rosa', totalSeats: 26 },
-  { id: 'r5', name: 'Galle to Matara', from: 'Galle', to: 'Matara', departureTime: '10:00 AM', price: 150, busType: 'normal', totalSeats: 54 },
+  { id: 'r1', name: 'Colombo to Kandy', from: 'Colombo', to: 'Kandy', departureTime: '08:00 AM', price: 1200, busType: 'luxury_ac', totalSeats: 45, trips: [] },
+  { id: 'r2', name: 'Colombo to Galle', from: 'Colombo', to: 'Galle', departureTime: '09:30 AM', price: 450, busType: 'normal', totalSeats: 54, trips: [] },
+  { id: 'r3', name: 'Kandy to Jaffna', from: 'Kandy', to: 'Jaffna', departureTime: '06:00 AM', price: 2200, busType: 'super_long', totalSeats: 54, trips: [] },
+  { id: 'r4', name: 'Colombo to Negombo', from: 'Colombo', to: 'Negombo', departureTime: '07:00 AM', price: 180, busType: 'rosa', totalSeats: 26, trips: [] },
+  { id: 'r5', name: 'Galle to Matara', from: 'Galle', to: 'Matara', departureTime: '10:00 AM', price: 150, busType: 'normal', totalSeats: 54, trips: [] },
 ];
 
 // Sample bookings for demo
@@ -18,6 +18,7 @@ const sampleBookings: Booking[] = [
   {
     id: 'BK001',
     routeId: 'r1',
+    tripId: 't1',
     routeName: 'Colombo to Kandy',
     date: '2026-01-20',
     seatNumber: 5,
@@ -29,6 +30,7 @@ const sampleBookings: Booking[] = [
   {
     id: 'BK002',
     routeId: 'r1',
+    tripId: 't1',
     routeName: 'Colombo to Kandy',
     date: '2026-01-20',
     seatNumber: 12,
@@ -40,6 +42,7 @@ const sampleBookings: Booking[] = [
   {
     id: 'BK003',
     routeId: 'r2',
+    tripId: 't2',
     routeName: 'Colombo to Galle',
     date: '2026-01-21',
     seatNumber: 3,
@@ -67,11 +70,12 @@ export function getRoutes(): Route[] {
   return data ? JSON.parse(data) : defaultRoutes;
 }
 
-export function addRoute(route: Omit<Route, 'id'>): Route {
+export function addRoute(route: Omit<Route, 'id' | 'trips'>): Route {
   const routes = getRoutes();
   const newRoute: Route = {
     ...route,
     id: `r${Date.now()}`,
+    trips: [],
   };
   routes.push(newRoute);
   localStorage.setItem(ROUTES_KEY, JSON.stringify(routes));
