@@ -14,6 +14,7 @@ interface UsePaymentProps {
     seatNumbers: number[];
     passengerName: string;
     phoneNumber: string;
+    gender: 'male' | 'female';
     totalAmount: number;
   };
 }
@@ -116,6 +117,7 @@ export const usePayment = ({ bookingData }: UsePaymentProps) => {
         seatNumbers: bookingData.seatNumbers,
         passengerName: bookingData.passengerName,
         phoneNumber: bookingData.phoneNumber,
+        gender: bookingData.gender,
         status: 'confirmed',
         paymentId: paymentResult.order_id,
         paymentStatus: 'paid',
