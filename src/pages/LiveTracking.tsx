@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import Header from '@/components/layout/Header';
@@ -13,10 +14,14 @@ import {
 } from '@/lib/sriLankaCoordinates';
 import { useBusAnimation } from '@/hooks/useBusAnimation';
 import { useLiveBusLocations, LiveBusLocation } from '@/hooks/useLiveBusLocations';
-import { Radio, Bus, MapPin, Phone, User, Loader2, Search, X } from 'lucide-react';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { Radio, Bus, MapPin, Phone, User, Loader2, Search, X, ArrowLeft } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 // Fix default marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -46,9 +51,10 @@ interface AnimatedBusProps {
   isSelected: boolean;
   onSelect: () => void;
   liveLocation?: LiveBusLocation;
+  allowSimulation?: boolean;
 }
 
-const AnimatedBus = ({ route, mapInstance, isSelected, onSelect, liveLocation }: AnimatedBusProps) => {
+const AnimatedBus = ({ route, mapInstance, isSelected, onSelect, liveLocation, allowSimulation = true }: AnimatedBusProps) => {
   const markerRef = useRef<L.Marker | null>(null);
   const polylineRef = useRef<L.Polyline | null>(null);
 
@@ -72,7 +78,7 @@ const AnimatedBus = ({ route, mapInstance, isSelected, onSelect, liveLocation }:
   // Prefer real GPS location over simulation
   const busPosition = liveLocation
     ? { lat: liveLocation.latitude, lng: liveLocation.longitude }
-    : simulatedPosition;
+    : allowSimulation ? simulatedPosition : null;
   const isLiveGPS = !!liveLocation;
 
   // Draw route polyline
@@ -99,10 +105,10 @@ const AnimatedBus = ({ route, mapInstance, isSelected, onSelect, liveLocation }:
     const size = isSelected ? 36 : 28;
 
     const icon = L.divIcon({
-      className: 'custom-marker',
-      html: `<div class="relative flex items-center justify-center">
-        ${isSelected || isLiveGPS ? '<div class="absolute rounded-full animate-ping" style="width:' + (size + 12) + 'px;height:' + (size + 12) + 'px;background:' + color + '22"></div>' : ''}
-        <div style="width:${size}px;height:${size}px;background:${color};border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:${isSelected ? 16 : 12}px;">
+      className: '',
+      html: `<div style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:${size + 12}px;height:${size + 12}px;">
+        ${isSelected || isLiveGPS ? `<div style="position:absolute;top:50%;left:50%;width:${size + 12}px;height:${size + 12}px;margin:-${(size + 12) / 2}px 0 0 -${(size + 12) / 2}px;background:${color}22;border-radius:50%;animation:leaflet-pulse 1.5s ease-out infinite;"></div>` : ''}
+        <div style="position:relative;width:${size}px;height:${size}px;background:${color};border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:${isSelected ? 16 : 12}px;">
           ${isLiveGPS ? '📡' : '🚌'}
         </div>
       </div>`,
@@ -121,7 +127,6 @@ const AnimatedBus = ({ route, mapInstance, isSelected, onSelect, liveLocation }:
             <strong>${route.name}</strong><br/>
             <span class="text-xs">${route.from} → ${route.to}</span><br/>
             <span class="text-xs">🕐 ${route.departureTime}</span>
-            ${route.busNumber ? `<br/><span class="text-xs">🚌 ${route.busNumber}</span>` : ''}
           </div>`
         )
         .addTo(mapInstance);
@@ -144,8 +149,26 @@ const AnimatedBus = ({ route, mapInstance, isSelected, onSelect, liveLocation }:
   return null;
 };
 
+// Add a small pulse animation for divIcons when needed
+const pulseStyle = `
+@keyframes leaflet-pulse {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  50% { transform: scale(1.1); opacity: 0.15; }
+  100% { transform: scale(0.9); opacity: 0.6; }
+}
+`;
+
+const styleSheet = document.createElement('style');
+styleSheet.type = 'text/css';
+styleSheet.innerText = pulseStyle;
+document.head.appendChild(styleSheet);
+
+
 // --- Main Page ---
-const LiveTracking = () => {
+function LiveTracking() {
+  const { routeId: paramRouteId, bookingId: paramBookingId } = useParams();
+  const navigate = useNavigate();
+  const { user, isAdmin, isBusOwner } = useAuthContext();
   const { data: routes = [], isLoading } = useRoutes();
   const liveLocations = useLiveBusLocations();
   const mapRef = useRef<HTMLDivElement>(null);
@@ -155,6 +178,74 @@ const LiveTracking = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [trackingFilter, setTrackingFilter] = useState<'all' | 'live' | 'simulated'>('all');
   const [selectedStop, setSelectedStop] = useState<string>('all');
+  const [hasPermission, setHasPermission] = useState<boolean>(false);
+  const [permissionChecked, setPermissionChecked] = useState<boolean>(false);
+
+  // Check permissions for specific route tracking
+  useEffect(() => {
+    const checkPermissions = async () => {
+      if (!paramRouteId) {
+        // General tracking - allow all authenticated users
+        setHasPermission(!!user);
+        setPermissionChecked(true);
+        return;
+      }
+
+      if (!user) {
+        setHasPermission(false);
+        setPermissionChecked(true);
+        return;
+      }
+
+      // Admin can track any route
+      if (isAdmin) {
+        setHasPermission(true);
+        setPermissionChecked(true);
+        return;
+      }
+
+      // Bus owner can only track their own buses
+      if (isBusOwner) {
+        const { data: ownerRoutes } = await supabase
+          .from('owner_routes')
+          .select('route_id')
+          .eq('bus_owner_id', user.id)
+          .eq('route_id', paramRouteId);
+
+        setHasPermission(!!ownerRoutes && ownerRoutes.length > 0);
+        setPermissionChecked(true);
+        return;
+      }
+
+      // Regular user - check if they have a booking for this route
+      if (paramBookingId) {
+        const { data: booking } = await supabase
+          .from('bookings')
+          .select('id, route_id, user_id')
+          .eq('id', paramBookingId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        setHasPermission(!!booking && booking.route_id === paramRouteId);
+        setPermissionChecked(true);
+        return;
+      }
+
+      // No booking ID provided for regular user
+      setHasPermission(false);
+      setPermissionChecked(true);
+    };
+
+    checkPermissions();
+  }, [paramRouteId, paramBookingId, user, isAdmin, isBusOwner]);
+
+  // Auto-select route if coming from booking
+  useEffect(() => {
+    if (paramRouteId && routes.length > 0) {
+      setSelectedRouteId(paramRouteId);
+    }
+  }, [paramRouteId, routes]);
+
 
   // Collect all unique stops from routes
   const allStops = useMemo(() => {
@@ -168,6 +259,12 @@ const LiveTracking = () => {
   }, [routes]);
 
   const filteredRoutes = useMemo(() => {
+    // If tracking a specific booking, only show that route
+    if (paramRouteId) {
+      const specificRoute = routes.find(r => r.id === paramRouteId);
+      return specificRoute ? [specificRoute] : [];
+    }
+
     let result = routes;
 
     // Filter by tracking type
@@ -196,14 +293,12 @@ const LiveTracking = () => {
           r.name.toLowerCase().includes(q) ||
           r.from.toLowerCase().includes(q) ||
           r.to.toLowerCase().includes(q) ||
-          r.busNumber?.toLowerCase().includes(q) ||
-          r.driverName?.toLowerCase().includes(q) ||
           r.busType.toLowerCase().includes(q)
       );
     }
 
     return result;
-  }, [routes, searchQuery, trackingFilter, liveLocations, selectedStop]);
+  }, [routes, searchQuery, trackingFilter, liveLocations, selectedStop, paramRouteId]);
 
   const selectedRoute = useMemo(
     () => routes.find((r) => r.id === selectedRouteId) || null,
@@ -262,46 +357,102 @@ const LiveTracking = () => {
         <div className="w-80 bg-card border-r border-border flex flex-col z-10 overflow-hidden">
           <div className="p-4 border-b border-border">
             <div className="flex items-center gap-2 mb-1">
+              {paramRouteId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate('/my-bookings')}
+                  className="p-1 mr-1"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+              )}
               <Radio className="w-5 h-5 text-emerald-500 animate-pulse" />
               <h2 className="font-display font-bold text-lg text-foreground">
-                Live Bus Tracking
+                {paramRouteId ? 'Track Your Bus' : 'Live Bus Tracking'}
               </h2>
             </div>
-            <p className="text-xs text-muted-foreground">
-              සියලුම active buses real-time track කරන්න
-            </p>
+            {!permissionChecked ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Checking permissions...
+              </div>
+            ) : !hasPermission ? (
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-2 mt-2">
+                <p className="text-xs text-destructive font-medium">
+                  {paramRouteId ? 'You don\'t have permission to track this bus.' : 'Please sign in to view live tracking.'}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 h-7 text-xs"
+                  onClick={() => navigate('/my-bookings')}
+                >
+                  Go to My Bookings
+                </Button>
+              </div>
+            ) : paramRouteId ? (
+              selectedRoute && liveLocations.find(l => l.route_id === selectedRoute.id) ? (
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-2 mt-2">
+                  <p className="text-xs text-primary font-medium">
+                    {isBusOwner
+                      ? 'Tracking your assigned bus route'
+                      : isAdmin
+                      ? 'Tracking this bus route'
+                      : 'Tracking your booked bus route'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    📡 Live GPS tracking active
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mt-2">
+                  <p className="text-xs text-amber-700 font-medium">
+                    Live tracking unavailable for the moment
+                  </p>
+                  <p className="text-xs text-amber-600 mt-1">
+                    GPS tracking will be available when bus staff enables it
+                  </p>
+                </div>
+              )
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                සියලුම active buses real-time track කරන්න
+              </p>
+            )}
           </div>
 
-          {/* Search & Filter */}
-          <div className="px-3 py-2 border-b border-border space-y-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Route, city, bus number..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8 pl-8 pr-8 text-xs"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Select value={trackingFilter} onValueChange={(v) => setTrackingFilter(v as 'all' | 'live' | 'simulated')}>
-                <SelectTrigger className="h-8 text-xs flex-1">
-                  <SelectValue placeholder="Tracking" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Buses</SelectItem>
-                  <SelectItem value="live">📡 Live GPS</SelectItem>
-                  <SelectItem value="simulated">🚌 Simulated</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Search & Filter - Only show for general tracking */}
+          {!paramRouteId && hasPermission && (
+            <div className="px-3 py-2 border-b border-border space-y-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Route, city, bus number..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-8 pl-8 pr-8 text-xs"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Select value={trackingFilter} onValueChange={(v) => setTrackingFilter(v as 'all' | 'live' | 'simulated')}>
+                  <SelectTrigger className="h-8 text-xs flex-1">
+                    <SelectValue placeholder="Tracking" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Buses</SelectItem>
+                    <SelectItem value="live">📡 Live GPS</SelectItem>
+                    <SelectItem value="simulated">🚌 Simulated</SelectItem>
+                  </SelectContent>
+                </Select>
               <Select value={selectedStop} onValueChange={setSelectedStop}>
                 <SelectTrigger className="h-8 text-xs flex-1">
                   <SelectValue placeholder="Bus Stop" />
@@ -317,6 +468,7 @@ const LiveTracking = () => {
               </Select>
             </div>
           </div>
+          )}
 
           {isLoading ? (
             <div className="flex-1 flex items-center justify-center">
@@ -382,34 +534,6 @@ const LiveTracking = () => {
                     {/* Expanded details when selected */}
                     {isActive && (
                       <div className="mt-3 pt-2 border-t border-border space-y-1.5">
-                        {route.busNumber && (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Bus className="w-3.5 h-3.5" />
-                            <span>{route.busNumber}</span>
-                          </div>
-                        )}
-                        {route.driverName && (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <User className="w-3.5 h-3.5" />
-                            <span>Driver: {route.driverName}</span>
-                          </div>
-                        )}
-                        {route.driverPhone && (
-                          <a
-                            href={`tel:${route.driverPhone}`}
-                            className="flex items-center gap-2 text-xs text-primary hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Phone className="w-3.5 h-3.5" />
-                            <span>{route.driverPhone}</span>
-                          </a>
-                        )}
-                        {route.conductorName && (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <User className="w-3.5 h-3.5" />
-                            <span>Conductor: {route.conductorName}</span>
-                          </div>
-                        )}
                         {route.viaPoints && route.viaPoints.length > 0 && (
                           <div className="flex items-start gap-2 text-xs text-muted-foreground">
                             <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
@@ -463,6 +587,7 @@ const LiveTracking = () => {
                   )
                 }
                 liveLocation={liveLocations.find(l => l.route_id === route.id)}
+                allowSimulation={!paramRouteId} // Only allow simulation for general tracking, not specific route tracking
               />
             ))}
         </div>

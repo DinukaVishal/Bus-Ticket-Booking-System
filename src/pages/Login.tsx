@@ -9,8 +9,7 @@ import { Bus, Loader2, Mail, Lock, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const Login = () => {
-  const navigate = useNavigate(); // Navigate එක Setup කළා
-  const { isDriver, isLoading: authLoading } = useAuthContext();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -28,21 +27,11 @@ const Login = () => {
 
       if (error) throw error;
 
-      // Check if user is a driver
-      const { data: isDriverData } = await supabase
-        .rpc('has_role', { _user_id: data.user.id, _role: 'driver' });
-
       toast({
         title: 'Welcome back!',
         description: 'You have successfully logged in.',
       });
-
-      // Redirect based on user role
-      if (isDriverData) {
-        navigate('/driver/dashboard');
-      } else {
-        navigate('/booking');
-      }
+      navigate('/booking');
 
     } catch (error: any) {
       toast({

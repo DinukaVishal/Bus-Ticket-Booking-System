@@ -12,13 +12,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -31,12 +24,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useRoutes, useAddRoute } from '@/hooks/useRoutes';
+import { useRoutes } from '@/hooks/useRoutes';
 import { useBookings, useUpdateBookingStatus } from '@/hooks/useBookings';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { 
-  Plus, 
   LayoutDashboard, 
   XCircle, 
   Search, 
@@ -53,7 +45,6 @@ import {
   X
 } from 'lucide-react';
 import RouteCard from '@/components/admin/RouteCard';
-import RouteFormWizard from '@/components/admin/RouteFormWizard';
 import { Route, BusType } from '@/types/booking';
 import RouteMap from '@/components/booking/RouteMap';
 import IncomeChart from '@/components/admin/IncomeChart';
@@ -63,45 +54,103 @@ const Admin = () => {
   const { data: routes = [], isLoading: routesLoading } = useRoutes();
   const { data: bookings = [], isLoading: bookingsLoading, refetch } = useBookings();
   const updateStatusMutation = useUpdateBookingStatus();
-  const addRouteMutation = useAddRoute();
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [isAddRouteOpen, setIsAddRouteOpen] = useState(false);
   const [selectedRouteForMap, setSelectedRouteForMap] = useState<Route | null>(null);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [buses, setBuses] = useState<any[]>([]);
+  const [busOwners, setBusOwners] = useState<any[]>([]);
   const [driversLoading, setDriversLoading] = useState(true);
 
-  // Fetch drivers and buses on mount
+  // Fetch drivers, conductors and buses on mount
   const fetchDriversAndBuses = async () => {
     try {
       setDriversLoading(true);
       
-      // Fetch drivers with their profiles
+      // Fetch bus drivers with bus details
       const { data: driverData, error: driverError } = await supabase
-        .from('driver_profiles')
-        .select('id, user_id, license_number, is_verified, phone_number');
+        .from('bus_drivers')
+        .select(`
+          id, 
+          driver_name, 
+          driver_phone, 
+          assignment_date,
+          is_active,
+          bus_id,
+          owner_buses(bus_number, bus_type, bus_owner_id)
+        `)
+        .eq('is_active', true);
       
       if (driverError) throw driverError;
-      setDrivers(driverData || []);
+
+      // Fetch bus conductors with bus details
+      const { data: conductorData, error: conductorError } = await supabase
+        .from('bus_conductors')
+        .select(`
+          id,
+          conductor_name,
+          conductor_phone,
+          assignment_date,
+          is_active,
+          bus_id,
+          owner_buses(bus_number, bus_type, bus_owner_id)
+        `)
+        .eq('is_active', true);
+      
+      if (conductorError) throw conductorError;
+
+      // Combine drivers and conductors into a single array with type indicator
+      const combinedStaff = [
+        ...(driverData || []).map(d => ({ ...d, staff_type: 'driver' as const })),
+        ...(conductorData || []).map(c => ({ ...c, staff_type: 'conductor' as const }))
+      ];
+
+      setDrivers(combinedStaff);
+
+      // Fetch bus owners
+      const { data: busOwnerData, error: busOwnerError } = await supabase
+        .from('owner_buses')
+        .select('bus_owner_id')
+        .order('bus_owner_id');
+      
+      if (busOwnerError) {
+        console.warn('Error fetching bus owners:', busOwnerError);
+      } else {
+        // Get unique bus owner IDs
+        const uniqueOwnerIds = [...new Set((busOwnerData || []).map(b => b.bus_owner_id))];
+        
+        if (uniqueOwnerIds.length > 0) {
+          // Fetch user details for bus owners
+          const { data: userData, error: userError } = await supabase
+            .from('profiles')
+            .select('id, user_id, display_name, avatar_url')
+            .in('user_id', uniqueOwnerIds);
+          
+          if (userError) {
+            console.warn('Error fetching bus owner profiles:', userError);
+          } else {
+            setBusOwners(userData || []);
+          }
+        }
+      }
 
       // Fetch buses
       const { data: busData, error: busError } = await supabase
-        .from('driver_buses')
-        .select('id, driver_user_id, bus_number, bus_type, total_seats, is_approved, created_at')
+        .from('owner_buses')
+        .select('id, bus_owner_id, bus_number, bus_type, total_seats, approval_status, created_at')
         .order('created_at', { ascending: false });
       
       if (busError) throw busError;
 
       // Fetch driver route assignments with route details
       const { data: routeLinks, error: routeError } = await supabase
-        .from('driver_routes')
-        .select('bus_id, route_id, is_active, routes(id, name, from_city, to_city)');
+        .from('owner_routes')
+        .select('owner_bus_id, route_id, is_active, routes(id, name, from_city, to_city)');
 
       if (routeError) throw routeError;
 
       const routeMap = (routeLinks || []).reduce((acc: Record<string, any>, entry: any) => {
-        acc[entry.bus_id] = entry;
+        acc[entry.owner_bus_id] = entry;
         return acc;
       }, {});
 
@@ -197,58 +246,6 @@ const Admin = () => {
     }
   };
 
-  const verifyDriver = async (userId: string) => {
-    try {
-      const { error } = await supabase
-        .from('driver_profiles')
-        .update({ 
-          is_verified: true,
-          verification_date: new Date().toISOString(),
-          verified_by: (await supabase.auth.getUser()).data.user?.id
-        })
-        .eq('user_id', userId);
-
-      if (error) throw error;
-
-      toast({
-        title: 'Driver Verified',
-        description: 'Driver account has been verified successfully.',
-      });
-
-      fetchDriversAndBuses();
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to verify driver.',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const rejectDriver = async (userId: string) => {
-    try {
-      const { error } = await supabase
-        .from('driver_profiles')
-        .delete()
-        .eq('user_id', userId);
-
-      if (error) throw error;
-
-      toast({
-        title: 'Driver Rejected',
-        description: 'Driver application has been rejected.',
-      });
-
-      fetchDriversAndBuses();
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to reject driver.',
-        variant: 'destructive',
-      });
-    }
-  };
-
   const approveBus = async (busId: string) => {
     try {
       const bus = buses.find(b => b.id === busId);
@@ -256,9 +253,9 @@ const Admin = () => {
 
       // Approve the bus
       const { error: busError } = await supabase
-        .from('driver_buses')
+        .from('owner_buses')
         .update({ 
-          is_approved: true,
+          approval_status: 'approved',
           approved_by: (await supabase.auth.getUser()).data.user?.id,
           approval_date: new Date().toISOString()
         })
@@ -266,11 +263,11 @@ const Admin = () => {
 
       if (busError) throw busError;
 
-      // Activate the driver_routes record
+      // Activate the owner_routes record
       const { error: routeError } = await supabase
-        .from('driver_routes')
+        .from('owner_routes')
         .update({ is_active: true })
-        .eq('bus_id', busId);
+        .eq('owner_bus_id', busId);
 
       if (routeError) throw routeError;
 
@@ -291,20 +288,25 @@ const Admin = () => {
 
   const rejectBus = async (busId: string) => {
     try {
-      // Delete the bus and its routes
-      const { error: routeError } = await supabase
-        .from('driver_routes')
-        .delete()
-        .eq('bus_id', busId);
-
-      if (routeError) throw routeError;
-
+      // Mark the bus as rejected
       const { error: busError } = await supabase
-        .from('driver_buses')
-        .delete()
+        .from('owner_buses')
+        .update({ 
+          approval_status: 'rejected',
+          approved_by: (await supabase.auth.getUser()).data.user?.id,
+          approval_date: new Date().toISOString()
+        })
         .eq('id', busId);
 
       if (busError) throw busError;
+
+      // Deactivate the owner_routes record
+      const { error: routeError } = await supabase
+        .from('owner_routes')
+        .update({ is_active: false })
+        .eq('owner_bus_id', busId);
+
+      if (routeError) throw routeError;
 
       toast({
         title: 'Bus Rejected',
@@ -409,10 +411,14 @@ const Admin = () => {
             <div className="grid lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-8">
                 <Tabs defaultValue="bookings" className="space-y-4">
-                  <TabsList className="grid w-full grid-cols-3 rounded-3xl border border-border/70 bg-white/80 shadow-sm p-1">
+                  <TabsList className="grid w-full grid-cols-4 rounded-3xl border border-border/70 bg-white/80 shadow-sm p-1">
                     <TabsTrigger value="drivers" className="transition-all duration-200">
                       <Users className="w-4 h-4 mr-2" />
-                      Drivers
+                      Bus Staff
+                    </TabsTrigger>
+                    <TabsTrigger value="bus-owners">
+                      <BusIcon className="w-4 h-4 mr-2" />
+                      Bus Owners
                     </TabsTrigger>
                     <TabsTrigger value="buses">
                       <BusIcon className="w-4 h-4 mr-2" />
@@ -428,62 +434,107 @@ const Admin = () => {
                   <TabsContent value="drivers" className="space-y-4">
                     <div className="floating-window hover-card overflow-hidden border">
                       <div className="p-6 border-b">
-                        <h2 className="text-lg font-bold">Pending Driver Verification</h2>
-                        <p className="text-sm text-muted-foreground mt-1">Review and verify driver applications</p>
+                        <h2 className="text-lg font-bold">Bus Staff</h2>
+                        <p className="text-sm text-muted-foreground mt-1">View drivers and conductors assigned to buses</p>
                       </div>
                       <div className="overflow-x-auto">
                         <Table>
                           <TableHeader className="bg-muted/50">
                             <TableRow>
-                              <TableHead>License #</TableHead>
+                              <TableHead>Name</TableHead>
                               <TableHead>Phone</TableHead>
+                              <TableHead>Role</TableHead>
+                              <TableHead>Bus</TableHead>
                               <TableHead>Status</TableHead>
-                              <TableHead className="text-center">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {drivers.length === 0 ? (
                               <TableRow>
-                                <TableCell colSpan={4} className="text-center py-8">
-                                  <p className="text-muted-foreground">No drivers to verify</p>
+                                <TableCell colSpan={5} className="text-center py-8">
+                                  <p className="text-muted-foreground">No bus staff found</p>
                                 </TableCell>
                               </TableRow>
                             ) : (
-                              drivers.map((driver) => (
-                                <TableRow key={driver.id} className="transition-colors hover:bg-muted/70">
-                                  <TableCell className="font-mono">{driver.license_number}</TableCell>
-                                  <TableCell>{driver.phone_number}</TableCell>
+                              drivers.map((staff: any) => (
+                                <TableRow key={staff.id} className="transition-colors hover:bg-muted/70">
+                                  <TableCell className="font-medium">
+                                    {staff.staff_type === 'driver' ? staff.driver_name : staff.conductor_name}
+                                  </TableCell>
                                   <TableCell>
-                                    <Badge variant={driver.is_verified ? 'default' : 'secondary'}>
-                                      {driver.is_verified ? 'Verified' : 'Pending'}
+                                    {staff.staff_type === 'driver' ? staff.driver_phone : staff.conductor_phone}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant={staff.staff_type === 'driver' ? 'default' : 'secondary'}>
+                                      {staff.staff_type === 'driver' ? 'Driver' : 'Conductor'}
                                     </Badge>
                                   </TableCell>
-                                  <TableCell className="text-center">
-                                    {!driver.is_verified ? (
-                                      <div className="flex justify-center gap-2">
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => verifyDriver(driver.user_id)}
-                                          className="text-green-600 hover:text-green-700"
-                                        >
-                                          <Check className="w-4 h-4" />
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => rejectDriver(driver.user_id)}
-                                          className="text-red-600 hover:text-red-700"
-                                        >
-                                          <X className="w-4 h-4" />
-                                        </Button>
+                                  <TableCell className="text-sm text-muted-foreground">
+                                    {staff.owner_buses ? (
+                                      <div>
+                                        <div className="font-mono">{staff.owner_buses.bus_number}</div>
+                                        <div className="text-xs capitalize">{staff.owner_buses.bus_type.replace('_', ' ')}</div>
                                       </div>
                                     ) : (
-                                      <Badge>Verified</Badge>
+                                      'Not assigned'
                                     )}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant={staff.is_active ? 'default' : 'secondary'}>
+                                      {staff.is_active ? 'Active' : 'Inactive'}
+                                    </Badge>
                                   </TableCell>
                                 </TableRow>
                               ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Bus Owners Tab */}
+                  <TabsContent value="bus-owners" className="space-y-4">
+                    <div className="floating-window hover-card overflow-hidden border">
+                      <div className="p-6 border-b">
+                        <h2 className="text-lg font-bold">Bus Owners</h2>
+                        <p className="text-sm text-muted-foreground mt-1">Manage bus owner accounts</p>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader className="bg-muted/50">
+                            <TableRow>
+                              <TableHead>Name</TableHead>
+                              <TableHead>User ID</TableHead>
+                              <TableHead>Total Buses</TableHead>
+                              <TableHead>Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {busOwners.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={4} className="text-center py-8">
+                                  <p className="text-muted-foreground">No bus owners found</p>
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              busOwners.map((owner) => {
+                                const ownerBuses = buses.filter(b => b.bus_owner_id === owner.user_id);
+                                return (
+                                  <TableRow key={owner.id} className="transition-colors hover:bg-muted/70">
+                                    <TableCell className="font-medium">
+                                      {owner.display_name || 'Unnamed Owner'}
+                                    </TableCell>
+                                    <TableCell className="font-mono text-sm">{owner.user_id}</TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline">{ownerBuses.length} buses</Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant="default">Active</Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })
                             )}
                           </TableBody>
                         </Table>
@@ -527,12 +578,16 @@ const Admin = () => {
                                     {bus.assignedRoute ? `${bus.assignedRoute.name} (${bus.assignedRoute.from} → ${bus.assignedRoute.to})` : 'Not assigned'}
                                   </TableCell>
                                   <TableCell>
-                                    <Badge variant={bus.is_approved ? 'default' : 'secondary'}>
-                                      {bus.is_approved ? 'Approved' : 'Pending'}
+                                    <Badge variant={
+                                      bus.approval_status === 'approved' ? 'default' : 
+                                      bus.approval_status === 'rejected' ? 'destructive' : 'secondary'
+                                    }>
+                                      {bus.approval_status === 'approved' ? 'Approved' : 
+                                       bus.approval_status === 'rejected' ? 'Rejected' : 'Pending'}
                                     </Badge>
                                   </TableCell>
                                   <TableCell className="text-center">
-                                    {!bus.is_approved ? (
+                                    {bus.approval_status === 'pending' ? (
                                       <div className="flex justify-center gap-2">
                                         <Button
                                           size="sm"
@@ -552,7 +607,9 @@ const Admin = () => {
                                         </Button>
                                       </div>
                                     ) : (
-                                      <Badge>Approved</Badge>
+                                      <Badge variant={bus.approval_status === 'approved' ? 'default' : 'destructive'}>
+                                        {bus.approval_status === 'approved' ? 'Approved' : 'Rejected'}
+                                      </Badge>
                                     )}
                                   </TableCell>
                                 </TableRow>
@@ -647,41 +704,12 @@ const Admin = () => {
 
               <div className="space-y-8">
                 <div className="floating-window hover-card overflow-hidden border">
-                  <div className="p-6 border-b flex items-center justify-between">
+                  <div className="p-6 border-b">
                     <h2 className="text-lg font-display font-semibold">Bus Routes</h2>
-                    <Dialog open={isAddRouteOpen} onOpenChange={setIsAddRouteOpen}>
-                      <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" /> Add</Button></DialogTrigger>
-                      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-                        <DialogHeader><DialogTitle>Add New Route</DialogTitle></DialogHeader>
-                        <RouteFormWizard onSubmit={async (d) => {
-                          await addRouteMutation.mutateAsync({
-                            name: d.name,
-                            from: d.from,
-                            to: d.to,
-                            departureTime: d.departureTime,
-                            arrivalTime: d.arrivalTime || undefined,
-                            price: parseInt(d.price),
-                            busType: d.busType as BusType,
-                            totalSeats: parseInt(d.totalSeats),
-                            busNumber: d.busNumber || undefined,
-                            driverName: d.driverName || undefined,
-                            driverPhone: d.driverPhone || undefined,
-                            conductorName: d.conductorName || undefined,
-                            conductorPhone: d.conductorPhone || undefined,
-                            viaPoints: d.viaPoints || [],
-                          });
-                          toast({ 
-                            title: '✅ Route Added Successfully!', 
-                            description: `${d.name} | ${d.from} → ${d.viaPoints.length > 0 ? d.viaPoints.join(' → ') + ' → ' : ''}${d.to} | ${d.departureTime} | LKR ${parseInt(d.price).toLocaleString()} | ${d.totalSeats} seats${d.viaPoints.length > 0 ? ` | ${d.viaPoints.length} stops` : ''}`,
-                          });
-                          setIsAddRouteOpen(false);
-                        }} isSubmitting={addRouteMutation.isPending} />
-                      </DialogContent>
-                    </Dialog>
                   </div>
                   <div className="p-4 space-y-3 max-h-[500px] overflow-y-auto">
                     {routes.map((route) => (
-                      <div key={route.id} onClick={() => setSelectedRouteForMap(route)}><RouteCard route={route} /></div>
+                      <div key={route.id} onClick={() => setSelectedRouteForMap(route)}><RouteCard route={route} allowEdit={false} /></div>
                     ))}
                   </div>
                 </div>
