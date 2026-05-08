@@ -16,13 +16,16 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import LiveTracking from "./pages/LiveTracking";
-import DriverCompanion from "./pages/DriverCompanion";
-import DriverDashboard from "./pages/DriverDashboard";
-import DriverSignup from "./pages/DriverSignup";
-import DriverLogin from "./pages/DriverLogin";
-import DriverAddBus from "./pages/DriverAddBus";
-import DriverProfile from "./pages/DriverProfile";
+import LiveTracking from "./pages/LiveTracking.tsx";
+import BusOwnerDashboard from "./pages/BusOwnerDashboard";
+import BusOwnerSignup from "./pages/BusOwnerSignup";
+import BusOwnerLogin from "./pages/BusOwnerLogin";
+import BusOwnerAddBus from "./pages/BusOwnerAddBus";
+import BusOwnerAddTrips from "./pages/BusOwnerAddTrips";
+import BusOwnerEditBus from "./pages/BusOwnerEditBus";
+import BusOwnerProfile from "./pages/BusOwnerProfile";
+import StaffLogin from "./pages/StaffLogin";
+import StaffDashboard from "./pages/StaffDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -78,40 +81,52 @@ const AppShell = () => {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/admin-setup" element={<AdminSetup />} />
         <Route path="/tracking" element={<LiveTracking />} />
+        <Route path="/tracking/:routeId" element={<LiveTracking />} />
+        <Route path="/tracking/:routeId/:bookingId" element={<LiveTracking />} />
         <Route
-          path="/driver"
+          path="/bus-owner/dashboard"
           element={
-            <ProtectedRoute>
-              <DriverCompanion />
+            <ProtectedRoute requireBusOwner>
+              <BusOwnerDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/bus-owner/signup" element={<BusOwnerSignup />} />
+        <Route path="/bus-owner/login" element={<BusOwnerLogin />} />
+        <Route
+          path="/bus-owner/add-bus"
+          element={
+            <ProtectedRoute requireBusOwner>
+              <BusOwnerAddBus />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/driver/dashboard"
+          path="/bus-owner/edit-bus/:busId"
           element={
-            <ProtectedRoute requireDriver>
-              <DriverDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/driver/signup" element={<DriverSignup />} />
-        <Route path="/driver/login" element={<DriverLogin />} />
-        <Route
-          path="/driver/add-bus"
-          element={
-            <ProtectedRoute requireDriver>
-              <DriverAddBus />
+            <ProtectedRoute requireBusOwner>
+              <BusOwnerEditBus />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/driver/profile"
+          path="/bus-owner/add-trips/:busId"
           element={
-            <ProtectedRoute requireDriver>
-              <DriverProfile />
+            <ProtectedRoute requireBusOwner>
+              <BusOwnerAddTrips />
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/bus-owner/profile"
+          element={
+            <ProtectedRoute requireBusOwner>
+              <BusOwnerProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/staff/login" element={<StaffLogin />} />
+        <Route path="/staff/dashboard" element={<StaffDashboard />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </div>
