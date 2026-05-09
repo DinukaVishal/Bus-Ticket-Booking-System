@@ -6,10 +6,12 @@ interface Review {
   id: string;
   user_id: string;
   booking_id: string;
+  person_name?: string;
   rating: number;
   review_text: string;
   created_at: string;
 }
+
 
 type SortMode = "newest" | "highest";
 
@@ -23,8 +25,10 @@ export default function Reviews() {
   // Form state
   const [rating, setRating] = useState<number>(0);
   const [reviewText, setReviewText] = useState<string>("");
+  const [personName, setPersonName] = useState<string>("");
   const [bookingId, setBookingId] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+
 
   // Interactive list state
   const [search, setSearch] = useState<string>("");
@@ -96,7 +100,13 @@ export default function Reviews() {
     return sum / reviews.length;
   }, [reviews]);
 
-  const canSubmit = rating >= 1 && rating <= 5 && !!reviewText.trim() && !!bookingId.trim() && !loading;
+  const canSubmit =
+    rating >= 1 && rating <= 5 &&
+    !!reviewText.trim() &&
+    !!personName.trim() &&
+    !!bookingId.trim() &&
+    !loading;
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,10 +122,16 @@ export default function Reviews() {
       return;
     }
 
+    if (!personName.trim()) {
+      setError("Please enter passenger name");
+      return;
+    }
+
     if (!bookingId.trim()) {
       setError("Please enter booking ID");
       return;
     }
+
 
     setLoading(true);
 
@@ -134,9 +150,11 @@ export default function Reviews() {
       {
         user_id: user.id,
         booking_id: bookingId,
+        person_name: personName,
         rating,
         review_text: reviewText,
       },
+
     ]);
 
     if (insertError) {
@@ -243,6 +261,18 @@ export default function Reviews() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
+              <label className="block mb-2 font-medium text-gray-700">Passenger Name</label>
+              <input
+                type="text"
+                value={personName}
+                onChange={(e) => setPersonName(e.target.value)}
+                placeholder="Enter passenger name"
+                className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+
+            <div>
               <label className="block mb-2 font-medium text-gray-700">Booking ID</label>
               <input
                 type="text"
@@ -256,6 +286,7 @@ export default function Reviews() {
             <div>
               <label className="block mb-2 font-medium text-gray-700">Rating</label>
               {renderStarsInteractive(rating)}
+
               {rating === 0 ? (
                 <p className="text-sm text-gray-500 mt-2">Select a star rating to continue.</p>
               ) : null}
@@ -360,7 +391,8 @@ export default function Reviews() {
                     {renderReviewText(review)}
 
                     <div className="text-sm text-gray-400 flex flex-col sm:flex-row sm:justify-between gap-1">
-                      <span>Booking ID: {review.booking_id}</span>
+                      <span>Passenger: {review.person_name || "-"}</span>
+
                       <span>{new Date(review.created_at).toLocaleString()}</span>
                     </div>
                   </div>
