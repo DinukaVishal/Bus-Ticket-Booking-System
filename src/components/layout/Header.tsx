@@ -103,7 +103,20 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
                   <span className="hidden sm:inline">My Bookings</span>
                 </Link>
               )}
-
+              {user && (
+                <Link
+                  to="/reviews"
+                  className={cn(
+                     'px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
+                     location.pathname === '/reviews'
+                        ? 'bg-white/20'
+                        : 'hover:bg-white/10'
+                   )}
+                 >
+    Reviews
+  </Link>
+)}
+  
               {isAdmin && (
                 <Link
                   to="/admin"
@@ -132,6 +145,8 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
+
+                  
                   
                   {/* WIDENED DROPDOWN TO w-72 */}
                   <DropdownMenuContent className="w-72 mt-2 p-1.5 rounded-xl shadow-xl border-2" align="end">
@@ -179,6 +194,12 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
                       </Link>
                     </DropdownMenuItem>
                   )}
+                  <DropdownMenuItem asChild className="p-0">
+                    <Link to="/reviews" className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg cursor-pointer hover:bg-muted group">
+                      <Ticket className="w-4 h-4 text-muted-foreground transition-colors group-hover:text-primary" />
+                       Reviews & Ratings
+                    </Link>
+                  </DropdownMenuItem>
                   
                   <DropdownMenuSeparator />
                   
@@ -194,6 +215,7 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
                   <Link to="/login">Login</Link>
                 </Button>
               </div>
+              
             )}
             </nav>
           )}
