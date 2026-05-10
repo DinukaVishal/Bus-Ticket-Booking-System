@@ -5,15 +5,14 @@ import { toast } from "@/hooks/use-toast";
 interface Review {
   id: string;
   user_id: string;
-  booking_id: string;
-  person_name?: string;
   rating: number;
+  passenger_name: string;
   review_text: string;
   created_at: string;
 }
 
-
 type SortMode = "newest" | "highest";
+
 
 const MAX_CHARS = 500;
 
@@ -26,8 +25,8 @@ export default function Reviews() {
   const [rating, setRating] = useState<number>(0);
   const [reviewText, setReviewText] = useState<string>("");
   const [personName, setPersonName] = useState<string>("");
-  const [bookingId, setBookingId] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+
 
 
   // Interactive list state
@@ -101,11 +100,14 @@ export default function Reviews() {
   }, [reviews]);
 
   const canSubmit =
-    rating >= 1 && rating <= 5 &&
+    rating >= 1 &&
+    rating <= 5 &&
     !!reviewText.trim() &&
     !!personName.trim() &&
-    !!bookingId.trim() &&
     !loading;
+
+
+
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -127,13 +129,9 @@ export default function Reviews() {
       return;
     }
 
-    if (!bookingId.trim()) {
-      setError("Please enter booking ID");
-      return;
-    }
-
 
     setLoading(true);
+
 
     const {
       data: { user },
@@ -149,13 +147,13 @@ export default function Reviews() {
     const { error: insertError } = await supabase.from("trip_reviews").insert([
       {
         user_id: user.id,
-        booking_id: bookingId,
-        person_name: personName,
+        passenger_name: personName,
         rating,
         review_text: reviewText,
+        created_at: new Date().toISOString(),
       },
-
     ]);
+
 
     if (insertError) {
       console.error(insertError);
@@ -166,9 +164,10 @@ export default function Reviews() {
 
     setRating(0);
     setReviewText("");
-    setBookingId("");
+    setPersonName("");
 
     await fetchReviews();
+
 
     toast({
       title: "Review submitted",
@@ -273,19 +272,9 @@ export default function Reviews() {
 
 
             <div>
-              <label className="block mb-2 font-medium text-gray-700">Booking ID</label>
-              <input
-                type="text"
-                value={bookingId}
-                onChange={(e) => setBookingId(e.target.value)}
-                placeholder="Enter booking ID"
-                className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
               <label className="block mb-2 font-medium text-gray-700">Rating</label>
               {renderStarsInteractive(rating)}
+
 
               {rating === 0 ? (
                 <p className="text-sm text-gray-500 mt-2">Select a star rating to continue.</p>
@@ -391,10 +380,11 @@ export default function Reviews() {
                     {renderReviewText(review)}
 
                     <div className="text-sm text-gray-400 flex flex-col sm:flex-row sm:justify-between gap-1">
-                      <span>Passenger: {review.person_name || "-"}</span>
+                      <span>Passenger: {review.passenger_name || "-"}</span>
 
                       <span>{new Date(review.created_at).toLocaleString()}</span>
                     </div>
+
                   </div>
                 ))}
               </div>
