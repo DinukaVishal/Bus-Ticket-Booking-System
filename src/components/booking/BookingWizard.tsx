@@ -286,7 +286,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
                 <h2 className="text-lg font-display font-semibold">Route Map</h2>
               </div>
             </div>
-            <RouteMap route={selectedRoute} className="h-[300px] lg:h-[400px]" />
+            <RouteMap route={selectedRoute} selectedTrip={selectedTrip} className="h-[300px] lg:h-[400px]" />
           </div>
         </div>
       </div>

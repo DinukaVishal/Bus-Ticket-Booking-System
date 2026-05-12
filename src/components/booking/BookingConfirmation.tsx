@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react';
 import { Booking, Route, Trip } from '@/types/booking';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Home, Ticket, Download } from 'lucide-react';
 import { generateTicketPDF } from '@/lib/pdfTicketGenerator';
+import { supabase } from '@/integrations/supabase/client';
 
 interface BookingConfirmationProps {
   bookings: Booking[];
@@ -14,6 +16,34 @@ const BookingConfirmation = ({ bookings, route, trip, onNewBooking }: BookingCon
   const firstBooking = bookings[0];
   const seatNumbers = bookings.map(b => b.seatNumber).sort((a, b) => a - b);
   const totalPrice = trip.price * bookings.length;
+  const [routeReviewCount, setRouteReviewCount] = useState(0);
+  const [routeReviewAverage, setRouteReviewAverage] = useState(0);
+  const [routeReviewLoading, setRouteReviewLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRouteReviews = async () => {
+      setRouteReviewLoading(true);
+      const { data, error } = await supabase
+        .from('trip_reviews')
+        .select('rating')
+        .eq('route_id', route.id);
+
+      if (!error && data) {
+        const count = data.length;
+        const average = count > 0 ? data.reduce((sum, item) => sum + Number(item.rating), 0) / count : 0;
+        setRouteReviewCount(count);
+        setRouteReviewAverage(average);
+      } else {
+        setRouteReviewCount(0);
+        setRouteReviewAverage(0);
+      }
+      setRouteReviewLoading(false);
+    };
+
+    if (route?.id) {
+      fetchRouteReviews();
+    }
+  }, [route?.id]);
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-4">
@@ -111,6 +141,26 @@ const BookingConfirmation = ({ bookings, route, trip, onNewBooking }: BookingCon
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="bg-card rounded-2xl p-5 mb-6 border border-border text-left">
+          <p className="text-sm text-muted-foreground mb-2">Route reviews</p>
+          {routeReviewLoading ? (
+            <p className="text-sm text-foreground">Loading route feedback…</p>
+          ) : routeReviewCount > 0 ? (
+            <p className="text-sm text-foreground font-medium">
+              Average rating {routeReviewAverage.toFixed(1)} / 5 from {routeReviewCount} review{routeReviewCount !== 1 ? 's' : ''}
+            </p>
+          ) : (
+            <p className="text-sm text-foreground font-medium">No reviews yet for this route. Share your experience after the trip.</p>
+          )}
+          <button
+            type="button"
+            onClick={() => window.location.href = `/reviews?routeId=${route.id}&routeName=${encodeURIComponent(route.name)}`}
+            className="mt-4 inline-flex items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-medium transition hover:bg-muted"
+          >
+            View all reviews for this route
+          </button>
         </div>
 
         <div className="space-y-3">

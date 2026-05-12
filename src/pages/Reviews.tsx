@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
 interface Review {
@@ -9,6 +10,8 @@ interface Review {
   passenger_name: string;
   review_text: string;
   created_at: string;
+  route_id?: string;
+  route_name?: string;
 }
 
 type SortMode = "newest" | "highest";
@@ -17,9 +20,12 @@ type SortMode = "newest" | "highest";
 const MAX_CHARS = 500;
 
 export default function Reviews() {
+  const [searchParams] = useSearchParams();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [fetchLoading, setFetchLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
+  const routeId = searchParams.get('routeId');
+  const routeName = searchParams.get('routeName') ?? '';
 
   // Form state
   const [rating, setRating] = useState<number>(0);
@@ -42,10 +48,15 @@ export default function Reviews() {
     setFetchLoading(true);
     setError("");
 
-    const { data, error } = await supabase
-      .from("trip_reviews")
-      .select("*")
-      .order("created_at", { ascending: false });
+    let query = supabase.from("trip_reviews").select("*").order("created_at", { ascending: false });
+
+    if (routeId) {
+      query = query.eq("route_id", routeId);
+    } else if (routeName) {
+      query = query.ilike("route_name", `%${routeName}%`);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error(error);
@@ -60,7 +71,7 @@ export default function Reviews() {
 
   useEffect(() => {
     fetchReviews();
-  }, []);
+  }, [routeId, routeName]);
 
   const filteredSorted = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -243,7 +254,7 @@ export default function Reviews() {
   return (
     <div className="min-h-screen bg-gray-100 py-10 px-4">
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-md p-6 mb-8">
+        <div className="bg-white rounded-2xl shadow-md p-6 mb-8 backdrop-blur-sm">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Bus Reviews & Ratings</h1>
           <p className="text-gray-500">
             Share your travel experience with other passengers.
@@ -251,8 +262,21 @@ export default function Reviews() {
         </div>
 
         {/* Review Form */}
-        <div className="bg-white rounded-2xl shadow-md p-6 mb-8">
-          <h2 className="text-2xl font-semibold mb-6">Write a Review</h2>
+        <div className="bg-white rounded-2xl shadow-md p-6 mb-8 backdrop-blur-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+            <div>
+              <h2 className="text-2xl font-semibold">Write a Review</h2>
+              {routeId || routeName ? (
+                <p className="text-sm text-gray-500 mt-1">
+                  Submitting feedback for <span className="font-medium">{routeName || 'your route'}</span>.
+                </p>
+              ) : (
+                <p className="text-sm text-gray-500 mt-1">
+                  Share your travel experience with other passengers.
+                </p>
+              )}
+            </div>
+          </div>
 
           {error && (
             <div className="mb-4 bg-red-100 text-red-600 px-4 py-3 rounded-lg">{error}</div>
@@ -307,7 +331,7 @@ export default function Reviews() {
         </div>
 
         {/* Reviews List */}
-        <div className="bg-white rounded-2xl shadow-md p-6">
+        <div className="bg-white rounded-2xl shadow-md p-6 backdrop-blur-sm">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
             <div>
               <h2 className="text-2xl font-semibold">Passenger Reviews</h2>
@@ -376,6 +400,11 @@ export default function Reviews() {
               <div className="space-y-5">
                 {paged.map((review) => (
                   <div key={review.id} className="border border-gray-200 rounded-xl p-5">
+                    {review.route_name ? (
+                      <div className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">
+                        Route: {review.route_name}
+                      </div>
+                    ) : null}
                     <StarsReadOnly ratingValue={review.rating} />
                     {renderReviewText(review)}
 
@@ -420,4 +449,3 @@ export default function Reviews() {
     </div>
   );
 }
-

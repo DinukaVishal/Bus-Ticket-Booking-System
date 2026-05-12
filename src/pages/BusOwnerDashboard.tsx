@@ -213,6 +213,13 @@ const BusOwnerDashboard = () => {
 
       if (error) throw error;
 
+      const { error: ownerRoutesError } = await supabase
+        .from('owner_routes')
+        .update({ is_active: newStatus })
+        .eq('owner_bus_id', busId);
+
+      if (ownerRoutesError) throw ownerRoutesError;
+
       // Update local state
       setBuses((prev) => prev.map((bus) => 
         bus.id === busId ? { ...bus, is_active: newStatus } : bus

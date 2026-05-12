@@ -276,7 +276,7 @@ const RouteSelector = ({ routes, selectedRoute, selectedTrip, onRouteSelect, onT
 
           {/* Trip Details */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
-            
+
             {/* Time Information */}
             <div className="grid grid-cols-2 gap-x-4 gap-y-3">
               <div className="space-y-1 p-3 bg-muted/10 rounded-xl border border-border/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:bg-background group/time">
