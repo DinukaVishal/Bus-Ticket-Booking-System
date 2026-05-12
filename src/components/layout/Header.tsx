@@ -1,8 +1,9 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Bus, LayoutDashboard, LogOut, User, Ticket, Radio, Navigation, ChevronDown, UserCircle, ShieldCheck } from 'lucide-react';
+import { Bus, LayoutDashboard, LogOut, User, Ticket, MessageCircle, Radio, Navigation, ChevronDown, UserCircle, ShieldCheck, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useScrollPosition } from '@/hooks/useScrollPosition';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,6 +26,7 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, isAdmin, signOut } = useAuthContext();
+  const { theme, toggleTheme } = useTheme();
   const scrollPosition = useScrollPosition();
 
   // Determine if header should be transparent (only on home page and when scrolled less than 100px)
@@ -56,14 +58,18 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
 
   return (
     <header 
-      className={`text-white z-50 transition-all duration-300 ${isHomePage && isTransparent ? 'fixed' : 'sticky'} top-0 left-0 right-0 w-full`}
+      className={`z-50 transition-all duration-300 ${isHomePage && isTransparent ? 'fixed' : 'sticky'} top-0 left-0 right-0 w-full ${
+        theme === 'dark' ? 'text-white' : 'text-white'
+      }`}
       style={{
         background: isTransparent 
           ? 'transparent' 
-          : 'linear-gradient(135deg, hsla(222, 60%, 25%, 0.95) 0%, hsla(222, 60%, 35%, 0.95) 100%)',
+          : theme === 'dark'
+            ? 'linear-gradient(135deg, hsla(222, 47%, 15%, 0.95) 0%, hsla(222, 47%, 20%, 0.95) 100%)'
+            : 'linear-gradient(135deg, hsla(222, 60%, 25%, 0.95) 0%, hsla(222, 60%, 35%, 0.95) 100%)',
         backdropFilter: isTransparent ? 'none' : 'blur(12px)',
-        borderBottom: isTransparent ? 'none' : '1px solid rgba(255, 255, 255, 0.15)',
-        boxShadow: isTransparent ? 'none' : '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+        borderBottom: isTransparent ? 'none' : theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(255, 255, 255, 0.15)',
+        boxShadow: isTransparent ? 'none' : theme === 'dark' ? '0 20px 25px -5px rgba(0, 0, 0, 0.3)' : '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
       }}
     >
       <div className="container mx-auto px-4 py-2">
@@ -89,6 +95,19 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
                 Book Tickets
               </Link>
 
+              <Link
+                to="/reviews"
+                className={cn(
+                  'px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
+                  location.pathname === '/reviews'
+                    ? 'bg-white/20'
+                    : 'hover:bg-white/10'
+                )}
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span className="hidden sm:inline">Reviews</span>
+              </Link>
+
               {user && (
                 <Link
                   to="/my-bookings"
@@ -103,20 +122,7 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
                   <span className="hidden sm:inline">My Bookings</span>
                 </Link>
               )}
-              {user && (
-                <Link
-                  to="/reviews"
-                  className={cn(
-                     'px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
-                     location.pathname === '/reviews'
-                        ? 'bg-white/20'
-                        : 'hover:bg-white/10'
-                   )}
-                 >
-    Reviews
-  </Link>
-)}
-  
+
               {isAdmin && (
                 <Link
                   to="/admin"
@@ -129,6 +135,21 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
                   <span className="hidden sm:inline">Admin</span>
                 </Link>
               )}
+
+              {/* Theme Toggle Button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleTheme}
+                className="ml-1 p-2 h-9 w-9 rounded-lg hover:bg-white/10 transition-colors"
+                title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+              >
+                {theme === 'light' ? (
+                  <Moon className="w-4 h-4" />
+                ) : (
+                  <Sun className="w-4 h-4" />
+                )}
+              </Button>
 
               {/* User Menu - MODERN DROPDOWN */}
               {user ? (
@@ -145,8 +166,6 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
                       </Avatar>
                     </Button>
                   </DropdownMenuTrigger>
-
-                  
                   
                   {/* WIDENED DROPDOWN TO w-72 */}
                   <DropdownMenuContent className="w-72 mt-2 p-1.5 rounded-xl shadow-xl border-2" align="end">
@@ -194,12 +213,6 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
                       </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem asChild className="p-0">
-                    <Link to="/reviews" className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg cursor-pointer hover:bg-muted group">
-                      <Ticket className="w-4 h-4 text-muted-foreground transition-colors group-hover:text-primary" />
-                       Reviews & Ratings
-                    </Link>
-                  </DropdownMenuItem>
                   
                   <DropdownMenuSeparator />
                   
@@ -215,7 +228,6 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
                   <Link to="/login">Login</Link>
                 </Button>
               </div>
-              
             )}
             </nav>
           )}

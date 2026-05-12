@@ -2,10 +2,15 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/layout/Header';
 import { Bus, ShieldCheck, Clock, MapPin, Search, CreditCard, ChevronRight, Star } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useRoutes } from '@/hooks/useRoutes';
+import HomeSearchPanel from '@/components/booking/HomeSearchPanel';
 
 const Home = () => {
+  const { theme } = useTheme();
+  const { data: routes = [] } = useRoutes();
   return (
-    <div className="min-h-screen bg-background/60 backdrop-blur-xl flex flex-col font-sans">
+    <div className="min-h-screen relative bg-[url('/quickbus-bg.jpg')] bg-cover bg-center bg-fixed bg-slate-950/70 backdrop-blur-xl flex flex-col font-sans">
       <Header isHomePage={true} />
       {/* 1. Hero Section (Video Background සමඟ) */}
       <section className="relative text-white py-24 lg:py-32 overflow-hidden flex items-center min-h-[85vh]">
@@ -23,7 +28,7 @@ const Home = () => {
         </video>
 
         {/* --- Dark Overlay (වීඩියෝ එක උඩින් අකුරු පැහැදිලිව පේන්න) --- */}
-        <div className="absolute inset-0 bg-blue-950/60 z-10"></div>
+        <div className={`absolute inset-0 z-10 ${theme === 'dark' ? 'bg-slate-950/70' : 'bg-blue-950/60'}`}></div>
 
         {/* --- Content --- */}
         <div className="container mx-auto px-4 text-center relative z-20 mt-10">
@@ -53,164 +58,159 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Search Panel Section */}
+      <section className="py-24 bg-slate-700/80">
+        <div className="container mx-auto px-4 max-w-5xl">
+          <HomeSearchPanel routes={routes} />
+        </div>
+      </section>
+
       {/* 2. How It Works Section */}
-      <section className="py-20 bg-muted/30">
+      <section className="py-24 bg-slate-900/95 text-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">How QuickBus Works?</h2>
-            <p className="text-gray-500 max-w-2xl mx-auto">Get your ticket in just 3 simple steps</p>
+            <p className="text-sm uppercase tracking-[0.3em] text-slate-400 mb-3">Step-by-step</p>
+            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight">Book your trip in minutes</h2>
+            <p className="mt-4 text-slate-300 max-w-2xl mx-auto">
+              QuickBus makes bus travel easier with transparent pricing, instant confirmation and modern ticketing.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {/* Step 1 */}
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group">
-              <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
-                <Search className="w-8 h-8" />
+          <div className="grid gap-6 md:grid-cols-3 max-w-6xl mx-auto">
+            <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 shadow-[0_30px_60px_-30px_rgba(15,23,42,0.8)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-white/20">
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-800 text-sky-300 mb-6 shadow-lg shadow-sky-500/10">
+                <Search className="w-7 h-7" />
               </div>
-              <h3 className="text-xl font-bold mb-3 text-gray-800">1. Search Route</h3>
-              <p className="text-gray-500">Choose your origin, destination, and travel date.</p>
+              <span className="text-sm uppercase tracking-[0.24em] text-sky-200">Step 1</span>
+              <h3 className="mt-4 text-2xl font-semibold text-white">Search your route</h3>
+              <p className="mt-3 text-slate-300">Enter your departure, destination and travel date for instant options.</p>
             </div>
 
-            {/* Step 2 */}
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group">
-              <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
-                <Bus className="w-8 h-8" />
+            <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 shadow-[0_30px_60px_-30px_rgba(15,23,42,0.8)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-white/20">
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-800 text-emerald-300 mb-6 shadow-lg shadow-emerald-500/10">
+                <Bus className="w-7 h-7" />
               </div>
-              <h3 className="text-xl font-bold mb-3 text-gray-800">2. Select Seat</h3>
-              <p className="text-gray-500">Pick your favorite bus and select your preferred seat.</p>
+              <span className="text-sm uppercase tracking-[0.24em] text-emerald-200">Step 2</span>
+              <h3 className="mt-4 text-2xl font-semibold text-white">Pick your bus & seat</h3>
+              <p className="mt-3 text-slate-300">Choose the vehicle, seat and amenities that suit your journey.</p>
             </div>
 
-            {/* Step 3 */}
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 text-center transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group">
-              <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
-                <CreditCard className="w-8 h-8" />
+            <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 shadow-[0_30px_60px_-30px_rgba(15,23,42,0.8)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-white/20">
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-3xl bg-slate-800 text-violet-300 mb-6 shadow-lg shadow-violet-500/10">
+                <CreditCard className="w-7 h-7" />
               </div>
-              <h3 className="text-xl font-bold mb-3 text-gray-800">3. Pay & Go</h3>
-              <p className="text-gray-500">Make a secure payment and receive your e-ticket instantly.</p>
+              <span className="text-sm uppercase tracking-[0.24em] text-violet-200">Step 3</span>
+              <h3 className="mt-4 text-2xl font-semibold text-white">Pay securely</h3>
+              <p className="mt-3 text-slate-300">Complete payment using your preferred method and travel with confidence.</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* 3. Features Section */}
-      <section className="py-20 bg-background/30 backdrop-blur-xl">
+      <section className="py-24 bg-slate-900/80 text-white">
         <div className="container mx-auto px-4">
-          <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-800 mb-16">Why Choose QuickBus?</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 max-w-6xl mx-auto">
-            <div className="flex gap-4 items-start">
-              <div className="bg-green-100 p-3 rounded-lg text-green-600 mt-1">
+          <div className="text-center mb-16">
+            <p className="text-sm uppercase tracking-[0.3em] text-sky-300 mb-3">Why customers prefer us</p>
+            <h2 className="text-4xl md:text-5xl font-semibold">Built for smoother travel</h2>
+            <p className="mt-4 text-slate-400 max-w-2xl mx-auto">
+              Every feature on QuickBus is designed to make bus booking faster, clearer and more reliable.
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3 max-w-6xl mx-auto">
+            <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 shadow-[0_30px_60px_-30px_rgba(15,23,42,0.8)]">
+              <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-900 text-emerald-300 mb-5">
                 <ShieldCheck className="w-6 h-6" />
               </div>
-              <div>
-                <h4 className="text-lg font-bold text-gray-800 mb-2">Secure Payments</h4>
-                <p className="text-gray-600 text-sm leading-relaxed">Your transactions are 100% secure with our encrypted payment gateways.</p>
-              </div>
+              <h3 className="text-xl font-semibold mb-3 text-white">Secure payments</h3>
+              <p className="text-slate-300 leading-relaxed">Payments are protected with encryption and multiple secure gateways.</p>
             </div>
 
-            <div className="flex gap-4 items-start">
-              <div className="bg-purple-100 p-3 rounded-lg text-purple-600 mt-1">
+            <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 shadow-[0_30px_60px_-30px_rgba(15,23,42,0.8)]">
+              <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-900 text-violet-300 mb-5">
                 <Clock className="w-6 h-6" />
               </div>
-              <div>
-                <h4 className="text-lg font-bold text-gray-800 mb-2">24/7 Customer Support</h4>
-                <p className="text-gray-600 text-sm leading-relaxed">We are here to help you anytime, anywhere during your journey.</p>
-              </div>
+              <h3 className="text-xl font-semibold mb-3 text-white">24/7 support</h3>
+              <p className="text-slate-300 leading-relaxed">Need help? Our team is available anytime to support your travel plans.</p>
             </div>
 
-            <div className="flex gap-4 items-start">
-              <div className="bg-orange-100 p-3 rounded-lg text-orange-600 mt-1">
+            <div className="rounded-[32px] border border-white/10 bg-white/5 p-8 shadow-[0_30px_60px_-30px_rgba(15,23,42,0.8)]">
+              <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-900 text-orange-300 mb-5">
                 <MapPin className="w-6 h-6" />
               </div>
-              <div>
-                <h4 className="text-lg font-bold text-gray-800 mb-2">Island-wide Coverage</h4>
-                <p className="text-gray-600 text-sm leading-relaxed">Connecting major cities and towns across Sri Lanka with luxury buses.</p>
-              </div>
+              <h3 className="text-xl font-semibold mb-3 text-white">All routes covered</h3>
+              <p className="text-slate-300 leading-relaxed">Travel across Sri Lanka with a wide network of trusted bus routes.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 5. Bus Owner Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-blue-800 text-white">
+      {/* 4. Business Growth Section */}
+      <section className="py-24 bg-gradient-to-r from-slate-950 to-slate-800 text-white">
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">Are You a Bus Owner?</h2>
-            <p className="text-lg md:text-xl mb-8 opacity-90 max-w-2xl mx-auto">
-              Manage your fleet, add buses, and keep driver/conductor details in one place.
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-              <div className="bg-white/10 backdrop-blur-md p-6 rounded-xl">
-                <Bus className="w-12 h-12 mx-auto mb-4 text-blue-200" />
-                <h3 className="text-xl font-bold mb-2">Register Your Bus</h3>
-                <p className="text-blue-100">Add your bus and staff details to start accepting bookings</p>
-              </div>
-
-              <div className="bg-white/10 backdrop-blur-md p-6 rounded-xl">
-                <MapPin className="w-12 h-12 mx-auto mb-4 text-blue-200" />
-                <h3 className="text-xl font-bold mb-2">Route Management</h3>
-                <p className="text-blue-100">Choose routes for your bus and track your services.</p>
-              </div>
-
-              <div className="bg-white/10 backdrop-blur-md p-6 rounded-xl">
-                <ShieldCheck className="w-12 h-12 mx-auto mb-4 text-blue-200" />
-                <h3 className="text-xl font-bold mb-2">Manage Bookings</h3>
-                <p className="text-blue-100">View your bus bookings and monitor seat availability.</p>
-              </div>
+          <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] items-center">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-sky-300 mb-4">Partner with us</p>
+              <h2 className="text-4xl font-semibold mb-6">A smarter way for bus owners to grow</h2>
+              <p className="max-w-2xl text-slate-300 leading-relaxed text-lg">
+                QuickBus gives bus owners a modern dashboard for fleet management, route planning and booking insights — all in one place.
+              </p>
             </div>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/bus-owner/signup">
-                <Button
-                  size="lg"
-                  className="bg-white text-blue-900 hover:bg-blue-50 font-bold text-lg px-8 py-6 rounded-full shadow-2xl transition-all duration-300 hover:scale-105"
-                >
-                  Sign Up as Bus Owner
-                </Button>
-              </Link>
-
-              <Link to="/bus-owner/login">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-white text-white hover:bg-white hover:text-blue-900 font-bold text-lg px-8 py-6 rounded-full shadow-2xl transition-all duration-300 hover:scale-105"
-                >
-                  Bus Owner Login
-                </Button>
-              </Link>
+            <div className="grid gap-6">
+              <div className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-xl shadow-slate-950/10">
+                <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-950 text-sky-300 mb-4">
+                  <Bus className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Register your fleet</h3>
+                <p className="text-slate-300">Add bus details and routes in minutes with a simple onboarding flow.</p>
+              </div>
+              <div className="rounded-[32px] border border-white/10 bg-white/5 p-6 shadow-xl shadow-slate-950/10">
+                <div className="inline-flex h-14 w-14 items-center justify-center rounded-3xl bg-slate-950 text-emerald-300 mb-4">
+                  <MapPin className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Manage routes</h3>
+                <p className="text-slate-300">Create, edit and publish routes with full control over schedules and stops.</p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* 6. Staff Login Section */}
-      <section className="py-20 bg-gradient-to-r from-purple-600 to-purple-800 text-white">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/20 backdrop-blur-md border border-white/30 mb-6">
-              <ShieldCheck className="w-4 h-4 text-purple-200" />
-              <span className="text-sm font-medium tracking-wide">For Bus Staff</span>
-            </div>
-            
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">Staff Dashboard Access</h2>
-            <p className="text-lg md:text-xl mb-10 opacity-90 max-w-2xl mx-auto">
-              Quick access to your bus dashboard. Monitor seat bookings, track passengers, and manage your trip in real-time.
-            </p>
-
-            <Link to="/staff/login">
-              <Button
-                size="lg"
-                className="bg-white text-purple-900 hover:bg-purple-50 font-bold text-lg px-10 py-7 rounded-full shadow-2xl transition-all duration-300 hover:scale-105 hover:-translate-y-1 group"
-              >
-                Staff Login
-                <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          <div className="mt-12 flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/bus-owner/signup">
+              <Button size="lg" className="bg-sky-400 text-slate-950 hover:bg-sky-300 px-8 py-5 rounded-full font-semibold shadow-2xl shadow-sky-500/30">
+                Sign Up as Bus Owner
+              </Button>
+            </Link>
+            <Link to="/bus-owner/login">
+              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-5 rounded-full font-semibold">
+                Bus Owner Login
               </Button>
             </Link>
           </div>
         </div>
       </section>
 
+      {/* 5. Staff Login Section */}
+      <section className="py-24 bg-slate-900/95 text-white">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center rounded-[32px] border border-white/10 bg-white/5 p-12 shadow-[0_30px_80px_-40px_rgba(15,23,42,0.9)] backdrop-blur-xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/70 px-4 py-2 mb-6 text-sm font-semibold text-slate-200">
+              <ShieldCheck className="w-4 h-4 text-purple-300" />
+              Staff Dashboard Access
+            </div>
+            <h2 className="text-4xl font-semibold mb-5">Staff portal for real-time operations</h2>
+            <p className="mx-auto mb-10 max-w-2xl text-slate-300 leading-relaxed">
+              Login to your staff dashboard to manage bookings, track bus locations and oversee passenger check-ins with speed.
+            </p>
+
+            <Link to="/staff/login">
+              <Button size="lg" className="bg-purple-700 text-white hover:bg-purple-600 px-10 py-6 rounded-full shadow-2xl shadow-purple-500/20">
+                Staff Login
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

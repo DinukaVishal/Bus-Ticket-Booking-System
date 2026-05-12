@@ -47,6 +47,7 @@ const StaffLogin = () => {
         busType: bus.bus_type,
         totalSeats: bus.total_seats,
         accessCode: bus.staff_access_code,
+        isActive: bus.is_active,
         loginTime: new Date().toISOString(),
       };
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import Header from '@/components/layout/Header';
@@ -20,6 +20,14 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -52,9 +60,10 @@ interface AnimatedBusProps {
   onSelect: () => void;
   liveLocation?: LiveBusLocation;
   allowSimulation?: boolean;
+  busNumber?: string;
 }
 
-const AnimatedBus = ({ route, mapInstance, isSelected, onSelect, liveLocation, allowSimulation = true }: AnimatedBusProps) => {
+const AnimatedBus = ({ route, mapInstance, isSelected, onSelect, liveLocation, allowSimulation = true, busNumber }: AnimatedBusProps) => {
   const markerRef = useRef<L.Marker | null>(null);
   const polylineRef = useRef<L.Polyline | null>(null);
 
@@ -126,6 +135,7 @@ const AnimatedBus = ({ route, mapInstance, isSelected, onSelect, liveLocation, a
           `<div class="text-center font-sans">
             <strong>${route.name}</strong><br/>
             <span class="text-xs">${route.from} → ${route.to}</span><br/>
+            ${busNumber ? `<span class="text-xs">Bus: ${busNumber}</span><br/>` : ''}
             <span class="text-xs">🕐 ${route.departureTime}</span>
           </div>`
         )
@@ -171,6 +181,7 @@ function LiveTracking() {
   const { user, isAdmin, isBusOwner } = useAuthContext();
   const { data: routes = [], isLoading } = useRoutes();
   const liveLocations = useLiveBusLocations();
+  const [searchParams] = useSearchParams();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
@@ -180,6 +191,22 @@ function LiveTracking() {
   const [selectedStop, setSelectedStop] = useState<string>('all');
   const [hasPermission, setHasPermission] = useState<boolean>(false);
   const [permissionChecked, setPermissionChecked] = useState<boolean>(false);
+  const [bookingDetails, setBookingDetails] = useState<{
+    id: string;
+    route_id: string;
+    date: string;
+    status: string;
+    trip_id: string;
+  } | null>(null);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewText, setReviewText] = useState('');
+  const [reviewPassengerName, setReviewPassengerName] = useState<string>(user?.user_metadata?.full_name || '');
+  const [reviewError, setReviewError] = useState<string>('');
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [reviewPrompted, setReviewPrompted] = useState(false);
+  const routeReviewId = searchParams.get('routeId');
+  const routeReviewName = searchParams.get('routeName') ?? '';
 
   // Check permissions for specific route tracking
   useEffect(() => {
@@ -221,12 +248,24 @@ function LiveTracking() {
       if (paramBookingId) {
         const { data: booking } = await supabase
           .from('bookings')
-          .select('id, route_id, user_id')
-          .eq('id', paramBookingId)
+          .select('id, booking_id, route_id, user_id, date, status, trip_id')
+          .eq('booking_id', paramBookingId)
           .eq('user_id', user.id)
           .maybeSingle();
 
-        setHasPermission(!!booking && booking.route_id === paramRouteId);
+        const hasBooking = !!booking && booking.route_id === paramRouteId;
+        setHasPermission(hasBooking);
+        setBookingDetails(
+          hasBooking
+            ? {
+                id: booking.booking_id,
+                route_id: booking.route_id,
+                date: booking.date,
+                status: booking.status,
+                trip_id: booking.trip_id,
+              }
+            : null
+        );
         setPermissionChecked(true);
         return;
       }
@@ -305,6 +344,207 @@ function LiveTracking() {
     [routes, selectedRouteId]
   );
 
+  // Get bus number for passenger's booking
+  const passengerBusNumber = useMemo(() => {
+    if (!selectedRoute || !bookingDetails?.trip_id) return null;
+    const trip = selectedRoute.trips?.find(t => t.id === bookingDetails.trip_id);
+    return trip?.busNumber || null;
+  }, [selectedRoute, bookingDetails]);
+
+  const selectedRoutePoints = useMemo(() => {
+    if (!selectedRoute) return [];
+    const from = findCityCoordinates(selectedRoute.from);
+    const to = findCityCoordinates(selectedRoute.to);
+    if (!from || !to) return [];
+    const viaCoords = (selectedRoute.viaPoints || [])
+      .map((name) => findCityCoordinates(name))
+      .filter((c): c is CityCoordinate => !!c);
+    return [from, ...viaCoords, to];
+  }, [selectedRoute]);
+
+  const selectedRouteStops = useMemo(() => {
+    if (!selectedRoute) return [];
+    const from = findCityCoordinates(selectedRoute.from);
+    const to = findCityCoordinates(selectedRoute.to);
+    if (!from || !to) return [];
+    const viaStops = (selectedRoute.viaPoints || [])
+      .map((name) => ({ name, coord: findCityCoordinates(name) }))
+      .filter((item): item is { name: string; coord: CityCoordinate } => !!item.coord);
+
+    return [
+      { name: selectedRoute.from, ...from },
+      ...viaStops.map((item) => ({ name: item.name, ...item.coord })),
+      { name: selectedRoute.to, ...to },
+    ];
+  }, [selectedRoute]);
+
+  const selectedLiveLocation = selectedRoute
+    ? liveLocations.find((l) => l.route_id === selectedRoute.id)
+    : undefined;
+
+  const selectedBusPosition = selectedLiveLocation
+    ? { lat: selectedLiveLocation.latitude, lng: selectedLiveLocation.longitude }
+    : null;
+
+  const currentBusLocationName = useMemo(() => {
+    if (!selectedBusPosition || selectedRouteStops.length === 0) return null;
+
+    const nearest = selectedRouteStops.reduce(
+      (best, stop, index) => {
+        const dist = haversine(
+          selectedBusPosition.lat,
+          selectedBusPosition.lng,
+          stop.lat,
+          stop.lng
+        );
+        return dist < best.distance ? { index, distance: dist, name: stop.name } : best;
+      },
+      { index: -1, distance: Infinity, name: '' }
+    );
+
+    if (nearest.index === -1) return null;
+    return nearest.distance <= 4 ? nearest.name : `Near ${nearest.name}`;
+  }, [selectedBusPosition, selectedRouteStops]);
+
+  const nextStopInfo = useMemo(() => {
+    if (!selectedBusPosition || selectedRouteStops.length === 0) {
+      return { name: null as string | null, eta: null as number | null };
+    }
+
+    const nearestIndex = selectedRouteStops.reduce((best, stop, index) => {
+      const dist = haversine(
+        selectedBusPosition.lat,
+        selectedBusPosition.lng,
+        stop.lat,
+        stop.lng
+      );
+      return dist < best.distance ? { index, distance: dist } : best;
+    }, { index: -1, distance: Infinity }).index;
+
+    const nextIndex = nearestIndex < selectedRouteStops.length - 1 ? nearestIndex + 1 : -1;
+    if (nextIndex === -1) {
+      return { name: null, eta: null };
+    }
+
+    const nextStop = selectedRouteStops[nextIndex];
+    const pendingDistance = haversine(
+      selectedBusPosition.lat,
+      selectedBusPosition.lng,
+      nextStop.lat,
+      nextStop.lng
+    );
+    const eta = Math.max(1, Math.round(pendingDistance / 0.6));
+    return { name: nextStop.name, eta };
+  }, [selectedBusPosition, selectedRouteStops]);
+
+  useEffect(() => {
+    if (!user?.id || !paramBookingId || !bookingDetails || reviewPrompted || !selectedRoute || !selectedBusPosition || selectedRoutePoints.length === 0) {
+      return;
+    }
+
+    if (bookingDetails.status !== 'confirmed') {
+      return;
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    if (bookingDetails.date !== today) {
+      return;
+    }
+
+    if (bookingDetails.route_id !== selectedRoute.id) {
+      return;
+    }
+
+    const destination = selectedRoutePoints[selectedRoutePoints.length - 1];
+    const distanceToDestination = haversine(
+      selectedBusPosition.lat,
+      selectedBusPosition.lng,
+      destination.lat,
+      destination.lng
+    );
+
+    if (distanceToDestination <= 1.0) {
+      setReviewPrompted(true);
+      setShowReviewDialog(true);
+    }
+  }, [paramBookingId, reviewPrompted, selectedRoute, selectedBusPosition, selectedRoutePoints, user, bookingDetails]);
+
+  useEffect(() => {
+    if (user?.user_metadata?.full_name) {
+      setReviewPassengerName(user.user_metadata.full_name);
+    }
+  }, [user]);
+
+  const currentRouteReviewId = selectedRoute?.id || routeReviewId;
+  const currentRouteReviewName = selectedRoute?.name || routeReviewName || selectedRoute?.from + ' → ' + selectedRoute?.to;
+
+  const renderRatingStars = (ratingValue: number, onSelect: (value: number) => void) => (
+    <div className="flex gap-1" role="radiogroup" aria-label="Rating">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <button
+          key={star}
+          type="button"
+          onClick={() => onSelect(star)}
+          className={`text-2xl transition ${star <= ratingValue ? 'text-yellow-400' : 'text-muted-foreground'}`}
+        >
+          ★
+        </button>
+      ))}
+    </div>
+  );
+
+  const handleReviewSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setReviewError('');
+
+    if (!user?.id) {
+      setReviewError('Please sign in to submit a review.');
+      return;
+    }
+
+    if (reviewRating < 1 || reviewRating > 5) {
+      setReviewError('Please select a rating between 1 and 5 stars.');
+      return;
+    }
+
+    if (!reviewText.trim()) {
+      setReviewError('Please describe your trip experience.');
+      return;
+    }
+
+    if (!reviewPassengerName.trim()) {
+      setReviewError('Please enter your name.');
+      return;
+    }
+
+    const { error } = await supabase.from('trip_reviews').insert([
+      {
+        user_id: user.id,
+        passenger_name: reviewPassengerName,
+        rating: reviewRating,
+        review_text: reviewText.trim(),
+        created_at: new Date().toISOString(),
+        route_id: currentRouteReviewId,
+        route_name: currentRouteReviewName,
+      },
+    ]);
+
+    if (error) {
+      setReviewError(error.message);
+      return;
+    }
+
+    toast({
+      title: 'Review submitted',
+      description: 'Thank you for sharing feedback about your trip.',
+    });
+
+    setShowReviewDialog(false);
+    setReviewSubmitted(true);
+    setReviewRating(0);
+    setReviewText('');
+  };
+
   // Init map
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -349,248 +589,307 @@ function LiveTracking() {
   };
 
   return (
-    <div className="min-h-screen bg-background/60 backdrop-blur-xl flex flex-col">
+    <div className="min-h-screen bg-slate-950 text-white">
       <Header />
 
-      <div className="flex-1 flex relative">
-        {/* Sidebar */}
-        <div className="w-80 bg-card border-r border-border flex flex-col z-10 overflow-hidden">
-          <div className="p-4 border-b border-border">
-            <div className="flex items-center gap-2 mb-1">
-              {paramRouteId && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/my-bookings')}
-                  className="p-1 mr-1"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                </Button>
-              )}
-              <Radio className="w-5 h-5 text-emerald-500 animate-pulse" />
-              <h2 className="font-display font-bold text-lg text-foreground">
-                {paramRouteId ? 'Track Your Bus' : 'Live Bus Tracking'}
-              </h2>
+      <div className="relative h-[calc(100vh-64px)]">
+        <div className="absolute inset-0 bg-slate-950/95" />
+        <div className="absolute inset-0 z-0">
+          <div ref={mapRef} className="w-full h-full" />
+        </div>
+
+        <div className="absolute left-6 bottom-6 z-50 flex w-[22rem] flex-col gap-4">
+          <div className="rounded-[32px] border border-white/10 bg-slate-950/85 p-5 shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-300">
+                <Radio className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-emerald-300/80">Live tracking</p>
+                <h1 className="mt-1 text-lg font-semibold text-white">
+                  {paramRouteId ? 'Track Your Bus' : 'Live Bus Tracking'}
+                </h1>
+              </div>
             </div>
-            {!permissionChecked ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Checking permissions...
-              </div>
-            ) : !hasPermission ? (
-              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-2 mt-2">
-                <p className="text-xs text-destructive font-medium">
-                  {paramRouteId ? 'You don\'t have permission to track this bus.' : 'Please sign in to view live tracking.'}
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 h-7 text-xs"
-                  onClick={() => navigate('/my-bookings')}
-                >
-                  Go to My Bookings
-                </Button>
-              </div>
-            ) : paramRouteId ? (
-              selectedRoute && liveLocations.find(l => l.route_id === selectedRoute.id) ? (
-                <div className="bg-primary/10 border border-primary/20 rounded-lg p-2 mt-2">
-                  <p className="text-xs text-primary font-medium">
-                    {isBusOwner
-                      ? 'Tracking your assigned bus route'
-                      : isAdmin
-                      ? 'Tracking this bus route'
-                      : 'Tracking your booked bus route'}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    📡 Live GPS tracking active
-                  </p>
+
+            <div className="mt-5 space-y-3 text-sm">
+              {!permissionChecked ? (
+                <div className="flex items-center gap-2 text-xs text-white/80">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Checking permissions...
                 </div>
+              ) : !hasPermission ? (
+                <div className="rounded-3xl border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-100">
+                  <p className="font-medium">
+                    {paramRouteId ? 'You don\'t have permission to track this bus.' : 'Please sign in to view live tracking.'}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-3 w-full border border-white/10 bg-white/10 text-white"
+                    onClick={() => navigate('/my-bookings')}
+                  >
+                    Go to My Bookings
+                  </Button>
+                </div>
+              ) : paramRouteId ? (
+                selectedRoute && liveLocations.find(l => l.route_id === selectedRoute.id) ? (
+                  <div className="rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+                    <p className="font-medium">
+                      {isBusOwner
+                        ? 'Tracking your assigned bus route'
+                        : isAdmin
+                        ? 'Tracking this bus route'
+                        : 'Tracking your booked bus route'}
+                    </p>
+                    <p className="mt-1 text-xs text-emerald-100/80">📡 Live GPS tracking active</p>
+                  </div>
+                ) : (
+                  <div className="rounded-3xl border border-amber-400/20 bg-amber-400/10 p-3 text-sm text-amber-100">
+                    <p className="font-medium">Live tracking unavailable for the moment</p>
+                    <p className="mt-1 text-xs text-amber-100/80">
+                      GPS tracking will be available when bus staff enables it
+                    </p>
+                  </div>
+                )
               ) : (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mt-2">
-                  <p className="text-xs text-amber-700 font-medium">
-                    Live tracking unavailable for the moment
-                  </p>
-                  <p className="text-xs text-amber-600 mt-1">
-                    GPS tracking will be available when bus staff enables it
-                  </p>
+                <p className="text-sm text-slate-200/80">
+                  සියලුම active buses real-time track කරන්න
+                </p>
+              )}
+            </div>
+
+            {!paramRouteId && hasPermission && (
+              <div className="mt-5 space-y-3">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
+                  <Input
+                    placeholder="Search route, city, bus type..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-10 rounded-3xl border border-white/10 bg-slate-950/75 px-10 text-sm text-white placeholder:text-slate-400"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
-              )
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                සියලුම active buses real-time track කරන්න
-              </p>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <Select value={trackingFilter} onValueChange={(v) => setTrackingFilter(v as 'all' | 'live' | 'simulated')}>
+                    <SelectTrigger className="h-10 rounded-3xl border border-white/10 bg-slate-950/80 text-sm text-white">
+                      <SelectValue placeholder="Tracking" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Buses</SelectItem>
+                      <SelectItem value="live">📡 Live GPS</SelectItem>
+                      <SelectItem value="simulated">🚌 Simulated</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={selectedStop} onValueChange={setSelectedStop}>
+                    <SelectTrigger className="h-10 rounded-3xl border border-white/10 bg-slate-950/80 text-sm text-white">
+                      <SelectValue placeholder="Bus Stop" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Stops</SelectItem>
+                      {allStops.map((stop) => (
+                        <SelectItem key={stop} value={stop.toLowerCase()}>
+                          📍 {stop}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             )}
           </div>
-
-          {/* Search & Filter - Only show for general tracking */}
-          {!paramRouteId && hasPermission && (
-            <div className="px-3 py-2 border-b border-border space-y-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Route, city, bus number..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-8 pl-8 pr-8 text-xs"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Select value={trackingFilter} onValueChange={(v) => setTrackingFilter(v as 'all' | 'live' | 'simulated')}>
-                  <SelectTrigger className="h-8 text-xs flex-1">
-                    <SelectValue placeholder="Tracking" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Buses</SelectItem>
-                    <SelectItem value="live">📡 Live GPS</SelectItem>
-                    <SelectItem value="simulated">🚌 Simulated</SelectItem>
-                  </SelectContent>
-                </Select>
-              <Select value={selectedStop} onValueChange={setSelectedStop}>
-                <SelectTrigger className="h-8 text-xs flex-1">
-                  <SelectValue placeholder="Bus Stop" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Stops</SelectItem>
-                  {allStops.map((stop) => (
-                    <SelectItem key={stop} value={stop.toLowerCase()}>
-                      📍 {stop}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="rounded-[32px] border border-white/10 bg-slate-950/80 shadow-2xl backdrop-blur-xl">
+            <div className="p-4 border-b border-white/10">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-300">
+                {paramRouteId ? 'Your bus' : 'Available buses'}
+              </p>
+              <p className="mt-1 text-base font-semibold text-white">
+                {paramRouteId ? 'Tracking the bus for your ticket' : 'Select a bus to view details'}
+              </p>
             </div>
-          </div>
-          )}
-
-          {isLoading ? (
-            <div className="flex-1 flex items-center justify-center">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            </div>
-          ) : (
-            <div className="flex-1 overflow-y-auto">
-              {filteredRoutes.map((route) => {
-                const isActive = route.id === selectedRouteId;
-                const config = BUS_TYPE_CONFIGS[route.busType];
-                const distance = getRouteDistance(route);
-                return (
-                  <button
-                    key={route.id}
-                    onClick={() =>
-                      setSelectedRouteId(isActive ? null : route.id)
-                    }
-                    className={`w-full text-left p-3 border-b border-border transition-colors ${
-                      isActive
-                        ? 'bg-primary/10 border-l-4 border-l-primary'
-                        : 'hover:bg-muted/50'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-sm text-foreground truncate">
-                          {route.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {route.from} → {route.to}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px] px-1.5 py-0"
-                          >
-                            {config?.name || route.busType}
-                          </Badge>
-                          {liveLocations.find(l => l.route_id === route.id) && (
-                            <Badge className="text-[10px] px-1.5 py-0 bg-amber-500 text-white">
-                              📡 LIVE GPS
-                            </Badge>
-                          )}
-                          <span className="text-[10px] text-muted-foreground">
-                            🕐 {route.departureTime}
-                          </span>
-                          {distance > 0 && (
-                            <span className="text-[10px] text-muted-foreground">
-                              📏 {distance}km
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex-shrink-0 mt-1">
-                        <div
-                          className={`w-3 h-3 rounded-full ${
-                            isActive ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/30'
-                          }`}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Expanded details when selected */}
-                    {isActive && (
-                      <div className="mt-3 pt-2 border-t border-border space-y-1.5">
-                        {route.viaPoints && route.viaPoints.length > 0 && (
-                          <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                            <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                            <span>Via: {route.viaPoints.join(' → ')}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-
-              {filteredRoutes.length === 0 && (
-                <div className="p-8 text-center text-muted-foreground">
-                  <Bus className="w-10 h-10 mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">{searchQuery ? 'No matching routes' : 'No active routes'}</p>
+            <div className="max-h-[calc(100vh-28rem)] overflow-y-auto">
+              {isLoading ? (
+                <div className="flex min-h-[18rem] items-center justify-center p-6">
+                  <Loader2 className="w-6 h-6 animate-spin text-white/80" />
                 </div>
+              ) : filteredRoutes.length === 0 ? (
+                <div className="p-8 text-center text-slate-300">
+                  <Bus className="mx-auto h-10 w-10 opacity-40" />
+                  <p className="mt-3 text-sm">{searchQuery ? 'No matching routes' : 'No active routes'}</p>
+                </div>
+              ) : (
+                filteredRoutes.map((route) => {
+                  const isActive = route.id === selectedRouteId;
+                  const config = BUS_TYPE_CONFIGS[route.busType];
+                  const distance = getRouteDistance(route);
+                  return (
+                    <button
+                      key={route.id}
+                      onClick={() => setSelectedRouteId(isActive ? null : route.id)}
+                      className={`w-full px-4 py-4 text-left transition ${
+                        isActive ? 'bg-white/10' : 'hover:bg-white/5'
+                      } ${isActive ? 'border-l-4 border-emerald-400' : 'border-l border-transparent'}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-white truncate">{route.name}</p>
+                          <p className="mt-1 text-xs text-slate-300 truncate">
+                            {route.from} → {route.to}
+                          </p>
+                          {paramRouteId && passengerBusNumber ? (
+                            <p className="mt-2 text-xs text-emerald-200">Bus number: <span className="font-semibold text-white">{passengerBusNumber}</span></p>
+                          ) : null}
+                          <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-300">
+                            <span className="rounded-full bg-white/10 px-2 py-1">{config?.name || route.busType}</span>
+                            {liveLocations.find((l) => l.route_id === route.id) && (
+                              <span className="rounded-full bg-amber-400/15 px-2 py-1 text-amber-200">📡 LIVE</span>
+                            )}
+                            <span className="rounded-full bg-white/10 px-2 py-1">{route.departureTime}</span>
+                            {distance > 0 && <span className="rounded-full bg-white/10 px-2 py-1">{distance} km</span>}
+                          </div>
+                        </div>
+                        <div className={`mt-1 h-3 w-3 rounded-full ${isActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500/60'}`} />
+                      </div>
+                    </button>
+                  );
+                })
               )}
             </div>
-          )}
-
-          <div className="p-3 border-t border-border bg-muted/30">
-            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>
-                {routes.length} bus{routes.length !== 1 ? 'es' : ''} •{' '}
-                {liveLocations.length} live GPS
-              </span>
-            </div>
           </div>
         </div>
 
-        {/* Map */}
-        <div className="flex-1 relative">
-          <div ref={mapRef} className="w-full h-full" />
+        {selectedRoute && (
+          <div className="absolute right-6 top-6 z-50 w-[24rem] rounded-[32px] border border-white/10 bg-white/95 p-6 shadow-2xl backdrop-blur-xl text-slate-900">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Route details</p>
+                <h2 className="mt-2 text-xl font-semibold">{selectedRoute.name}</h2>
+              </div>
+              <span className="rounded-2xl bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                {liveLocations.find((l) => l.route_id === selectedRoute.id) ? 'Live' : 'Simulated'}
+              </span>
+            </div>
 
-          {/* Render only selected bus, or all filtered if none selected */}
-          {mapReady && mapInstanceRef.current &&
-            (selectedRouteId
-              ? routes.filter(r => r.id === selectedRouteId)
-              : filteredRoutes
-            ).map((route) => (
-              <AnimatedBus
-                key={route.id}
-                route={route}
-                mapInstance={mapInstanceRef.current!}
-                isSelected={route.id === selectedRouteId}
-                onSelect={() =>
-                  setSelectedRouteId((prev) =>
-                    prev === route.id ? null : route.id
-                  )
-                }
-                liveLocation={liveLocations.find(l => l.route_id === route.id)}
-                allowSimulation={!paramRouteId} // Only allow simulation for general tracking, not specific route tracking
-              />
-            ))}
-        </div>
+            <div className="mt-5 space-y-4 text-sm text-slate-700">
+              <div className="rounded-3xl bg-slate-50 p-4">
+                <p className="text-xs text-slate-500">Route</p>
+                <p className="mt-1 font-medium">{selectedRoute.from} → {selectedRoute.to}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-3xl bg-slate-50 p-4">
+                  <p className="text-xs text-slate-500">Departure</p>
+                  <p className="mt-1 font-medium">{selectedRoute.departureTime}</p>
+                </div>
+                <div className="rounded-3xl bg-slate-50 p-4">
+                  <p className="text-xs text-slate-500">Bus type</p>
+                  <p className="mt-1 font-medium">{BUS_TYPE_CONFIGS[selectedRoute.busType]?.name || selectedRoute.busType}</p>
+                </div>
+              </div>
+              <div className="rounded-3xl bg-slate-50 p-4">
+                <p className="text-xs text-slate-500">Bus number</p>
+                <p className="mt-1 font-medium">{passengerBusNumber || 'Not assigned yet'}</p>
+              </div>
+              {selectedRoute.viaPoints && selectedRoute.viaPoints.length > 0 && (
+                <div className="rounded-3xl bg-slate-50 p-4">
+                  <p className="text-xs text-slate-500">Via stops</p>
+                  <p className="mt-1 text-sm text-slate-700">{selectedRoute.viaPoints.join(' → ')}</p>
+                </div>
+              )}
+              <div className="rounded-3xl bg-slate-50 p-4">
+                <p className="text-xs text-slate-500">Estimated distance</p>
+                <p className="mt-1 font-medium">{getRouteDistance(selectedRoute)} km</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {mapReady && mapInstanceRef.current &&
+          (selectedRouteId ? routes.filter((r) => r.id === selectedRouteId) : filteredRoutes).map((route) => (
+            <AnimatedBus
+              key={route.id}
+              route={route}
+              mapInstance={mapInstanceRef.current!}
+              isSelected={route.id === selectedRouteId}
+              onSelect={() =>
+                setSelectedRouteId((prev) =>
+                  prev === route.id ? null : route.id
+                )
+              }
+              liveLocation={liveLocations.find((l) => l.route_id === route.id)}
+              allowSimulation={!paramRouteId && (isAdmin || isBusOwner)} // Only allow simulation for admin/staff when GPS is off
+              busNumber={paramRouteId && route.id === paramRouteId ? passengerBusNumber : undefined}
+            />
+          ))}
+
+        <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Trip complete — leave a review</DialogTitle>
+              <DialogDescription>
+                Your bus has arrived at its final stop. Share your experience for this route.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-2">
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <p className="text-sm text-slate-600">Route</p>
+                <p className="font-semibold text-foreground">{currentRouteReviewName || 'Selected bus route'}</p>
+              </div>
+
+              <form onSubmit={handleReviewSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Name</label>
+                  <Input
+                    value={reviewPassengerName}
+                    onChange={(e) => setReviewPassengerName(e.target.value)}
+                    placeholder="Passenger name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Rating</label>
+                  {renderRatingStars(reviewRating, setReviewRating)}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Review</label>
+                  <textarea
+                    value={reviewText}
+                    onChange={(e) => setReviewText(e.target.value.slice(0, 500))}
+                    rows={4}
+                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    placeholder="What did you enjoy about this ride?"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {reviewText.length}/500 characters
+                  </p>
+                </div>
+
+                {reviewError ? (
+                  <p className="text-sm text-destructive">{reviewError}</p>
+                ) : null}
+
+                <DialogFooter className="justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={() => setShowReviewDialog(false)}>
+                    Close
+                  </Button>
+                  <Button type="submit" className="h-11">
+                    Submit Review
+                  </Button>
+                </DialogFooter>
+              </form>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

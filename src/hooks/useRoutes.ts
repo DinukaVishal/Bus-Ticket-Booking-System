@@ -54,13 +54,27 @@ export function useRoutes() {
         // including newly created routes and those that are not yet assigned to an approved bus.
         filteredRoutesData = routesData;
       } else {
-        // For passengers, show only routes that currently have active trips.
+        // For passengers, show only routes that currently have active trips
+        // and whose owner-route assignment is still active.
         const routesWithTrips = new Set(
           (tripsData || []).map(trip => trip.route_id)
         );
-        filteredRoutesData = routesData.filter(route => routesWithTrips.has(route.id));
+
+        const { data: activeOwnerRoutesData, error: ownerRoutesError } = await supabase
+          .from('owner_routes')
+        .select('route_id, owner_buses(is_active)')
+        .eq('is_active', true)
+        .eq('owner_buses.is_active', true);
+
+        const activeRouteIds = new Set(
+          (activeOwnerRoutesData || []).map((assignment: any) => assignment.route_id)
+        );
+
+        filteredRoutesData = routesData.filter(
+          route => routesWithTrips.has(route.id) && activeRouteIds.has(route.id)
+        );
       }
-      
+
       console.log('Filtered routes:', filteredRoutesData.length);
       
       // Map routes and group trips

@@ -48,6 +48,7 @@ interface StaffSession {
   busType: string;
   totalSeats: number;
   accessCode: string;
+  isActive: boolean;
   loginTime: string;
 }
 
@@ -104,7 +105,11 @@ const StaffDashboard = () => {
 
     try {
       const parsedSession = JSON.parse(session);
-      setStaffSession(parsedSession);
+      const normalizedSession = {
+        ...parsedSession,
+        isActive: parsedSession?.isActive ?? true,
+      };
+      setStaffSession(normalizedSession);
       loadTrips(parsedSession.busId);
     } catch (error) {
       console.error('Invalid session:', error);
@@ -243,19 +248,28 @@ const StaffDashboard = () => {
 
       <div className="flex-1 container mx-auto px-4 py-8 max-w-6xl animate-in fade-in slide-in-from-bottom-4 duration-500">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="font-display text-2xl font-extrabold text-foreground">
-              Staff Dashboard
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Bus: {staffSession.busNumber} • {staffSession.busType} • {staffSession.totalSeats} seats
-            </p>
+        <div className="flex flex-col gap-4 mb-8">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h1 className="font-display text-2xl font-extrabold text-foreground">
+                Staff Dashboard
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Bus: {staffSession.busNumber} • {staffSession.busType} • {staffSession.totalSeats} seats
+              </p>
+            </div>
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Logout
+            </Button>
           </div>
-          <Button variant="outline" onClick={handleLogout}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
-          </Button>
+
+          {!staffSession.isActive && (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              <span>The bus is currently inactive. Passengers cannot book or track this bus until it is reactivated.</span>
+            </div>
+          )}
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
