@@ -55,8 +55,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
 export const useTheme = () => {
   const context = useContext(ThemeContext);
+  // Prevent hard runtime crash if ThemeProvider is missing for any reason
+  // (e.g., partial reload/HMR/mount timing). Default to light.
   if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    return {
+      theme: 'light' as Theme,
+      toggleTheme: () => {},
+    };
   }
   return context;
 };
+
