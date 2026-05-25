@@ -103,70 +103,58 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Step Progress Bar with Animation */}
-      <div className="bg-card rounded-xl p-4 shadow-card">
-        <div className="flex items-center justify-between">
-          {STEPS.map((s, index) => (
-            <div key={s.id} className="flex items-center flex-1">
-              <button
-                type="button"
-                onClick={() => {
-                  // Allow going back to completed steps
-                  if (s.id < step) setStep(s.id);
-                }}
-                disabled={s.id > step}
-                className={cn(
-                  "flex flex-col items-center gap-2 transition-all",
-                  step === s.id ? "text-primary" : step > s.id ? "text-primary/70 cursor-pointer" : "text-muted-foreground"
-                )}
-              >
+    <div className="space-y-8">
+      <div className="rounded-[2rem] border border-white/10 bg-slate-700/80 p-5 shadow-2xl backdrop-blur-xl">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-[0.32em] text-sky-300 mb-2">Booking progress</p>
+            <h2 className="text-2xl font-display font-semibold text-white">Complete these few simple steps</h2>
+          </div>
+          <div className="rounded-full bg-white/10 px-4 py-2 text-sm text-slate-200">Step {step} of {STEPS.length}</div>
+        </div>
+
+        <div className="mt-6 grid gap-4">
+          <div className="grid gap-4 lg:grid-cols-5">
+            {STEPS.map((s, index) => (
+              <div key={s.id} className="flex items-center gap-3 rounded-3xl border border-white/10 bg-white/10 p-4">
                 <div className={cn(
-                  "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500 ease-out",
-                  step === s.id 
-                    ? "bg-primary text-primary-foreground scale-110 shadow-lg animate-pulse" 
-                    : step > s.id 
-                      ? "bg-primary/20 text-primary"
-                      : "bg-muted text-muted-foreground"
+                  "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300",
+                  step === s.id
+                    ? "bg-sky-500 text-white shadow-xl"
+                    : step > s.id
+                      ? "bg-slate-800 text-sky-300"
+                      : "bg-slate-800 text-slate-500"
                 )}>
                   {step > s.id ? (
-                    <Check className="w-6 h-6" />
+                    <Check className="w-5 h-5" />
                   ) : (
-                    <s.icon className="w-6 h-6" />
+                    <s.icon className="w-5 h-5" />
                   )}
                 </div>
-                <span className={cn(
-                  "text-xs font-medium transition-all",
-                  step === s.id ? "font-semibold" : ""
-                )}>
-                  {s.title}
-                </span>
-              </button>
-              {index < STEPS.length - 1 && (
-                <div className="flex-1 h-1 mx-3 rounded-full bg-muted overflow-hidden">
-                  <div 
-                    className={cn(
-                      "h-full bg-primary transition-all duration-500 ease-out",
-                      step > s.id ? "w-full" : "w-0"
-                    )} 
-                  />
+                <div className="min-w-0">
+                  <p className={cn("text-sm font-medium truncate", step === s.id ? 'text-white' : 'text-slate-300')}>
+                    {s.title}
+                  </p>
+                  <div className="h-1 rounded-full bg-slate-800 overflow-hidden mt-2">
+                    <div className={cn(
+                      "h-full bg-sky-500 transition-all duration-500",
+                      step > s.id ? 'w-full' : step === s.id ? 'w-1/2' : 'w-0'
+                    )} />
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Content Area */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Main Content */}
-        <div className="relative min-h-[600px]">
-          {/* Step 1: Route Selection */}
+      <div className="grid gap-6 lg:grid-cols-[1.8fr_0.9fr]">
+        <div className="relative min-h-[620px]">
           <div className={cn(
             "absolute inset-0 transition-all duration-500 ease-out",
             step === 1 ? "translate-x-0 opacity-100 pointer-events-auto" : step > 1 ? "-translate-x-full opacity-0 pointer-events-none" : "translate-x-full opacity-0 pointer-events-none"
           )}>
-            <div className="bg-card rounded-xl p-6 shadow-card h-full">
+            <div className="bg-slate-800/80 border border-white/10 rounded-[2rem] p-6 shadow-2xl backdrop-blur-xl h-full">
               <h2 className="text-xl font-display font-semibold mb-4 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-primary" />
                 Select Your Route
@@ -186,7 +174,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
             "absolute inset-0 transition-all duration-500 ease-out",
             step === 2 ? "translate-x-0 opacity-100 pointer-events-auto" : step > 2 ? "-translate-x-full opacity-0 pointer-events-none" : "translate-x-full opacity-0 pointer-events-none"
           )}>
-            <div className="bg-card rounded-xl p-6 shadow-card h-full">
+            <div className="bg-slate-800/80 border border-white/10 rounded-[2rem] p-6 shadow-2xl backdrop-blur-xl h-full">
               <h2 className="text-xl font-display font-semibold mb-4 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-primary" />
                 Select Travel Date
@@ -194,15 +182,15 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
               {selectedRoute && selectedTrip && (
                 <div className="mb-4 p-3 bg-muted/50 rounded-lg text-sm space-y-2">
                   <div>
-                    <span className="text-muted-foreground">Selected Route: </span>
+                    <span className="text-yellow-400">Selected Route: </span>
                     <span className="font-medium">{selectedRoute.from} → {selectedRoute.to}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Trip: </span>
+                    <span className="text-orange-400">Trip: </span>
                     <span className="font-medium">{selectedTrip.departureTime} - {selectedTrip.arrivalTime || 'TBA'}</span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Price: </span>
+                    <span className="text-red-300">Price: </span>
                     <span className="font-medium">LKR {selectedTrip.price.toLocaleString()}</span>
                   </div>
                 </div>
@@ -217,46 +205,48 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
             step === 3 ? "translate-x-0 opacity-100 pointer-events-auto" : step > 3 ? "-translate-x-full opacity-0 pointer-events-none" : "translate-x-full opacity-0 pointer-events-none"
           )}>
             <div className="space-y-4">
-              {seatsLoading ? (
-                <div className="bg-card rounded-xl p-12 shadow-card text-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-                  <p className="text-muted-foreground mt-4">Loading seats...</p>
-                </div>
-              ) : selectedRoute && selectedTrip && selectedDate ? (
-                <>
-                  <SeatLayout
-                    bookedSeats={bookedSeats}
-                    selectedSeats={selectedSeats}
-                    onSeatSelect={handleSeatSelect}
-                    totalSeats={selectedRoute.totalSeats}
-                    busType={selectedRoute.busType}
-                  />
-                  
-                  {selectedSeats.length > 0 && (
-                    <div className="bg-card rounded-xl p-4 shadow-card border animate-fade-in">
-                      <div className="flex items-center justify-between flex-wrap gap-4">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Selected Seats</p>
-                          <p className="font-semibold text-lg">
-                            {selectedSeats.join(', ')} ({selectedSeats.length} {selectedSeats.length === 1 ? 'seat' : 'seats'})
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Total Price</p>
-                          <p className="font-bold text-2xl text-primary">
-                            LKR {(selectedTrip?.price || 0) * selectedSeats.length}
-                          </p>
+              <div className="bg-slate-900/80 border border-white/10 rounded-[2rem] p-6 shadow-2xl backdrop-blur-xl h-full">
+                {seatsLoading ? (
+                  <div className="rounded-[1.75rem] bg-white/10 p-12 text-center text-slate-300 shadow-inner">
+                    <Loader2 className="w-8 h-8 animate-spin text-sky-400 mx-auto" />
+                    <p className="mt-4">Loading seats...</p>
+                  </div>
+                ) : selectedRoute && selectedTrip && selectedDate ? (
+                  <>
+                    <SeatLayout
+                      bookedSeats={bookedSeats}
+                      selectedSeats={selectedSeats}
+                      onSeatSelect={handleSeatSelect}
+                      totalSeats={selectedRoute.totalSeats}
+                      busType={selectedRoute.busType}
+                    />
+
+                    {selectedSeats.length > 0 && (
+                      <div className="rounded-[1.75rem] bg-white/10 p-4 shadow-xl border border-white/10 animate-fade-in">
+                        <div className="flex items-center justify-between flex-wrap gap-4">
+                          <div>
+                            <p className="text-sm text-slate-400">Selected Seats</p>
+                            <p className="font-semibold text-lg text-white">
+                              {selectedSeats.join(', ')} ({selectedSeats.length} {selectedSeats.length === 1 ? 'seat' : 'seats'})
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-slate-400">Total Price</p>
+                            <p className="font-bold text-2xl text-sky-300">
+                              LKR {(selectedTrip?.price || 0) * selectedSeats.length}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="bg-card rounded-xl p-12 shadow-card text-center">
-                  <Bus className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Please select a route, trip, and date first</p>
-                </div>
-              )}
+                    )}
+                  </>
+                ) : (
+                  <div className="rounded-[1.75rem] bg-white/10 p-12 text-center text-slate-400 shadow-inner">
+                    <Bus className="w-10 h-10 mx-auto mb-4 text-slate-300" />
+                    <p>Please select a route, trip, and date first</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -266,25 +256,58 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
             step === 4 ? "translate-x-0 opacity-100 pointer-events-auto" : "translate-x-full opacity-0 pointer-events-none"
           )}>
             {selectedRoute && selectedDate && selectedSeats.length > 0 && (
-              <BookingForm
-                route={selectedRoute}
-                date={selectedDate}
-                selectedSeats={selectedSeats}
-                onSubmit={handleBookingSubmit}
-                isSubmitting={addBookingsMutation.isPending}
-              />
+              <div className="bg-slate-900/60 border border-white/10 rounded-[2rem] p-6 shadow-2xl backdrop-blur-xl h-full">
+                <BookingForm
+                  route={selectedRoute}
+                  date={selectedDate}
+                  selectedSeats={selectedSeats}
+                  onSubmit={handleBookingSubmit}
+                  isSubmitting={addBookingsMutation.isPending}
+                />
+              </div>
             )}
           </div>
         </div>
 
-        {/* Route Map */}
         <div className="lg:sticky lg:top-4 h-fit">
-          <div className="bg-card rounded-xl shadow-card overflow-hidden">
-            <div className="p-4 border-b border-border">
+          <div className="rounded-[2rem] border border-white/10 bg-slate-900/80 shadow-2xl overflow-hidden backdrop-blur-xl">
+            <div className="p-5 border-b border-white/10">
               <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-primary" />
-                <h2 className="text-lg font-display font-semibold">Route Map</h2>
+                <MapPin className="w-5 h-5 text-sky-300" />
+                <h2 className="text-lg font-display font-semibold text-white">Route Overview</h2>
               </div>
+              {selectedRoute && selectedTrip ? (
+                <div className="mt-5 grid gap-3 rounded-[1.5rem] bg-white/10 p-4 text-sm text-slate-300">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-400">Route</span>
+                    <span className="font-semibold text-white">{selectedRoute.from} → {selectedRoute.to}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-400">Departure</span>
+                    <span className="font-semibold text-white">{selectedTrip.departureTime}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-400">Price</span>
+                    <span className="font-semibold text-sky-300">LKR {selectedTrip.price.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-slate-400">Bus Type</span>
+                    <span className="font-semibold text-white">{selectedRoute.busType}</span>
+                  </div>
+                  {selectedRoute.viaPoints?.length ? (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-slate-400">Intermediate stops</span>
+                      <span className="font-semibold text-white">
+                        {selectedRoute.viaPoints.length} stop{selectedRoute.viaPoints.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="mt-5 rounded-[1.5rem] bg-white/10 p-4 text-sm text-slate-400">
+                  Select a route and trip to preview the route map and summary.
+                </div>
+              )}
             </div>
             <RouteMap route={selectedRoute} selectedTrip={selectedTrip} className="h-[300px] lg:h-[400px]" />
           </div>
@@ -313,14 +336,13 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
         />
       )}
 
-      {/* Navigation Buttons */}
       {step < 5 && (
-        <div className="flex justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row justify-between">
           <Button
             variant="outline"
             onClick={handlePrev}
             disabled={step === 1}
-            className={cn("transition-all", step === 1 && "invisible")}
+            className={cn("transition-all w-full sm:w-auto", step === 1 && "invisible")}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
@@ -329,7 +351,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
           <Button
             onClick={handleNext}
             disabled={!canGoNext()}
-            className="px-8"
+            className="w-full sm:w-auto px-8 bg-gradient-to-r from-sky-500 to-sky-600 text-white shadow-lg hover:from-sky-400 hover:to-sky-500"
           >
             {step === 4 ? 'Proceed to Payment' : 'Continue'}
             <ArrowRight className="w-4 h-4 ml-2" />

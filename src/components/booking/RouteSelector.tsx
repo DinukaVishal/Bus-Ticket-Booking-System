@@ -77,7 +77,7 @@ const RouteSelector = ({ routes, selectedRoute, selectedTrip, onRouteSelect, onT
 
   return (
     <div className="space-y-4">
-      <label className="text-sm font-medium text-foreground ml-1">Select Route</label>
+      <label className="text-sm font-medium text-white ml-1">Select Route</label>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -129,6 +129,7 @@ const RouteSelector = ({ routes, selectedRoute, selectedTrip, onRouteSelect, onT
                         <span className="font-medium">{route.name}</span>
                         <span className="text-sm text-muted-foreground">
                           {route.from} → {route.to}
+                          {route.viaPoints?.length ? ` • ${route.viaPoints.length} stop${route.viaPoints.length === 1 ? '' : 's'}` : ''}
                         </span>
                       </div>
                       <span className={cn(
@@ -150,7 +151,7 @@ const RouteSelector = ({ routes, selectedRoute, selectedTrip, onRouteSelect, onT
       {/* Trip Selection */}
       {selectedRoute && (
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground ml-1">Select Travel Time</label>
+          <label className="text-white font-medium text-foreground ml-1">Select Travel Time</label>
           <Popover open={tripOpen} onOpenChange={setTripOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -308,7 +309,7 @@ const RouteSelector = ({ routes, selectedRoute, selectedTrip, onRouteSelect, onT
 
             {/* Price */}
             <div className="bg-gradient-to-r from-primary/10 to-transparent p-4 rounded-xl flex justify-between items-center border border-primary/20 transition-all duration-500 hover:scale-[1.02] hover:shadow-lg hover:from-primary/15">
-              <div className="text-sm font-semibold flex items-center gap-2.5">
+              <div className="text-red-500 font-semibold flex items-center gap-2.5">
                 <Banknote className="w-5 h-5 text-primary" /> Ticket Price
               </div>
               <div className="text-xl font-bold text-primary">
@@ -327,7 +328,7 @@ const RouteSelector = ({ routes, selectedRoute, selectedTrip, onRouteSelect, onT
                     <div className="flex items-center gap-3 p-3 bg-muted/10 rounded-lg border">
                       <User className="w-4 h-4 text-blue-500" />
                       <div>
-                        <p className="text-sm font-medium">{selectedTrip.driverName}</p>
+                        <p className="text-blue-500 font-medium">{selectedTrip.driverName}</p>
                         <p className="text-xs text-muted-foreground">Driver</p>
                         {selectedTrip.driverPhone && (
                           <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -341,7 +342,7 @@ const RouteSelector = ({ routes, selectedRoute, selectedTrip, onRouteSelect, onT
                     <div className="flex items-center gap-3 p-3 bg-muted/10 rounded-lg border">
                       <User className="w-4 h-4 text-green-500" />
                       <div>
-                        <p className="text-sm font-medium">{selectedTrip.conductorName}</p>
+                        <p className="text-green-500 font-medium">{selectedTrip.conductorName}</p>
                         <p className="text-xs text-muted-foreground">Conductor</p>
                         {selectedTrip.conductorPhone && (
                           <p className="text-xs text-muted-foreground flex items-center gap-1">

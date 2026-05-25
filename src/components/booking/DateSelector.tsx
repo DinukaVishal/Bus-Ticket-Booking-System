@@ -20,7 +20,7 @@ const DateSelector = ({ date, onDateSelect }: DateSelectorProps) => {
 
   return (
     <div className="space-y-4">
-      <label className="text-sm font-medium text-foreground">Select Travel Date</label>
+      <label className="text-white font-medium text-foreground">Select Travel Date</label>
       <Popover>
         <PopoverTrigger asChild>
           <Button

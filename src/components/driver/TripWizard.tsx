@@ -57,16 +57,22 @@ const TripWizard = ({
   const [step, setStep] = useState(1);
   const [driverName, setDriverName] = useState(defaultDriverName || existingTrips[0]?.driverName || '');
   const [conductorName, setConductorName] = useState(defaultConductorName || existingTrips[0]?.conductorName || '');
+  const alignStopArrivalTimes = (arrivalTimes: string[] = [], stops: string[] = []) => {
+    return stops.map((_, index) => arrivalTimes[index] || '');
+  };
+
+  const mapTripToData = (trip: Trip): TripData => ({
+    id: trip.id,
+    departureTime: trip.departureTime,
+    arrivalTime: trip.arrivalTime || '',
+    price: trip.price.toString(),
+    busNumber: trip.busNumber || bus.busNumber || '',
+    stopArrivalTimes: alignStopArrivalTimes(trip.stopArrivalTimes || [], route.viaPoints || []),
+  });
+
   const [trips, setTrips] = useState<TripData[]>(
     existingTrips.length > 0
-      ? existingTrips.map((trip) => ({
-          id: trip.id,
-          departureTime: trip.departureTime,
-          arrivalTime: trip.arrivalTime || '',
-          price: trip.price.toString(),
-          busNumber: trip.busNumber || bus.busNumber || '',
-          stopArrivalTimes: trip.stopArrivalTimes || route.viaPoints?.map(() => '') || [],
-        }))
+      ? existingTrips.map(mapTripToData)
       : [{
           departureTime: '',
           arrivalTime: '',
@@ -83,17 +89,10 @@ const TripWizard = ({
     setConductorName(defaultConductorName || existingTrips[0]?.conductorName || '');
     setTrips(
       existingTrips.length > 0
-        ? existingTrips.map((trip) => ({
-            id: trip.id,
-            departureTime: trip.departureTime,
-            arrivalTime: trip.arrivalTime || '',
-            price: trip.price.toString(),
-            busNumber: trip.busNumber || bus.busNumber || '',
-            stopArrivalTimes: trip.stopArrivalTimes || route.viaPoints?.map(() => '') || [],
-          }))
+        ? existingTrips.map(mapTripToData)
         : [createEmptyTrip()]
     );
-  }, [existingTrips, bus.busNumber]);
+  }, [existingTrips, bus.busNumber, route.id, JSON.stringify(route.viaPoints || [])]);
 
   const handleNext = () => {
     if (step < STEPS.length) setStep(step + 1);
@@ -123,7 +122,11 @@ const TripWizard = ({
     setTrips(trips.filter((_, i) => i !== index));
   };
 
-  const updateTrip = (index: number, field: keyof TripData, value: string) => {
+  const updateTrip = (
+    index: number,
+    field: Exclude<keyof TripData, 'stopArrivalTimes'>,
+    value: string
+  ) => {
     const newTrips = [...trips];
     newTrips[index][field] = value;
     setTrips(newTrips);
@@ -176,8 +179,8 @@ const TripWizard = ({
             driver_name: driverName,
             conductor_name: conductorName,
           };
-          if (route.viaPoints?.length && trip.stopArrivalTimes?.some((time) => time)) {
-            updateRow.via_stop_arrival_times = trip.stopArrivalTimes;
+          if (route.viaPoints?.length) {
+            updateRow.via_stop_arrival_times = alignStopArrivalTimes(trip.stopArrivalTimes, route.viaPoints);
           }
           if (bus.id && includeBusId !== false) {
             if (isOwnerBus) {
@@ -218,8 +221,8 @@ const TripWizard = ({
             driver_name: driverName,
             conductor_name: conductorName,
           };
-          if (route.viaPoints?.length && trip.stopArrivalTimes?.some((time) => time)) {
-            insertRow.via_stop_arrival_times = trip.stopArrivalTimes;
+          if (route.viaPoints?.length) {
+            insertRow.via_stop_arrival_times = alignStopArrivalTimes(trip.stopArrivalTimes, route.viaPoints);
           }
           if (bus.id && includeBusId !== false) {
             if (isOwnerBus) {

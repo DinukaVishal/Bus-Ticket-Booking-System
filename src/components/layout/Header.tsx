@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Bus, LayoutDashboard, LogOut, User, Ticket, MessageCircle, Radio, Navigation, ChevronDown, UserCircle, ShieldCheck, Moon, Sun } from 'lucide-react';
+import { Bus, LayoutDashboard, LogOut, User, Ticket, Radio, Navigation, ChevronDown, UserCircle, ShieldCheck, Moon, Sun } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -28,6 +28,7 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
   const { user, profile, isAdmin, signOut } = useAuthContext();
   const { theme, toggleTheme } = useTheme();
   const scrollPosition = useScrollPosition();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Determine if header should be transparent (only on home page and when scrolled less than 100px)
   const isTransparent = isHomePage && scrollPosition < 100;
@@ -80,9 +81,22 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
             <span>QuickBus</span>
           </Link>
 
+          {/* Mobile menu toggle */}
+          {!isStaff && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setMobileMenuOpen((open) => !open)}
+              className="sm:hidden p-2 h-10 w-10 rounded-lg text-white hover:bg-white/10 transition-colors"
+              aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            >
+              <Navigation className="w-5 h-5" />
+            </Button>
+          )}
+
           {/* Navigation */}
           {!isStaff && (
-            <nav className="flex items-center gap-1 md:gap-2">
+            <nav className="hidden sm:flex items-center gap-1 md:gap-2">
               <Link
                 to="/booking"
                 className={cn(
@@ -93,19 +107,6 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
                 )}
               >
                 Book Tickets
-              </Link>
-
-              <Link
-                to="/reviews"
-                className={cn(
-                  'px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
-                  location.pathname === '/reviews'
-                    ? 'bg-white/20'
-                    : 'hover:bg-white/10'
-                )}
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span className="hidden sm:inline">Reviews</span>
               </Link>
 
               {user && (
@@ -232,6 +233,77 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
             </nav>
           )}
         </div>
+
+        {!isStaff && mobileMenuOpen && (
+          <div className="sm:hidden mt-3 rounded-3xl border border-white/10 bg-slate-950/95 p-4 shadow-2xl shadow-black/20 backdrop-blur-xl">
+            <div className="flex flex-col gap-2">
+              <Link
+                to="/booking"
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  'block px-4 py-3 rounded-2xl text-sm font-medium transition-colors',
+                  location.pathname === '/booking' || location.pathname === '/' ? 'bg-white/10' : 'hover:bg-white/10'
+                )}
+              >
+                Book Tickets
+              </Link>
+              {user && (
+                <Link
+                  to="/my-bookings"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    'block px-4 py-3 rounded-2xl text-sm font-medium transition-colors',
+                    location.pathname === '/my-bookings' ? 'bg-white/10' : 'hover:bg-white/10'
+                  )}
+                >
+                  My Bookings
+                </Link>
+              )}
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    'block px-4 py-3 rounded-2xl text-sm font-medium transition-colors',
+                    location.pathname === '/admin' ? 'bg-rose-500/20 text-rose-100' : 'hover:bg-white/10'
+                  )}
+                >
+                  Admin Dashboard
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  toggleTheme();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full text-left px-4 py-3 rounded-2xl text-sm font-medium transition-colors hover:bg-white/10"
+              >
+                {theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+              </button>
+              {!user ? (
+                <Link
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-3 rounded-2xl text-sm font-medium transition-colors hover:bg-white/10"
+                >
+                  Login
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleSignOut();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-3 rounded-2xl text-sm font-semibold text-destructive transition-colors hover:bg-white/10"
+                >
+                  Sign out
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );
