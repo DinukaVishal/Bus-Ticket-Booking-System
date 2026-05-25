@@ -138,12 +138,16 @@
   }
 
   .page-shell.page-bg {
-    background-image: url('/quickbus-bg.jpg');
+    background-image: url('/light.jpg');
     background-color: transparent;
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
     background-attachment: fixed;
+  }
+
+  .dark .page-shell.page-bg {
+    background-image: url('/dark.jpg');
   }
 
   .bg-card {
@@ -238,6 +242,12 @@
     filter: blur(60px);
   }
 
+  /* Stronger background blur for the booking flow to reduce distraction */
+  .page-shell.booking-blur::after {
+    filter: blur(88px);
+    opacity: 0.55;
+  }
+
   .hover-card {
     @apply transition-transform duration-300 ease-out hover:-translate-y-1 hover:shadow-card-hover;
   }
@@ -250,6 +260,21 @@
 
   .animate-scale-in {
     animation: scaleIn 0.2s ease-out;
+  }
+
+  .animate-theme-shift {
+    animation: themeShift 0.5s ease-in-out;
+  }
+
+  @keyframes themeShift {
+    0% {
+      opacity: 0.92;
+      transform: scale(0.98);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
 
   .animate-slide-up {
