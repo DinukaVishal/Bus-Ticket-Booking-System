@@ -47,6 +47,7 @@ export function useBookings() {
         seatNumber: booking.seat_number,
         passengerName: booking.passenger_name,
         phoneNumber: booking.phone_number,
+        guestEmail: booking.guest_email,
         status: booking.status as BookingStatus,
         createdAt: booking.created_at,
         completedAt: booking.completed_at,
@@ -102,6 +103,7 @@ export function useMyBookings() {
         seatNumber: booking.seat_number,
         passengerName: booking.passenger_name,
         phoneNumber: booking.phone_number,
+        guestEmail: booking.guest_email,
         status: booking.status as BookingStatus,
         createdAt: booking.created_at,
         completedAt: booking.completed_at,
@@ -142,9 +144,8 @@ export function useBookedSeats(routeId: string | undefined, date: string | undef
     queryFn: async (): Promise<number[]> => {
       if (!routeId || !date) return [];
       
-      // Use the secure RPC function that only returns seat numbers (no personal data)
       const { data, error } = await supabase
-        .rpc('get_booked_seats', {
+        .rpc('get_blocked_seats', {
           _route_id: routeId,
           _date: date,
         });
@@ -159,6 +160,41 @@ export function useBookedSeats(routeId: string | undefined, date: string | undef
   });
 }
 
+export function useSeatHolds() {
+  const queryClient = useQueryClient();
+
+  const holdSeats = useMutation({
+    mutationFn: async (input: { routeId: string; date: string; seatNumbers: number[]; holdToken: string }) => {
+      const { data, error } = await supabase.rpc('hold_seats', {
+        _route_id: input.routeId,
+        _date: input.date,
+        _seat_numbers: input.seatNumbers,
+        _hold_token: input.holdToken,
+      });
+      if (error) throw error;
+      return (data ?? []).map((row: { seat_number: number | string }) => Number(row.seat_number));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['booked-seats'] });
+    },
+  });
+
+  const releaseHold = useMutation({
+    mutationFn: async (holdToken: string) => {
+      const { error } = await supabase.rpc('release_hold', {
+        _hold_token: holdToken,
+      });
+      if (error) throw error;
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['booked-seats'] });
+    },
+  });
+
+  return { holdSeats, releaseHold };
+}
+
 async function generateBookingId(): Promise<string> {
   const randomNum = Math.floor(100000 + Math.random() * 900000);
   return `BK${randomNum}`;
@@ -171,6 +207,7 @@ interface MultipleBookingInput {
   seatNumbers: number[];
   passengerName: string;
   phoneNumber: string;
+  guestEmail?: string | null;
   status: BookingStatus;
 }
 
@@ -179,16 +216,11 @@ export function useAddMultipleBookings() {
   
   return useMutation({
     mutationFn: async (input: MultipleBookingInput): Promise<Booking[]> => {
-      // Get the current user
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('You must be logged in to make a booking.');
-      }
+      const userId = user?.id ?? null;
 
-      // Generate a unique base booking ID
       const baseId = `BK${Math.floor(100000 + Math.random() * 900000)}`;
       
-      // Prepare all bookings
       const bookingsToInsert = input.seatNumbers.map((seatNumber, index) => ({
         booking_id: `${baseId}-${index + 1}`,
         route_id: input.routeId,
@@ -197,8 +229,9 @@ export function useAddMultipleBookings() {
         seat_number: seatNumber,
         passenger_name: input.passengerName,
         phone_number: input.phoneNumber,
+        guest_email: input.guestEmail ?? null,
         status: input.status,
-        user_id: user.id,
+        user_id: userId,
       }));
 
       const { data, error } = await supabase
@@ -222,6 +255,7 @@ export function useAddMultipleBookings() {
         seatNumber: booking.seat_number,
         passengerName: booking.passenger_name,
         phoneNumber: booking.phone_number,
+        guestEmail: booking.guest_email,
         status: booking.status as BookingStatus,
         createdAt: booking.created_at,
         completedAt: booking.completed_at,
@@ -239,12 +273,9 @@ export function useAddBooking() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (booking: Omit<Booking, 'id' | 'createdAt'>): Promise<Booking> => {
-      // Get the current user
+    mutationFn: async (booking: Omit<Booking, 'id' | 'createdAt'> & { guestEmail?: string | null }): Promise<Booking> => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('You must be logged in to make a booking.');
-      }
+      const userId = user?.id ?? null;
       
       const bookingId = await generateBookingId();
       
@@ -258,8 +289,9 @@ export function useAddBooking() {
           seat_number: booking.seatNumber,
           passenger_name: booking.passengerName,
           phone_number: booking.phoneNumber,
+          guest_email: booking.guestEmail ?? null,
           status: booking.status,
-          user_id: user.id,
+          user_id: userId,
         })
         .select()
         .single();
@@ -280,6 +312,7 @@ export function useAddBooking() {
         seatNumber: data.seat_number,
         passengerName: data.passenger_name,
         phoneNumber: data.phone_number,
+        guestEmail: data.guest_email,
         status: data.status as BookingStatus,
         createdAt: data.created_at,
         completedAt: data.completed_at,

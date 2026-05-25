@@ -2,6 +2,7 @@ import { Booking, Route } from '@/types/booking';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Home, Ticket, Download } from 'lucide-react';
 import { generateTicketPDF } from '@/lib/pdfTicketGenerator';
+import { useLanguageContext } from '@/contexts/LanguageContext';
 
 interface BookingConfirmationProps {
   bookings: Booking[];
@@ -10,6 +11,7 @@ interface BookingConfirmationProps {
 }
 
 const BookingConfirmation = ({ bookings, route, onNewBooking }: BookingConfirmationProps) => {
+  const { t } = useLanguageContext();
   const firstBooking = bookings[0];
   const seatNumbers = bookings.map(b => b.seatNumber).sort((a, b) => a - b);
   const totalPrice = route.price * bookings.length;
@@ -23,13 +25,10 @@ const BookingConfirmation = ({ bookings, route, onNewBooking }: BookingConfirmat
         </div>
 
         <h2 className="text-2xl font-display font-bold text-foreground mb-2">
-          Booking Confirmed!
+          {t('booking.confirmed')}
         </h2>
         <p className="text-muted-foreground mb-6">
-          {bookings.length === 1 
-            ? 'Your seat has been successfully reserved'
-            : `Your ${bookings.length} seats have been successfully reserved`
-          }
+          {bookings.length === 1 ? t('booking.successOne') : t('booking.successMany')}
         </p>
 
         {/* Ticket Card */}
@@ -116,16 +115,16 @@ const BookingConfirmation = ({ bookings, route, onNewBooking }: BookingConfirmat
             variant="default"
           >
             <Download className="w-4 h-4 mr-2" />
-            Download Ticket{bookings.length > 1 ? 's' : ''} (PDF)
+            {t('booking.download')}{bookings.length > 1 ? 's' : ''} (PDF)
           </Button>
           <Button onClick={onNewBooking} variant="outline" className="w-full h-12">
             <Home className="w-4 h-4 mr-2" />
-            Book Another Ticket
+            {t('booking.bookAnother')}
           </Button>
         </div>
 
         <p className="text-xs text-muted-foreground mt-6">
-          Please save your booking {bookings.length === 1 ? 'ID' : 'IDs'} for future reference
+          {t('booking.saveId')}
         </p>
       </div>
     </div>

@@ -4,6 +4,7 @@ import BookingWizard from '@/components/booking/BookingWizard';
 import BookingConfirmation from '@/components/booking/BookingConfirmation';
 import { Route, Booking } from '@/types/booking';
 import { useRoutes } from '@/hooks/useRoutes';
+import { useLanguageContext } from '@/contexts/LanguageContext';
 import { Bus, Loader2 } from 'lucide-react';
 
 const Index = () => {
@@ -35,6 +36,8 @@ const Index = () => {
     );
   }
 
+  const { t } = useLanguageContext();
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -45,11 +48,11 @@ const Index = () => {
           <div className="flex items-center justify-center gap-3 mb-4">
             <Bus className="w-10 h-10" />
             <h1 className="text-3xl md:text-4xl font-display font-bold">
-              Book Your Bus Ticket
+              {t('hero.title')}
             </h1>
           </div>
           <p className="text-primary-foreground/80 max-w-md mx-auto">
-            Select your route, pick a date, and choose your preferred seats for a comfortable journey
+            {t('hero.subtitle')}
           </p>
         </div>
       </section>

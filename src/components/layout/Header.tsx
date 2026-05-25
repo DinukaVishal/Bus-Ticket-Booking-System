@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Bus, LayoutDashboard, LogOut, User, Ticket, Radio, Navigation, ChevronDown, UserCircle, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useLanguageContext } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -43,6 +44,8 @@ const Header = () => {
     return 'U';
   };
 
+  const { t, locale, setLocale, availableLocales } = useLanguageContext();
+
   return (
     <header className="gradient-hero text-primary-foreground sticky top-0 z-50">
       <div className="container mx-auto px-4">
@@ -64,7 +67,7 @@ const Header = () => {
                   : 'hover:bg-white/10'
               )}
             >
-              Book Tickets
+              {t('nav.bookTickets')}
             </Link>
 
             <Link
@@ -77,7 +80,7 @@ const Header = () => {
               )}
             >
               <Radio className="w-4 h-4" />
-              <span className="hidden sm:inline">Live Track</span>
+              <span className="hidden sm:inline">{t('nav.liveTrack')}</span>
             </Link>
 
             {user && (
@@ -91,7 +94,7 @@ const Header = () => {
                 )}
               >
                 <Ticket className="w-4 h-4" />
-                <span className="hidden sm:inline">My Bookings</span>
+                <span className="hidden sm:inline">{t('nav.myBookings')}</span>
               </Link>
             )}
 
@@ -106,9 +109,23 @@ const Header = () => {
                 )}
               >
                 <Navigation className="w-4 h-4" />
-                <span className="hidden sm:inline">Driver</span>
+                <span className="hidden sm:inline">{t('nav.driver')}</span>
               </Link>
             )}
+
+            {availableLocales.map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setLocale(lang)}
+                className={cn(
+                  'px-2 py-1 rounded-lg text-xs font-semibold transition-colors',
+                  locale === lang ? 'bg-white/20 text-white' : 'bg-white/10 text-muted-foreground hover:bg-white/20'
+                )}
+              >
+                {lang.toUpperCase()}
+              </button>
+            ))}
             
             {isAdmin && (
               <Link
@@ -119,7 +136,7 @@ const Header = () => {
                 )}
               >
                 <LayoutDashboard className="w-4 h-4" />
-                <span className="hidden sm:inline">Admin</span>
+                <span className="hidden sm:inline">{t('nav.admin')}</span>
               </Link>
             )}
 
@@ -180,7 +197,7 @@ const Header = () => {
                   <DropdownMenuItem asChild className="p-0">
                     <Link to="/profile" className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg cursor-pointer hover:bg-muted group">
                       <UserCircle className="w-4 h-4 text-muted-foreground transition-colors group-hover:text-primary" />
-                      My Account Profile
+                      {t('nav.profile')}
                     </Link>
                   </DropdownMenuItem>
                   
@@ -197,14 +214,14 @@ const Header = () => {
                   
                   <DropdownMenuItem onClick={handleSignOut} className="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-destructive rounded-lg cursor-pointer hover:bg-destructive/10 group">
                     <LogOut className="w-4 h-4 text-destructive transition-colors group-hover:translate-x-1" />
-                    Sign out
+                    {t('nav.signOut')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
               <div className="flex items-center gap-2 ml-2">
                 <Button variant="ghost" asChild className="text-white hover:bg-white/10 hover:text-white">
-                  <Link to="/login">Login</Link>
+                  <Link to="/login">{t('nav.login')}</Link>
                 </Button>
               </div>
             )}

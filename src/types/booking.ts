@@ -28,6 +28,7 @@ export interface Booking {
   seatNumber: number;
   passengerName: string;
   phoneNumber: string;
+  guestEmail?: string | null;
   status: BookingStatus;
   createdAt: string;
   completedAt?: string | null;

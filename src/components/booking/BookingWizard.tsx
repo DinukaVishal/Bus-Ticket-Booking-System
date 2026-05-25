@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Route, Booking } from '@/types/booking';
-import { useBookedSeats, useAddMultipleBookings } from '@/hooks/useBookings';
+import { useBookedSeats, useAddMultipleBookings, useSeatHolds } from '@/hooks/useBookings';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { useLanguageContext } from '@/contexts/LanguageContext';
+import { sendBookingEmail } from '@/lib/emailService';
+import { generateTicketPDF } from '@/lib/pdfTicketGenerator';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { 
@@ -27,18 +31,25 @@ interface BookingWizardProps {
   onBookingComplete: (bookings: Booking[], route: Route) => void;
 }
 
-const STEPS = [
-  { id: 1, title: 'Route', icon: MapPin },
-  { id: 2, title: 'Date', icon: Calendar },
-  { id: 3, title: 'Seats', icon: Armchair },
-  { id: 4, title: 'Details', icon: UserCircle },
-];
-
 const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
   const [step, setStep] = useState(1);
   const [selectedRoute, setSelectedRoute] = useState<Route | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedSeats, setSelectedSeats] = useState<number[]>([]);
+  const [holdToken, setHoldToken] = useState<string | null>(null);
+  const [holdExpiresAt, setHoldExpiresAt] = useState<Date | null>(null);
+  const [isHoldingSeats, setIsHoldingSeats] = useState(false);
+
+  const { user } = useAuthContext();
+  const { t } = useLanguageContext();
+  const { holdSeats, releaseHold } = useSeatHolds();
+
+  const steps = [
+    { id: 1, title: t('steps.route'), icon: MapPin },
+    { id: 2, title: t('steps.date'), icon: Calendar },
+    { id: 3, title: t('steps.seats'), icon: Armchair },
+    { id: 4, title: t('steps.details'), icon: UserCircle },
+  ];
 
   const dateStr = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : undefined;
   const { data: bookedSeats = [], isLoading: seatsLoading } = useBookedSeats(selectedRoute?.id, dateStr);
@@ -59,7 +70,83 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
     });
   };
 
-  const handleBookingSubmit = async (data: { passengerName: string; phoneNumber: string }) => {
+  const clearHold = async () => {
+    if (!holdToken) return;
+    try {
+      await releaseHold.mutateAsync(holdToken);
+    } catch {
+      // Ignore release failures during cleanup
+    } finally {
+      setHoldToken(null);
+      setHoldExpiresAt(null);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (holdToken) {
+        releaseHold.mutate(holdToken, {
+          onError: () => undefined,
+        });
+      }
+    };
+  }, [holdToken]);
+
+  useEffect(() => {
+    if (!holdExpiresAt) return;
+
+    const timer = window.setInterval(() => {
+      if (holdExpiresAt && Date.now() >= holdExpiresAt.getTime()) {
+        setHoldToken(null);
+        setHoldExpiresAt(null);
+        toast({
+          title: 'Seat Hold Expired',
+          description: 'Your seat hold has expired. Please reselect seats.',
+          variant: 'destructive',
+        });
+        setStep(3);
+      }
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [holdExpiresAt]);
+
+  const formatHoldTimer = () => {
+    if (!holdExpiresAt) return '00:00';
+    const seconds = Math.max(0, Math.floor((holdExpiresAt.getTime() - Date.now()) / 1000));
+    const minutes = Math.floor(seconds / 60);
+    const remaining = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${remaining.toString().padStart(2, '0')}`;
+  };
+
+  const ensureSeatHold = async () => {
+    if (!selectedRoute || !selectedDate || selectedSeats.length === 0) return;
+
+    if (holdToken && holdExpiresAt && Date.now() < holdExpiresAt.getTime()) {
+      return;
+    }
+
+    await clearHold();
+    const token = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    const seats = await holdSeats.mutateAsync({
+      routeId: selectedRoute.id,
+      date: dateStr!,
+      seatNumbers: selectedSeats,
+      holdToken: token,
+    });
+
+    if (seats.length !== selectedSeats.length) {
+      throw new Error('Some seats are already unavailable. Please select different seats.');
+    }
+
+    setHoldToken(token);
+    setHoldExpiresAt(new Date(Date.now() + 10 * 60 * 1000));
+  };
+
+  const handleBookingSubmit = async (data: { passengerName: string; phoneNumber: string; email?: string }) => {
     if (!selectedRoute || !selectedDate || selectedSeats.length === 0) return;
 
     try {
@@ -70,8 +157,41 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
         seatNumbers: selectedSeats,
         passengerName: data.passengerName,
         phoneNumber: data.phoneNumber,
+        guestEmail: data.email ?? user?.email ?? null,
         status: 'confirmed',
       });
+
+      if (holdToken) {
+        try {
+          await releaseHold.mutateAsync(holdToken);
+        } catch {
+          // ignore release errors after successful booking
+        }
+      }
+
+      const tickets = bookings.map((booking) => ({ booking, route: selectedRoute }));
+      await generateTicketPDF(tickets);
+
+      const recipientEmail = data.email || user?.email;
+      if (recipientEmail) {
+        const emailSent = await sendBookingEmail({
+          to_name: data.passengerName,
+          to_email: recipientEmail,
+          booking_id: bookings.map((b) => b.id).join(', '),
+          route_name: selectedRoute.name,
+          date: dateStr!,
+          seats: selectedSeats.join(', '),
+          total_price: `LKR ${(selectedRoute.price || 0) * selectedSeats.length}`,
+        });
+
+        toast({
+          title: emailSent ? 'Confirmation email sent' : 'Email notification failed',
+          description: emailSent
+            ? 'Your booking confirmation has been emailed.'
+            : 'Your booking is confirmed but email notification did not send.',
+          variant: emailSent ? 'default' : 'destructive',
+        });
+      }
 
       onBookingComplete(bookings, selectedRoute);
     } catch (error: any) {
@@ -82,6 +202,9 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
       });
       setStep(3);
       setSelectedSeats([]);
+      if (holdToken) {
+        await clearHold();
+      }
     }
   };
 
@@ -94,8 +217,28 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
     }
   };
 
-  const handleNext = () => {
-    if (step < STEPS.length && canGoNext()) {
+  const handleNext = async () => {
+    if (!canGoNext()) return;
+
+    if (step === 3) {
+      setIsHoldingSeats(true);
+      try {
+        await ensureSeatHold();
+        setStep(step + 1);
+      } catch (error: any) {
+        toast({
+          title: t('hold.waiting'),
+          description: error?.message || t('submit.failed'),
+          variant: 'destructive',
+        });
+        setStep(3);
+      } finally {
+        setIsHoldingSeats(false);
+      }
+      return;
+    }
+
+    if (step < steps.length) {
       setStep(step + 1);
     }
   };
@@ -109,7 +252,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
       {/* Step Progress Bar with Animation */}
       <div className="bg-card rounded-xl p-4 shadow-card">
         <div className="flex items-center justify-between">
-          {STEPS.map((s, index) => (
+          {steps.map((s, index) => (
             <div key={s.id} className="flex items-center flex-1">
               <button
                 type="button"
@@ -144,7 +287,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
                   {s.title}
                 </span>
               </button>
-              {index < STEPS.length - 1 && (
+              {index < steps.length - 1 && (
                 <div className="flex-1 h-1 mx-3 rounded-full bg-muted overflow-hidden">
                   <div 
                     className={cn(
@@ -171,7 +314,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
             <div className="bg-card rounded-xl p-6 shadow-card h-full">
               <h2 className="text-xl font-display font-semibold mb-4 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-primary" />
-                Select Your Route
+                  {t('steps.route')}
               </h2>
               <RouteSelector
                 routes={routes}
@@ -189,7 +332,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
             <div className="bg-card rounded-xl p-6 shadow-card h-full">
               <h2 className="text-xl font-display font-semibold mb-4 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-primary" />
-                Select Travel Date
+                  {t('steps.date')}
               </h2>
               {selectedRoute && (
                 <div className="mb-4 p-3 bg-muted/50 rounded-lg text-sm">
@@ -210,7 +353,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
               {seatsLoading ? (
                 <div className="bg-card rounded-xl p-12 shadow-card text-center">
                   <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto" />
-                  <p className="text-muted-foreground mt-4">Loading seats...</p>
+                  <p className="text-muted-foreground mt-4">{t('loading.seats')}</p>
                 </div>
               ) : selectedRoute && selectedDate ? (
                 <>
@@ -244,7 +387,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
               ) : (
                 <div className="bg-card rounded-xl p-12 shadow-card text-center">
                   <Bus className="w-10 h-10 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Please select a route and date first</p>
+                  <p className="text-muted-foreground">{t('selectRouteFirst')}</p>
                 </div>
               )}
             </div>
@@ -256,13 +399,22 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
             step === 4 ? "translate-x-0 opacity-100 pointer-events-auto" : "translate-x-full opacity-0 pointer-events-none"
           )}>
             {selectedRoute && selectedDate && selectedSeats.length > 0 && (
-              <BookingForm
-                route={selectedRoute}
-                date={selectedDate}
-                selectedSeats={selectedSeats}
-                onSubmit={handleBookingSubmit}
-                isSubmitting={addBookingsMutation.isPending}
-              />
+              <div className="space-y-4">
+                {holdExpiresAt && (
+                  <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm text-primary font-medium">
+                      {t('form.seatHold')} <span className="font-semibold">{formatHoldTimer()}</span>.
+                  </div>
+                )}
+
+                <BookingForm
+                  route={selectedRoute}
+                  date={selectedDate}
+                  selectedSeats={selectedSeats}
+                  onSubmit={handleBookingSubmit}
+                  isSubmitting={addBookingsMutation.isPending}
+                  userEmail={user?.email ?? undefined}
+                />
+              </div>
             )}
           </div>
         </div>
@@ -291,15 +443,15 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
             className={cn("transition-all", step === 1 && "invisible")}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
+            {t('button.back')}
           </Button>
           
           <Button
             onClick={handleNext}
-            disabled={!canGoNext()}
+            disabled={!canGoNext() || isHoldingSeats}
             className="px-8"
           >
-            Continue
+            {isHoldingSeats ? t('hold.waiting') : t('button.continue')}
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         </div>
