@@ -1,16 +1,8 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,13 +18,10 @@ import { useMyBookings, useUpdateBookingStatus } from '@/hooks/useBookings';
 import { useRoutes } from '@/hooks/useRoutes';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { Ticket, Loader2, Calendar, MapPin, Armchair, XCircle, Download, User, Trash2, Radio } from 'lucide-react';
+import { Ticket, Loader2, Calendar, Armchair, XCircle, Download, User, Trash2, Radio } from 'lucide-react';
 import { generateTicketPDF } from '@/lib/pdfTicketGenerator';
 import { Booking } from '@/types/booking';
-import QRCode from "react-qr-code";
 import { supabase } from '@/integrations/supabase/client';
-
-const QRCodeComponent = (QRCode as any)?.default ?? QRCode;
 
 const MyBookings = () => {
   const { data: bookings = [], isLoading, refetch } = useMyBookings();
@@ -42,23 +31,17 @@ const MyBookings = () => {
   const [cancellingGroupKey, setCancellingGroupKey] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Debug logging
-  console.log('MyBookings - user:', user?.id, 'bookings:', bookings.length, 'isLoading:', isLoading, 'routes:', routes.length);
-  console.log('MyBookings - bookings data:', bookings);
-  console.log('MyBookings - user object:', user);
-
   // If not authenticated, show message
   if (!user && !isLoading) {
-    console.log('MyBookings - showing auth message');
     return (
-      <div className="min-h-screen bg-background/60 backdrop-blur-xl">
+      <div className="min-h-screen page-shell page-bg bg-fixed booking-blur text-foreground">
         <Header />
-        <main className="container mx-auto px-4 py-8">
-          <div className="bg-card rounded-xl p-12 shadow-card text-center">
-            <h3 className="text-lg font-display font-semibold text-foreground mb-2">
-              Please sign in to view your bookings
-            </h3>
-            <Button onClick={() => window.location.href = '/login'} className="mt-4">
+        <div className="absolute inset-0 pointer-events-none bg-black/10 backdrop-blur-lg" />
+        <main className="relative z-10 container mx-auto px-4 py-10">
+          <div className="rounded-[2rem] border border-white/10 bg-slate-950/80 p-12 shadow-2xl text-center">
+            <h3 className="text-2xl font-display font-semibold text-white mb-4">Please sign in to view your bookings</h3>
+            <p className="text-slate-400 mb-6">Access your booking history, download tickets, and manage upcoming trips when you are signed in.</p>
+            <Button onClick={() => window.location.href = '/login'} className="bg-sky-500 text-white hover:bg-sky-400">
               Sign In
             </Button>
           </div>
@@ -67,22 +50,20 @@ const MyBookings = () => {
     );
   }
 
-  // Show loading state
   if (isLoading) {
-    console.log('MyBookings - showing loading state');
     return (
-      <div className="min-h-screen bg-background/60 backdrop-blur-xl">
+      <div className="min-h-screen page-shell page-bg bg-fixed booking-blur text-foreground">
         <Header />
-        <main className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="absolute inset-0 pointer-events-none bg-black/10 backdrop-blur-lg" />
+        <main className="relative z-10 container mx-auto px-4 py-10">
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-10 h-10 animate-spin text-sky-400" />
           </div>
         </main>
       </div>
     );
   }
 
-  // --- GROUPING LOGIC ---
   const groupedBookings = bookings.reduce((groups: any, booking: Booking) => {
     const identifier = booking.tripId || booking.routeId || booking.routeName;
     const key = `${identifier}-${booking.date}-${booking.status}`;
@@ -103,10 +84,6 @@ const MyBookings = () => {
   }, {});
 
   const bookingGroups = Object.values(groupedBookings) as any[];
-
-  console.log('MyBookings - bookingGroups:', bookingGroups.length, bookingGroups);
-
-  // ----------------------------------------------
 
   const handleDownloadTicket = (group: any) => {
     const route = routes.find(r => r.id === group.routeId) || routes.find(r => r.name === group.routeName);
@@ -129,15 +106,15 @@ const MyBookings = () => {
   const handleCancelGroup = async (groupKey: string, bookingIds: string[]) => {
     setCancellingGroupKey(groupKey);
     try {
-      await Promise.all(bookingIds.map(id => 
+      await Promise.all(bookingIds.map(id =>
         updateStatusMutation.mutateAsync({ bookingId: id, status: 'cancelled' })
       ));
-      
+
       toast({
         title: 'Booking Cancelled',
         description: 'Your bookings have been cancelled successfully.',
       });
-      refetch(); 
+      refetch();
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -159,126 +136,110 @@ const MyBookings = () => {
       if (error) throw error;
       
       toast({ title: 'Deleted', description: 'Booking history removed.' });
-      refetch(); 
+      refetch();
     } catch (error: any) {
       console.error('Delete error:', error);
       toast({ title: 'Error', description: 'Failed to delete.', variant: 'destructive' });
     }
   };
 
-  // Upcoming Trips
   const upcomingGroups = bookingGroups.filter(
     (g) => g.status === 'confirmed' && new Date(g.date) >= new Date(new Date().toDateString())
   );
 
-  // Past & Cancelled Trips
   const pastGroups = bookingGroups.filter(
     (g) => g.status !== 'confirmed' || new Date(g.date) < new Date(new Date().toDateString())
   );
 
-  console.log('MyBookings - upcomingGroups:', upcomingGroups.length, 'pastGroups:', pastGroups.length);
-
   return (
-    <div className="min-h-screen bg-background/60 backdrop-blur-xl">
+    <div className="min-h-screen page-shell page-bg bg-fixed booking-blur text-foreground">
       <Header />
+      <div className="absolute inset-0 pointer-events-none bg-black/10 backdrop-blur-lg" />
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="flex items-center gap-3 mb-8">
-          <Ticket className="w-8 h-8 text-primary" />
-          <h1 className="text-2xl md:text-3xl font-display font-bold">My Bookings</h1>
+      <main className="relative z-10 container mx-auto px-4 py-10">
+        <div className="rounded-[2rem] border border-white/10 bg-slate-950/80 p-6 shadow-2xl backdrop-blur-xl mb-10">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-2 rounded-full bg-sky-500/10 px-4 py-2 text-sm text-sky-200 mb-3">
+                <Ticket className="w-4 h-4" />
+                Your booking dashboard
+              </div>
+              <h1 className="text-white text-3xl md:text-4xl font-display font-bold">My Bookings</h1>
+              <p className="mt-3 text-slate-300 leading-7">
+                View confirmed trips, download tickets, and manage your upcoming journeys from one place.
+              </p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Upcoming</p>
+                <p className="mt-3 text-3xl font-semibold text-white">{upcomingGroups.length}</p>
+              </div>
+              <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
+                <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Past / Cancelled</p>
+                <p className="mt-3 text-3xl font-semibold text-white">{pastGroups.length}</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        ) : bookingGroups.length === 0 ? (
-          <div className="bg-card rounded-xl p-12 shadow-card text-center">
-            <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
-              <Ticket className="w-10 h-10 text-muted-foreground" />
+        {bookingGroups.length === 0 ? (
+          <div className="rounded-[2rem] border border-white/10 bg-slate-950/80 p-12 text-center shadow-2xl">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/5">
+              <Ticket className="w-10 h-10 text-sky-300" />
             </div>
-            <h3 className="text-lg font-display font-semibold text-foreground mb-2">
-              No Bookings Yet
-            </h3>
-            <p className="text-muted-foreground max-w-sm mx-auto mb-6">
-              You haven't made any bookings yet. Start by booking your first bus ticket!
+            <h3 className="text-2xl font-semibold text-white mb-3">No bookings found</h3>
+            <p className="text-slate-400 max-w-lg mx-auto mb-6">
+              You don't have any bookings yet. Start your journey by reserving a ticket now.
             </p>
-            <Button onClick={() => window.location.href = '/'}>
+            <Button onClick={() => window.location.href = '/'} className="bg-sky-500 text-white hover:bg-sky-400">
               Book a Ticket
             </Button>
           </div>
         ) : (
-          <div className="space-y-8">
-            {/* Upcoming Bookings */}
+          <div className="space-y-10">
             {upcomingGroups.length > 0 && (
               <section>
-                <h2 className="text-lg font-display font-semibold mb-4 flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-primary" />
-                  Upcoming Trips ({upcomingGroups.length})
-                </h2>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <h2 className="text-2xl font-display font-semibold">Upcoming trips</h2>
+                    <p className="text-slate-400 mt-1">Manage upcoming travel plans and download your tickets.</p>
+                  </div>
+                  <Badge variant="secondary">{upcomingGroups.length} active</Badge>
+                </div>
+
+                <div className="mt-6 grid gap-6 xl:grid-cols-2">
                   {upcomingGroups.map((group, index) => {
                     const identifier = group.tripId || group.routeId || group.routeName;
                     const groupKey = `${identifier}-${group.date}-${group.status}`;
                     return (
-                      <div
-                        key={index}
-                        className="bg-card rounded-xl p-6 shadow-card border-l-4 border-primary relative overflow-hidden"
-                      >
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-lg">{group.routeName}</h3>
-                            <p className="text-xs text-muted-foreground mt-1 break-all">
-                              IDs: {group.bookingIds.join(', ')}
-                            </p>
+                      <div key={index} className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-start">
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline">Upcoming</Badge>
+                              <span className="text-sm text-slate-400">{group.status === 'cancelled' ? 'Cancelled' : 'Confirmed'}</span>
+                            </div>
+                            <h3 className="text-xl font-semibold text-white">{group.routeName}</h3>
+                            <p className="text-sm text-slate-400">Booking IDs: {group.bookingIds.join(', ')}</p>
                           </div>
-                          
-                          <div className="bg-white p-1.5 rounded-lg border border-gray-100 ml-2 shadow-sm shrink-0">
-                            <QRCodeComponent 
-                              size={64}
-                              style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                              value={`IDs: ${group.bookingIds.join(', ')} | Seats: ${group.seatNumbers.join(', ')}`}
-                              viewBox={`0 0 256 256`}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="space-y-2 mb-4">
-                          <div className="flex items-center gap-2 text-sm">
-                            <Calendar className="w-4 h-4 text-muted-foreground" />
-                            <span>
-                              {new Date(group.date).toLocaleDateString('en-US', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                              })}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-start gap-2 text-sm">
-                            <Armchair className="w-4 h-4 text-muted-foreground mt-0.5" />
-                            <div>
-                              <span className="font-semibold text-primary">
-                                Seats: {group.seatNumbers.sort((a:number, b:number) => a - b).map((s:number) => `#${s}`).join(', ')}
-                              </span>
-                              <span className="text-xs text-muted-foreground ml-2">
-                                ({group.seatNumbers.length} seats)
-                              </span>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-3xl bg-slate-950/80 p-4 text-sm text-slate-300">
+                              <div className="flex items-center gap-2 text-slate-400 mb-2"><Calendar className="w-4 h-4" /> Date</div>
+                              <p>{new Date(group.date).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                            </div>
+                            <div className="rounded-3xl bg-slate-950/80 p-4 text-sm text-slate-300">
+                              <div className="flex items-center gap-2 text-slate-400 mb-2"><Armchair className="w-4 h-4" /> Seats</div>
+                              <p>{group.seatNumbers.sort((a:number, b:number) => a - b).map((s:number) => `#${s}`).join(', ')}</p>
                             </div>
                           </div>
-
-                          <div className="flex items-center gap-2 text-sm">
-                            <User className="w-4 h-4 text-muted-foreground" />
-                            <span>{group.passengerName}</span>
-                          </div>
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="mt-6 grid gap-4 sm:grid-cols-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            className="flex-1"
+                            className="w-full"
                             onClick={() => navigate(`/tracking/${group.routeId}/${group.bookingIds[0]}`)}
                           >
                             <Radio className="w-4 h-4 mr-2" />
@@ -287,29 +248,31 @@ const MyBookings = () => {
                           <Button
                             variant="default"
                             size="sm"
-                            className="flex-1"
+                            className="w-full bg-sky-500 text-white hover:bg-sky-400"
                             onClick={() => handleDownloadTicket(group)}
                           >
                             <Download className="w-4 h-4 mr-2" />
-                            Download
+                            Download Ticket
                           </Button>
+                        </div>
+
+                        <div className="mt-4">
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="flex-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                                className="w-full border-destructive text-destructive hover:bg-destructive/10"
                               >
                                 <XCircle className="w-4 h-4 mr-2" />
-                                Cancel
+                                Cancel Booking
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Cancel this booking?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to cancel bookings for seats: <b>{group.seatNumbers.join(', ')}</b>? 
-                                  This action cannot be undone.
+                                  Are you sure you want to cancel seats <strong>{group.seatNumbers.join(', ')}</strong> for this trip? This action cannot be undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -324,7 +287,7 @@ const MyBookings = () => {
                                       Cancelling...
                                     </>
                                   ) : (
-                                    'Yes, Cancel All'
+                                    'Yes, Cancel'
                                   )}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
@@ -338,114 +301,66 @@ const MyBookings = () => {
               </section>
             )}
 
-            {/* Past & Cancelled Bookings */}
             {pastGroups.length > 0 && (
               <section>
-                <h2 className="text-lg font-display font-semibold mb-4 text-muted-foreground">
-                  Past & Cancelled Bookings ({pastGroups.length})
-                </h2>
-                <div className="bg-card rounded-xl shadow-card overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Booking IDs</TableHead>
-                          <TableHead>Route</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Seats</TableHead>
-                          <TableHead>Status</TableHead>
-                          {/* මෙන්න වෙනස: text-right අයින් කළා */}
-                          <TableHead>Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {pastGroups.map((group, index) => (
-                          <TableRow key={index} className="opacity-70">
-                            <TableCell className="font-mono text-xs max-w-[150px] truncate" title={group.bookingIds.join(', ')}>
-                              {group.bookingIds.join(', ')}
-                            </TableCell>
-                            <TableCell>{group.routeName}</TableCell>
-                            <TableCell>
-                              {new Date(group.date).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric',
-                              })}
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              {group.seatNumbers.sort((a:number, b:number) => a - b).map((s:number) => `#${s}`).join(', ')}
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={group.status === 'cancelled' ? 'destructive' : 'secondary'}
-                              >
-                                {group.status === 'confirmed' ? 'Completed' : 'Cancelled'}
-                              </Badge>
-                            </TableCell>
-                            {/* මෙන්න වෙනස: text-right අයින් කළා */}
-                            <TableCell>
-                              <Button 
-                                size="icon" 
-                                variant="ghost" 
-                                className="h-8 w-8 text-red-500 hover:bg-red-50" 
-                                onClick={() => handleDeleteHistory(group.bookingIds)}
-                                title="Remove from history"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <h2 className="text-2xl font-display font-semibold">Past & cancelled trips</h2>
+                    <p className="text-slate-400 mt-1">Review completed journeys or remove old records from history.</p>
                   </div>
+                  <Badge variant="secondary">{pastGroups.length} records</Badge>
                 </div>
-              </section>
-            )}
 
-            {bookingGroups.length > 0 && upcomingGroups.length === 0 && pastGroups.length === 0 && (
-              <section>
-                <h2 className="text-lg font-display font-semibold mb-4">
-                  Your Bookings ({bookingGroups.length})
-                </h2>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {bookingGroups.map((group, index) => {
-                    const identifier = group.tripId || group.routeId || group.routeName;
-                    return (
-                      <div
-                        key={index}
-                        className="bg-card rounded-xl p-6 shadow-card border-l-4 border-primary relative overflow-hidden"
-                      >
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-lg">{group.routeName}</h3>
-                            <p className="text-xs text-muted-foreground mt-1 break-all">
-                              IDs: {group.bookingIds.join(', ')}
-                            </p>
-                          </div>
+                <div className="mt-6 grid gap-6 xl:grid-cols-2">
+                  {pastGroups.map((group, index) => (
+                    <div key={index} className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <h3 className="text-xl font-semibold text-white">{group.routeName}</h3>
+                          <p className="text-sm text-slate-400 mt-1">Booking IDs: {group.bookingIds.join(', ')}</p>
                         </div>
-                        <div className="space-y-2 mb-4 text-sm">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-muted-foreground" />
-                            <span>{group.date}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Armchair className="w-4 h-4 text-muted-foreground" />
-                            <span>{group.seatNumbers.sort((a:number, b:number) => a - b).map((s:number) => `#${s}`).join(', ')}</span>
-                          </div>
+                        <Badge variant={group.status === 'cancelled' ? 'destructive' : 'secondary'}>
+                          {group.status === 'cancelled' ? 'Cancelled' : 'Completed'}
+                        </Badge>
+                      </div>
+
+                      <div className="mt-5 grid gap-3 sm:grid-cols-3 text-sm text-slate-300">
+                        <div className="rounded-3xl bg-slate-950/80 p-4">
+                          <div className="text-slate-400 mb-2 flex items-center gap-2"><Calendar className="w-4 h-4" /> Date</div>
+                          <p>{new Date(group.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                         </div>
+                        <div className="rounded-3xl bg-slate-950/80 p-4">
+                          <div className="text-slate-400 mb-2 flex items-center gap-2"><Armchair className="w-4 h-4" /> Seats</div>
+                          <p>{group.seatNumbers.sort((a:number, b:number) => a - b).map((s:number) => `#${s}`).join(', ')}</p>
+                        </div>
+                        <div className="rounded-3xl bg-slate-950/80 p-4">
+                          <div className="text-slate-400 mb-2 flex items-center gap-2"><User className="w-4 h-4" /> Passenger</div>
+                          <p>{group.passengerName}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                         <Button
                           variant="default"
                           size="sm"
-                          className="w-full"
+                          className="w-full bg-sky-500 text-white hover:bg-sky-400"
                           onClick={() => handleDownloadTicket(group)}
                         >
                           <Download className="w-4 h-4 mr-2" />
                           Download Ticket
                         </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-destructive border-destructive/30 hover:bg-destructive/10"
+                          onClick={() => handleDeleteHistory(group.bookingIds)}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Remove from history
+                        </Button>
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               </section>
             )}

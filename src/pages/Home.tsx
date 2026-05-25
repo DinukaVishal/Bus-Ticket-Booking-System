@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/layout/Header';
 import { Bus, ShieldCheck, Clock, MapPin, Search, CreditCard, ChevronRight, Star } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useRoutes } from '@/hooks/useRoutes';
 import HomeSearchPanel from '@/components/booking/HomeSearchPanel';
@@ -9,26 +10,32 @@ import HomeSearchPanel from '@/components/booking/HomeSearchPanel';
 const Home = () => {
   const { theme } = useTheme();
   const { data: routes = [] } = useRoutes();
+  const [themeShift, setThemeShift] = useState(false);
+
+  const backgroundImage = theme === 'dark' ? '/dark.jpg' : '/light.jpg';
+
+  useEffect(() => {
+    setThemeShift(true);
+    const timeout = window.setTimeout(() => setThemeShift(false), 700);
+    return () => window.clearTimeout(timeout);
+  }, [theme]);
+
   return (
-    <div className="min-h-screen relative bg-[url('/quickbus-bg.jpg')] bg-cover bg-center bg-fixed bg-slate-950/70 backdrop-blur-xl flex flex-col font-sans">
+    <div 
+      className={`min-h-screen relative bg-cover bg-center bg-fixed backdrop-blur-xl flex flex-col font-sans transition-all duration-700 ease-in-out ${themeShift ? 'animate-theme-shift' : ''}`}
+      style={{
+        backgroundImage: `url('${backgroundImage}')`
+      }}
+    >
       <Header isHomePage={true} />
       {/* 1. Hero Section (Video Background සමඟ) */}
       <section className="relative text-white py-24 lg:py-32 overflow-hidden flex items-center min-h-[85vh]">
         
         {/* --- Background Video --- */}
-        <video 
-          autoPlay 
-          loop 
-          muted 
-          playsInline
-          className="absolute top-0 left-0 w-full h-full object-cover z-0"
-        >
-          {/* මෙතනට ඔයාගේ වීඩියෝ එකේ නම දෙන්න */}
-          <source src="/qickvideo12.mp4" type="video/mp4" />
-        </video>
+        
 
         {/* --- Dark Overlay (වීඩියෝ එක උඩින් අකුරු පැහැදිලිව පේන්න) --- */}
-        <div className={`absolute inset-0 z-10 ${theme === 'dark' ? 'bg-slate-950/70' : 'bg-blue-950/60'}`}></div>
+        <div className={`absolute inset-0 z-10 transition-colors duration-700 ease-in-out ${theme === 'dark' ? 'bg-slate-950/80' : 'bg-blue-950/50'}`}></div>
 
         {/* --- Content --- */}
         <div className="container mx-auto px-4 text-center relative z-20 mt-10">
@@ -37,11 +44,11 @@ const Home = () => {
             <span className="text-sm font-medium tracking-wide">Sri Lanka's #1 Bus Booking Platform</span>
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight drop-shadow-lg">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold mb-6 tracking-tight drop-shadow-lg">
             Travel Made <span className="text-blue-300">Simple.</span>
           </h1>
           
-          <p className="text-lg md:text-2xl mb-10 opacity-90 max-w-2xl mx-auto font-light drop-shadow-md">
+          <p className="text-base sm:text-lg md:text-2xl mb-10 opacity-90 max-w-2xl mx-auto font-light drop-shadow-md">
             Book your bus tickets online easily, securely, and travel across Sri Lanka with comfort.
           </p>
           
@@ -49,7 +56,7 @@ const Home = () => {
           <Link to="/booking">
             <Button 
               size="lg" 
-              className="bg-white text-blue-900 hover:bg-blue-50 font-bold text-lg px-8 py-7 rounded-full shadow-2xl transition-all duration-300 hover:scale-105 hover:-translate-y-1 group"
+              className="bg-white text-blue-900 hover:bg-blue-50 font-bold text-lg px-6 py-5 sm:px-8 sm:py-7 rounded-full shadow-2xl transition-all duration-300 hover:scale-105 hover:-translate-y-1 group"
             >
               Book Your Ticket Now
               <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -59,7 +66,7 @@ const Home = () => {
       </section>
 
       {/* Search Panel Section */}
-      <section className="py-24 bg-slate-700/80">
+      <section className="py-24 bg-slate-900/80">
         <div className="container mx-auto px-4 max-w-5xl">
           <HomeSearchPanel routes={routes} />
         </div>
@@ -147,7 +154,7 @@ const Home = () => {
       </section>
 
       {/* 4. Business Growth Section */}
-      <section className="py-24 bg-gradient-to-r from-slate-950 to-slate-800 text-white">
+      <section className="py-24 bg-gradient-to-r from-slate-950/90 to-slate-800/90 text-white">
         <div className="container mx-auto px-4">
           <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] items-center">
             <div>
@@ -182,7 +189,7 @@ const Home = () => {
               </Button>
             </Link>
             <Link to="/bus-owner/login">
-              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-5 rounded-full font-semibold">
+              <Button size="lg" variant="outline" className="border-white text-gray-700 hover:bg-white/30 px-8 py-5 rounded-full font-semibold">
                 Bus Owner Login
               </Button>
             </Link>
