@@ -1,18 +1,18 @@
 import emailjs from '@emailjs/browser';
 
-// ඔයා එවපු ID ටික මෙතනට දැම්මා
-const SERVICE_ID = 'service_ykszbo5';
-const TEMPLATE_ID = 'template_sv8cszt';
-const PUBLIC_KEY = '-ug6GxoH7K-TEVr1R';
+// EmailJS credentials (ONLY these)
+const SERVICE_ID = 'service_xwropsr';
+const TEMPLATE_ID = 'template_zrjlh4n';
+const PUBLIC_KEY = 'Ahm9lFuZR_Fkr485u';
 
-interface EmailData {
+export interface EmailData {
   to_name: string;
   to_email: string;
-  booking_id: string;
-  route_name: string;
-  date: string;
-  seats: string;
-  total_price: string;
+  ticket_id: string;
+  seat_no: string;
+  route: string;
+  travel_date: string;
+  payment_amount: string;
 }
 
 export const sendBookingEmail = async (data: EmailData) => {
@@ -21,17 +21,18 @@ export const sendBookingEmail = async (data: EmailData) => {
       SERVICE_ID,
       TEMPLATE_ID,
       {
+        // Must match EmailJS template EXACT variable names
         to_name: data.to_name,
-        // Template එකේ තියෙන නම් වලට ගැලපෙන්න ඕන
         to_email: data.to_email,
-        route_name: data.route_name,
-        date: data.date,
-        seats: data.seats,
-        booking_id: data.booking_id,
-        total_price: data.total_price,
+        ticket_id: data.ticket_id,
+        seat_no: data.seat_no,
+        route: data.route,
+        travel_date: data.travel_date,
+        payment_amount: data.payment_amount,
       },
       PUBLIC_KEY
     );
+
     console.log('EMAIL SUCCESS!', response.status, response.text);
     return true;
   } catch (err) {
@@ -39,3 +40,4 @@ export const sendBookingEmail = async (data: EmailData) => {
     return false;
   }
 };
+
