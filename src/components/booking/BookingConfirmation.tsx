@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Booking, Route, Trip } from '@/types/booking';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Home, Ticket, Download } from 'lucide-react';
+import { CheckCircle, Home, Ticket, Download, Mail } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
 import { generateTicketPDF } from '@/lib/pdfTicketGenerator';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -13,7 +15,9 @@ interface BookingConfirmationProps {
 }
 
 const BookingConfirmation = ({ bookings, route, trip, onNewBooking }: BookingConfirmationProps) => {
+  const navigate = useNavigate();
   const firstBooking = bookings[0];
+
   const seatNumbers = bookings.map(b => b.seatNumber).sort((a, b) => a - b);
   const totalPrice = trip.price * bookings.length;
   const [routeReviewCount, setRouteReviewCount] = useState(0);
@@ -175,11 +179,36 @@ const BookingConfirmation = ({ bookings, route, trip, onNewBooking }: BookingCon
             <Download className="w-4 h-4 mr-2" />
             Download Ticket{bookings.length > 1 ? 's' : ''} (PDF)
           </Button>
+
+          <Button
+            onClick={() => {
+              const first = bookings[0];
+              navigate('/notification', {
+                state: {
+                  bookingDetails: {
+                    ticket_id: first?.id ? String(first.id) : '',
+                    seat_no: bookings.length === 1 ? String(first?.seatNumber ?? '') : bookings.map(b => String(b.seatNumber)).join(', '),
+                    route: first?.routeName ?? route?.name ?? '',
+                    travel_date: first?.date ?? '',
+                    payment_amount: String(trip?.price * bookings.length),
+                    to_name: first?.passengerName ?? '',
+                  },
+                },
+              });
+            }}
+            className="w-full h-12"
+            variant="outline"
+          >
+            <Mail className="w-4 h-4 mr-2" />
+            Send Ticket Email
+          </Button>
+
           <Button onClick={onNewBooking} variant="outline" className="w-full h-12">
             <Home className="w-4 h-4 mr-2" />
             Book Another Ticket
           </Button>
         </div>
+
 
         <p className="text-xs text-muted-foreground mt-6">
           Please save your booking {bookings.length === 1 ? 'ID' : 'IDs'} for future reference
