@@ -181,9 +181,11 @@ const BusOwnerAddTrips = () => {
 
   if (!busId) {
     return (
-      <div className="min-h-screen bg-background/60 backdrop-blur-xl flex flex-col">
+      <div className="min-h-screen page-shell page-bg bg-fixed booking-blur text-foreground">
         <Header />
-        <div className="flex-1 container mx-auto px-4 py-8">
+        <div className="absolute inset-0 pointer-events-none bg-black/10 backdrop-blur-lg" />
+
+        <main className="relative z-10 flex-1 container mx-auto px-4 py-8">
           <Card>
             <CardContent className="text-center">
               <p className="text-muted-foreground">No bus selected for adding trips.</p>
@@ -192,15 +194,17 @@ const BusOwnerAddTrips = () => {
               </Button>
             </CardContent>
           </Card>
-        </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background/60 backdrop-blur-xl flex flex-col">
+    <div className="min-h-screen page-shell page-bg bg-fixed booking-blur text-foreground">
       <Header />
-      <div className="flex-1 container mx-auto px-4 py-8 max-w-4xl">
+      <div className="absolute inset-0 pointer-events-none bg-black/10 backdrop-blur-lg" />
+
+      <main className="relative z-10 flex-1 container mx-auto px-4 py-8 max-w-4xl">
         <div className="mb-8 flex items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">Add Trips</h1>
@@ -333,7 +337,7 @@ const BusOwnerAddTrips = () => {
                                         Conductor: {trip.conductorName}
                                       </span>
                                     )}
-                                    {route?.viaPoints?.length && trip.stopArrivalTimes?.length ? (
+                                    {route?.viaPoints?.length ? (
                                       <div className="space-y-1">
                                         <p className="text-muted-foreground text-xs font-medium">Intermediate Stops</p>
                                         <div className="grid grid-cols-1 gap-1 text-xs text-muted-foreground">
@@ -383,7 +387,7 @@ const BusOwnerAddTrips = () => {
             </CardContent>
           </Card>
         )}
-      </div>
+      </main>
     </div>
   );
 };
