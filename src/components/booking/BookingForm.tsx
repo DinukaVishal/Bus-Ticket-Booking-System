@@ -57,8 +57,8 @@ const BookingForm = ({ route, date, selectedSeats, onSubmit, isSubmitting }: Boo
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-card rounded-xl p-6 shadow-card space-y-6 animate-slide-up">
-      <h3 className="text-lg font-display font-semibold text-foreground">Passenger Details</h3>
+    <form onSubmit={handleSubmit} className="bg-slate-950/80 border border-white/10 rounded-[2rem] p-6 shadow-2xl backdrop-blur-xl space-y-6 animate-slide-up">
+      <h3 className="text-lg font-display font-semibold text-white">Passenger Details</h3>
       
       {/* Booking Summary */}
       <div className="bg-primary/5 rounded-lg p-4 space-y-2">
@@ -153,7 +153,7 @@ const BookingForm = ({ route, date, selectedSeats, onSubmit, isSubmitting }: Boo
             </SelectContent>
           </Select>
           {errors.gender && (
-            <p className="text-sm text-destructive">{errors.gender}</p>
+            <p className="text-sm destructive">{errors.gender}</p>
           )}
         </div>
       </div>

@@ -396,7 +396,7 @@ const SeatLayout = ({
   };
 
   return (
-    <div className="bg-card rounded-xl p-6 shadow-sm border w-full max-w-md mx-auto">
+    <div className="bg-card rounded-xl p-6 shadow-sm border w-full max-w-full mx-auto overflow-x-auto">
       {/* Header Info */}
       <div className="flex flex-col items-center gap-2 mb-6">
         <div className={cn(

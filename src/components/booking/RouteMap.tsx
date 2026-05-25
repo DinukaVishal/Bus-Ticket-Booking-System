@@ -43,6 +43,45 @@ const estimateTravelTime = (distanceKm: number, busType: string): { hours: numbe
   return { hours, minutes };
 };
 
+const decodePolyline = (encoded: string, precision = 6): [number, number][] => {
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  const coordinates: [number, number][] = [];
+  const factor = 10 ** precision;
+
+  while (index < encoded.length) {
+    let result = 1;
+    let shift = 0;
+    let byte = 0;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result += (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    const deltaLat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+    lat += deltaLat;
+
+    result = 1;
+    shift = 0;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result += (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    const deltaLng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+    lng += deltaLng;
+
+    coordinates.push([lat / factor, lng / factor]);
+  }
+
+  return coordinates;
+};
+
 // Fix for default marker icons in Leaflet with bundlers
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -198,19 +237,48 @@ const RouteMap = ({ route, selectedTrip, className = '' }: RouteMapProps) => {
       [toCity.lat, toCity.lng],
     ];
 
-    // Draw smooth route line through all points
-    polylineRef.current = L.polyline(allPoints, {
-      color: 'hsl(var(--primary))',
-      weight: 4,
-      opacity: 0.9,
-      dashArray: viaCoords.length > 0 ? undefined : '10, 10',
-      lineJoin: 'round',
-      lineCap: 'round',
-    }).addTo(mapInstanceRef.current);
+    const coordinatePairs = allPoints.map(([lat, lng]) => `${lng},${lat}`).join(';');
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordinatePairs}?overview=full&geometries=polyline6`;
+    const controller = new AbortController();
 
-    // Fit map to show all points
+    const drawRouteLine = async () => {
+      if (allPoints.length < 2) return;
+
+      try {
+        const response = await fetch(osrmUrl, { signal: controller.signal });
+        const data = await response.json();
+        const encodedGeometry = data?.routes?.[0]?.geometry;
+        const routePoints = encodedGeometry
+          ? decodePolyline(encodedGeometry, 6)
+          : allPoints;
+
+        polylineRef.current = L.polyline(routePoints, {
+          color: '#22c55e',
+          weight: 5,
+          opacity: 0.85,
+          lineJoin: 'round',
+          lineCap: 'round',
+        }).addTo(mapInstanceRef.current);
+      } catch (error) {
+        polylineRef.current = L.polyline(allPoints, {
+          color: '#22c55e',
+          weight: 5,
+          opacity: 0.85,
+          lineJoin: 'round',
+          lineCap: 'round',
+        }).addTo(mapInstanceRef.current);
+      }
+    };
+
+    drawRouteLine();
+
+    // Fit map to show all points using underlying road tiles
     const bounds = L.latLngBounds(allPoints);
     mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
+
+    return () => {
+      controller.abort();
+    };
 
   }, [route, selectedTrip]);
 
@@ -307,23 +375,6 @@ const RouteMap = ({ route, selectedTrip, className = '' }: RouteMapProps) => {
           </div>
         )}
 
-        {/* Live tracking info badge */}
-        {route && showLiveTracking && busPosition && (
-          <div className="absolute top-3 left-3 z-[1100] bg-card/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg border border-border/50 text-xs">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="font-semibold text-foreground">Bus Location</span>
-            </div>
-            <div className="text-muted-foreground">
-              Progress: <span className="font-bold text-foreground">{Math.round(busPosition.progress * 100)}%</span>
-            </div>
-            {busPosition.nextStop && (
-              <div className="text-muted-foreground">
-                Next Stop: <span className="font-bold text-foreground">{busPosition.nextStop}</span>
-              </div>
-            )}
-          </div>
-        )}
         
         {/* Distance, Time & Stops Info - Top Right */}
         {route && routeInfo && (
