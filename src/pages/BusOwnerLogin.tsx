@@ -82,8 +82,11 @@ const BusOwnerLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background/60 backdrop-blur-xl flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen page-shell page-bg bg-fixed booking-blur text-white">
+      <div className="absolute inset-0 pointer-events-none bg-black/10 backdrop-blur-lg" />
+      <main className="relative z-10 flex items-center justify-center container mx-auto px-4 py-10">
+        <div className="rounded-[2rem] border border-white/10 bg-card p-6 shadow-2xl w-full max-w-md">
+          <Card className="w-full">
         <CardHeader className="text-center">
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
             <Bus className="w-8 h-8 text-primary" />
@@ -161,7 +164,9 @@ const BusOwnerLogin = () => {
             </div>
           </form>
         </CardContent>
-      </Card>
+          </Card>
+        </div>
+      </main>
     </div>
   );
 };
