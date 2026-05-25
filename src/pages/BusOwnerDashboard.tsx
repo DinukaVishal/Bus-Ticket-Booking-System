@@ -252,10 +252,11 @@ const BusOwnerDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background/60 backdrop-blur-xl flex flex-col">
+    <div className="min-h-screen page-shell page-bg bg-fixed booking-blur text-foreground">
       <Header />
+      <div className="absolute inset-0 pointer-events-none bg-black/10 backdrop-blur-lg" />
 
-      <div className="flex-1 container mx-auto px-4 py-8">
+      <main className="relative z-10 flex-1 container mx-auto px-4 py-8">
         {/* Dashboard Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
@@ -490,7 +491,7 @@ const BusOwnerDashboard = () => {
             </div>
           )}
         </div>
-      </div>
+      </main>
     </div>
   );
 };
