@@ -28,7 +28,9 @@ import BusOwnerEditBus from "./pages/BusOwnerEditBus";
 import BusOwnerProfile from "./pages/BusOwnerProfile";
 import StaffLogin from "./pages/StaffLogin";
 import StaffDashboard from "./pages/StaffDashboard";
+import Notification from "./pages/notification/Notification";
 import NotFound from "./pages/NotFound";
+
 
 const queryClient = new QueryClient();
 
@@ -130,8 +132,10 @@ const AppShell = () => {
         <Route path="/staff/login" element={<StaffLogin />} />
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
         <Route path="/reviews" element={<Reviews />} />
+        <Route path="/notification" element={<Notification />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+
     </div>
   );
 };
