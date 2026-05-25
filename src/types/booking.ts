@@ -28,9 +28,12 @@ export interface Booking {
   seatNumber: number;
   passengerName: string;
   phoneNumber: string;
-  status: 'confirmed' | 'cancelled';
+  status: BookingStatus;
   createdAt: string;
+  completedAt?: string | null;
 }
+
+export type BookingStatus = 'confirmed' | 'cancelled' | 'completed';
 
 export interface Schedule {
   id: string;

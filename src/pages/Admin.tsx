@@ -132,7 +132,7 @@ const Admin = () => {
   const stats = {
     totalBookings: bookings.length,
     confirmedBookings: bookings.filter((b) => b.status === 'confirmed').length,
-    cancelledBookings: bookings.filter((b) => b.status === 'cancelled').length,
+    completedBookings: bookings.filter((b) => b.status === 'completed').length,
     totalRoutes: routes.length,
   };
 
@@ -175,18 +175,18 @@ const Admin = () => {
                   </div>
                   <div>
                     <p className="text-2xl font-bold">{stats.confirmedBookings}</p>
-                    <p className="text-sm text-muted-foreground">Confirmed</p>
+                    <p className="text-sm text-muted-foreground">Active</p>
                   </div>
                 </div>
               </div>
-              <div className="bg-card rounded-xl p-6 shadow-card border-l-4 border-red-500">
+              <div className="bg-card rounded-xl p-6 shadow-card border-l-4 border-sky-500">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-destructive/10 rounded-lg flex items-center justify-center">
-                    <XCircle className="w-5 h-5 text-destructive" />
+                  <div className="w-10 h-10 bg-sky-500/10 rounded-lg flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-sky-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{stats.cancelledBookings}</p>
-                    <p className="text-sm text-muted-foreground">Cancelled</p>
+                    <p className="text-2xl font-bold">{stats.completedBookings}</p>
+                    <p className="text-sm text-muted-foreground">Completed</p>
                   </div>
                 </div>
               </div>
@@ -246,16 +246,16 @@ const Admin = () => {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <Badge variant={b.status === 'confirmed' ? 'default' : 'destructive'}>{b.status}</Badge>
+                                <Badge variant={b.status === 'confirmed' ? 'default' : b.status === 'cancelled' ? 'destructive' : 'secondary'}>{b.status}</Badge>
                               </TableCell>
                               {/* වෙනස්කම 2: Button ටික මැදට ගත්තා */}
                               <TableCell className="text-center">
                                 <div className="flex justify-center gap-2">
                                   {b.status === 'confirmed' ? (
                                     <Button size="sm" variant="ghost" className="text-orange-500 hover:bg-orange-50" onClick={() => handleStatusChange(b.baseId, 'cancelled', b.dbIds)} title="Cancel Booking"><XCircle className="h-4 w-4" /></Button>
-                                  ) : (
+                                  ) : b.status === 'cancelled' ? (
                                     <Button size="sm" variant="ghost" className="text-green-500 hover:bg-green-50" onClick={() => handleStatusChange(b.baseId, 'confirmed', b.dbIds)} title="Restore Booking"><RefreshCw className="h-4 w-4" /></Button>
-                                  )}
+                                  ) : null}
                                   
                                   <AlertDialog>
                                     <AlertDialogTrigger asChild>

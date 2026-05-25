@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Booking } from '@/types/booking';
+import { Booking, BookingStatus } from '@/types/booking';
 import { useEffect } from 'react';
 import { useAuthContext } from '@/contexts/AuthContext';
 
@@ -47,8 +47,9 @@ export function useBookings() {
         seatNumber: booking.seat_number,
         passengerName: booking.passenger_name,
         phoneNumber: booking.phone_number,
-        status: booking.status as 'confirmed' | 'cancelled',
+        status: booking.status as BookingStatus,
         createdAt: booking.created_at,
+        completedAt: booking.completed_at,
       }));
     },
   });
@@ -101,8 +102,9 @@ export function useMyBookings() {
         seatNumber: booking.seat_number,
         passengerName: booking.passenger_name,
         phoneNumber: booking.phone_number,
-        status: booking.status as 'confirmed' | 'cancelled',
+        status: booking.status as BookingStatus,
         createdAt: booking.created_at,
+        completedAt: booking.completed_at,
       }));
     },
   });
@@ -148,8 +150,10 @@ export function useBookedSeats(routeId: string | undefined, date: string | undef
         });
       
       if (error) throw error;
-      
-      return data.map((b: { seat_number: number }) => b.seat_number);
+
+      return (data ?? [])
+        .map((b: { seat_number: number | string }) => Number(b.seat_number))
+        .filter((seatNumber) => Number.isInteger(seatNumber) && seatNumber > 0);
     },
     enabled: !!routeId && !!date,
   });
@@ -167,7 +171,7 @@ interface MultipleBookingInput {
   seatNumbers: number[];
   passengerName: string;
   phoneNumber: string;
-  status: 'confirmed' | 'cancelled';
+  status: BookingStatus;
 }
 
 export function useAddMultipleBookings() {
@@ -218,8 +222,9 @@ export function useAddMultipleBookings() {
         seatNumber: booking.seat_number,
         passengerName: booking.passenger_name,
         phoneNumber: booking.phone_number,
-        status: booking.status as 'confirmed' | 'cancelled',
+        status: booking.status as BookingStatus,
         createdAt: booking.created_at,
+        completedAt: booking.completed_at,
       }));
     },
     onSuccess: () => {
@@ -275,8 +280,9 @@ export function useAddBooking() {
         seatNumber: data.seat_number,
         passengerName: data.passenger_name,
         phoneNumber: data.phone_number,
-        status: data.status as 'confirmed' | 'cancelled',
+        status: data.status as BookingStatus,
         createdAt: data.created_at,
+        completedAt: data.completed_at,
       };
     },
     onSuccess: () => {
@@ -291,7 +297,7 @@ export function useUpdateBookingStatus() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ bookingId, status }: { bookingId: string; status: 'confirmed' | 'cancelled' }) => {
+    mutationFn: async ({ bookingId, status }: { bookingId: string; status: BookingStatus }) => {
       const { error } = await supabase
         .from('bookings')
         .update({ status })

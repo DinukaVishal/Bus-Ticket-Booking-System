@@ -11,7 +11,7 @@ const IncomeChart = ({ bookings }: IncomeChartProps) => {
     const monthlyData: Record<string, number> = {};
     
     bookings
-      .filter(b => b.status === 'confirmed')
+      .filter(b => b.status !== 'cancelled')
       .forEach(b => {
         const date = new Date(b.createdAt);
         const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;

@@ -28,8 +28,18 @@ import { Ticket, Loader2, Calendar, MapPin, Armchair, XCircle, Download, User, T
 import { generateTicketPDF } from '@/lib/pdfTicketGenerator';
 import { Booking } from '@/types/booking';
 import QRCode from 'react-qr-code';
-const QRCodeComponent = (QRCode as any)?.default ?? QRCode;
 import { supabase } from '@/integrations/supabase/client';
+
+interface BookingGroup {
+  routeId: string;
+  routeName: string;
+  date: string;
+  status: Booking['status'];
+  passengerName: string;
+  seatNumbers: number[];
+  bookingIds: string[];
+  allBookings: Booking[];
+}
 
 const MyBookings = () => {
   const { data: bookings = [], isLoading, refetch } = useMyBookings();
@@ -37,11 +47,15 @@ const MyBookings = () => {
   const updateStatusMutation = useUpdateBookingStatus();
   const [cancellingGroupKey, setCancellingGroupKey] = useState<string | null>(null);
 
-  const groupedBookings = bookings.reduce((groups: any, booking: Booking) => {
+  const groupedBookings = bookings.reduce<Record<string, BookingGroup>>((groups, booking) => {
     const key = `${booking.routeId}-${booking.date}-${booking.status}`;
     if (!groups[key]) {
       groups[key] = {
-        ...booking,
+        routeId: booking.routeId,
+        routeName: booking.routeName,
+        date: booking.date,
+        status: booking.status,
+        passengerName: booking.passengerName,
         seatNumbers: [booking.seatNumber],
         bookingIds: [booking.id],
         allBookings: [booking],
@@ -54,9 +68,9 @@ const MyBookings = () => {
     return groups;
   }, {});
 
-  const bookingGroups = Object.values(groupedBookings) as any[];
+  const bookingGroups = Object.values(groupedBookings);
 
-  const handleDownloadTicket = (group: any) => {
+  const handleDownloadTicket = (group: BookingGroup) => {
     const route = routes.find((r) => r.id === group.routeId);
     if (route) {
       const ticketData = group.allBookings.map((b: Booking) => ({ booking: b, route }));
@@ -81,10 +95,10 @@ const MyBookings = () => {
         description: 'Your bookings have been cancelled successfully.',
       });
       refetch();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to cancel booking.',
+        description: error instanceof Error ? error.message : 'Failed to cancel booking.',
         variant: 'destructive',
       });
     } finally {
@@ -98,7 +112,7 @@ const MyBookings = () => {
       if (error) throw error;
       toast({ title: 'Deleted', description: 'Booking history removed.' });
       refetch();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Delete error:', error);
       toast({ title: 'Error', description: 'Failed to delete.', variant: 'destructive' });
     }
@@ -162,12 +176,23 @@ const MyBookings = () => {
                             </p>
                           </div>
                           <div className="bg-white p-1.5 rounded-lg border border-gray-100 ml-2 shadow-sm shrink-0">
-                            <QRCodeComponent
-                              size={64}
-                              style={{ height: 'auto', maxWidth: '100%', width: '100%' }}
-                              value={`IDs: ${group.bookingIds.join(', ')} | Seats: ${group.seatNumbers.join(', ')}`}
-                              viewBox={`0 0 256 256`}
-                            />
+                            {typeof QRCode === 'function' ? (
+                              <QRCode
+                                size={64}
+                                style={{ height: 'auto', maxWidth: '100%', width: '100%' }}
+                                value={JSON.stringify({
+                                  id: group.bookingIds.join(','),
+                                  seats: [...group.seatNumbers].sort((a, b) => a - b).join(','),
+                                  date: group.date,
+                                  route: group.routeName,
+                                })}
+                                viewBox={`0 0 256 256`}
+                              />
+                            ) : (
+                              <div className="w-16 h-16 rounded border border-dashed border-muted-foreground/30 flex items-center justify-center text-[10px] text-muted-foreground">
+                                QR
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -275,7 +300,7 @@ const MyBookings = () => {
                             </TableCell>
                             <TableCell>
                               <Badge variant={group.status === 'cancelled' ? 'destructive' : 'secondary'}>
-                                {group.status === 'confirmed' ? 'Completed' : 'Cancelled'}
+                                {group.status === 'cancelled' ? 'Cancelled' : 'Completed'}
                               </Badge>
                             </TableCell>
                             <TableCell>

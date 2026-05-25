@@ -17,6 +17,10 @@ const SeatLayout = ({
   totalSeats,
   busType = 'normal'
 }: SeatLayoutProps) => {
+  const normalizedBookedSeats = bookedSeats
+    .map((seatNumber) => Number(seatNumber))
+    .filter((seatNumber) => Number.isInteger(seatNumber) && seatNumber > 0);
+  const bookedSeatSet = new Set(normalizedBookedSeats);
   
   const config = BUS_TYPE_CONFIGS[busType] || BUS_TYPE_CONFIGS.normal;
   const mainSeats = totalSeats || config.defaultSeats;
@@ -25,24 +29,23 @@ const SeatLayout = ({
 
   // Check if all main seats are booked (needed for jump seat availability)
   const allMainSeatsBooked = Array.from({ length: mainSeats }, (_, i) => i + 1)
-    .every(seat => bookedSeats.includes(seat) || selectedSeats.includes(seat));
+    .every(seat => bookedSeatSet.has(seat) || selectedSeats.includes(seat));
 
   const isJumpSeat = (seatNumber: number): boolean => {
     return jumpSeats > 0 && seatNumber > mainSeats && seatNumber <= effectiveTotalSeats;
   };
 
   const getSeatStatus = (seatNumber: number): SeatStatus => {
-    if (bookedSeats.includes(seatNumber)) return 'booked';
+    if (bookedSeatSet.has(seatNumber)) return 'booked';
     if (selectedSeats.includes(seatNumber)) return 'selected';
     return 'available';
   };
 
   const handleSeatClick = (seatNumber: number) => {
-    if (bookedSeats.includes(seatNumber)) return;
+    if (bookedSeatSet.has(seatNumber)) return;
     if (isJumpSeat(seatNumber) && !allMainSeatsBooked) return;
     onSeatSelect(seatNumber);
   };
-
   const renderSeat = (seatNumber: number, isWindow: boolean = false, isJump: boolean = false, size: 'normal' | 'small' = 'normal') => {
     const status = getSeatStatus(seatNumber);
     const jumpSeatLocked = isJump && !allMainSeatsBooked;
@@ -56,11 +59,11 @@ const SeatLayout = ({
           'seat relative group flex items-center justify-center transition-all shadow-sm rounded-lg',
           size === 'small' ? 'w-9 h-9' : 'w-10 h-10',
           status === 'available' && !jumpSeatLocked && 'seat-available hover:-translate-y-0.5',
-          status === 'booked' && 'seat-booked cursor-not-allowed opacity-70',
+          status === 'booked' && 'bg-red-500 text-white cursor-not-allowed opacity-90',
           status === 'selected' && 'seat-selected shadow-md scale-105 ring-2 ring-primary',
           isWindow && status === 'available' && !isJump && 'ring-2 ring-sky-400/60',
           isJump && !jumpSeatLocked && status === 'available' && 'ring-2 ring-amber-400/60 bg-amber-50',
-          isJump && jumpSeatLocked && 'bg-zinc-100 cursor-not-allowed opacity-50 border-dashed'
+          isJump && jumpSeatLocked && 'bg-yellow-400 text-yellow-900 cursor-not-allowed opacity-90 border-dashed border-yellow-500'
         )}
         aria-label={`${isJump ? 'Jump ' : ''}Seat ${seatNumber}${jumpSeatLocked ? ' (locked)' : ''}`}
         title={jumpSeatLocked ? 'Available when all main seats are booked' : undefined}
@@ -68,7 +71,7 @@ const SeatLayout = ({
         <span className={cn(
           "font-bold group-hover:text-foreground",
           size === 'small' ? "text-[10px]" : "text-xs",
-          jumpSeatLocked ? "text-zinc-400" : "text-foreground/80"
+          jumpSeatLocked ? "text-yellow-900" : "text-foreground/80"
         )}>
           {isJump ? `J${seatNumber}` : seatNumber}
         </span>
@@ -78,7 +81,7 @@ const SeatLayout = ({
         {isJump && (
           <Armchair className={cn(
             "absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-background rounded-full p-0.5 shadow-sm border",
-            jumpSeatLocked ? "text-zinc-400 border-zinc-300" : "text-amber-500 border-amber-200"
+            jumpSeatLocked ? "text-yellow-700 border-yellow-500" : "text-amber-500 border-amber-200"
           )} />
         )}
       </button>
@@ -431,7 +434,7 @@ const SeatLayout = ({
           <span className="text-xs text-zinc-600 font-medium">Available</span>
         </div>
         <div className="flex items-center gap-2.5">
-          <div className="w-4 h-4 rounded bg-seat-booked opacity-60" />
+          <div className="w-4 h-4 rounded bg-red-500 opacity-90" />
           <span className="text-xs text-zinc-600 font-medium">Booked</span>
         </div>
         <div className="flex items-center gap-2.5">

@@ -17,6 +17,8 @@ export type Database = {
       bookings: {
         Row: {
           booking_id: string
+          completed_at: string | null
+          completed_by: string | null
           created_at: string
           date: string
           id: string
@@ -30,6 +32,8 @@ export type Database = {
         }
         Insert: {
           booking_id: string
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           date: string
           id?: string
@@ -43,6 +47,8 @@ export type Database = {
         }
         Update: {
           booking_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           date?: string
           id?: string
@@ -218,6 +224,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      complete_ticket_trip: {
+        Args: { _booking_ids: string[] }
+        Returns: {
+          booking_id: string
+          seat_number: number
+          status: string
+        }[]
+      }
       get_booked_seats: {
         Args: { _date: string; _route_id: string }
         Returns: {
