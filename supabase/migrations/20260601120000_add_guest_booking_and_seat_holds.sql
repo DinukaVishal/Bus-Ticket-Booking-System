@@ -27,8 +27,7 @@ CREATE TABLE IF NOT EXISTS public.seat_holds (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS seat_holds_active_seat_unique
-ON public.seat_holds(route_id, date, seat_number)
-WHERE expires_at > now();
+ON public.seat_holds(route_id, date, seat_number);
 
 CREATE OR REPLACE FUNCTION public.get_blocked_seats(
   _route_id UUID,
@@ -96,8 +95,7 @@ BEGIN
   ON CONFLICT ON CONSTRAINT seat_holds_active_seat_unique
   DO UPDATE SET
     hold_token = EXCLUDED.hold_token,
-    expires_at = EXCLUDED.expires_at
-  WHERE public.seat_holds.expires_at <= now();
+    expires_at = EXCLUDED.expires_at;
 
   RETURN QUERY
   SELECT seat_number FROM public.seat_holds
