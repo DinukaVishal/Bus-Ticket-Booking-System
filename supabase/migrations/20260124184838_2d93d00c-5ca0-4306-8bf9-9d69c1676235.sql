@@ -41,11 +41,25 @@ ON public.routes FOR INSERT
 TO authenticated
 WITH CHECK (public.has_role(auth.uid(), 'admin'));
 
-CREATE POLICY "Admins can update routes"
+CREATE POLICY "Admins and bus owners can update routes"
 ON public.routes FOR UPDATE
 TO authenticated
-USING (public.has_role(auth.uid(), 'admin'))
-WITH CHECK (public.has_role(auth.uid(), 'admin'));
+USING (
+  public.has_role(auth.uid(), 'admin') OR
+  EXISTS (
+    SELECT 1 FROM public.owner_routes orr
+    WHERE orr.route_id = public.routes.id
+      AND orr.bus_owner_id = auth.uid()
+  )
+)
+WITH CHECK (
+  public.has_role(auth.uid(), 'admin') OR
+  EXISTS (
+    SELECT 1 FROM public.owner_routes orr
+    WHERE orr.route_id = public.routes.id
+      AND orr.bus_owner_id = auth.uid()
+  )
+);
 
 CREATE POLICY "Admins can delete routes"
 ON public.routes FOR DELETE

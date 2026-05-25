@@ -106,17 +106,19 @@ const BusOwnerProfile = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background/60 backdrop-blur-xl flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen page-shell page-bg bg-fixed booking-blur text-foreground flex items-center justify-center">
+        <div className="absolute inset-0 pointer-events-none bg-black/10 backdrop-blur-lg" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary relative z-10" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background/60 backdrop-blur-xl flex flex-col">
+    <div className="min-h-screen page-shell page-bg bg-fixed booking-blur text-foreground">
       <Header />
+      <div className="absolute inset-0 pointer-events-none bg-black/10 backdrop-blur-lg" />
 
-      <div className="flex-1 container mx-auto px-4 py-8 max-w-2xl">
+      <main className="relative z-10 flex-1 container mx-auto px-4 py-8 max-w-2xl">
         {/* Header */}
         <div className="mb-8">
           <Button
@@ -243,7 +245,7 @@ const BusOwnerProfile = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
   );
 };

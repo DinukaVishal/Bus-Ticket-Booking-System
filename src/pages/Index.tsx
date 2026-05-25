@@ -27,7 +27,7 @@ const Index = () => {
   // Show confirmation page
   if (confirmedBookings.length > 0 && confirmedRoute && confirmedTrip) {
     return (
-      <div className="min-h-screen bg-background/60 backdrop-blur-xl">
+      <div className="min-h-screen page-shell page-bg bg-fixed text-white">
         <Header />
         <BookingConfirmation
           bookings={confirmedBookings}
@@ -40,35 +40,22 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background/60 backdrop-blur-xl">
+    <div className="min-h-screen page-shell page-bg booking-blur bg-fixed text-white">
       <Header />
-      
-      {/* Hero Section */}
-      <section className="gradient-hero text-primary-foreground py-12">
-        <div className="container mx-auto px-4 text-center">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Bus className="w-10 h-10" />
-            <h1 className="text-3xl md:text-4xl font-display font-bold">
-              Book Your Bus Ticket
-            </h1>
-          </div>
-          <p className="text-primary-foreground/80 max-w-md mx-auto">
-            Select your route, pick a date, and choose your preferred seats for a comfortable journey
-          </p>
+      <div className="absolute inset-0 pointer-events-none bg-black/10 backdrop-blur-lg" />
+      <main className="relative z-10 container mx-auto px-4 py-10 pb-20">
+        <div className="rounded-[2rem] border border-white/10 bg-slate-950/80 p-6 shadow-2xl backdrop-blur-xl">
+          {routesLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-10 h-10 animate-spin text-sky-400" />
+            </div>
+          ) : (
+            <BookingWizard 
+              routes={routes} 
+              onBookingComplete={handleBookingComplete} 
+            />
+          )}
         </div>
-      </section>
-
-      <main className="container mx-auto px-4 py-12">
-        {routesLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        ) : (
-          <BookingWizard 
-            routes={routes} 
-            onBookingComplete={handleBookingComplete} 
-          />
-        )}
       </main>
     </div>
   );
