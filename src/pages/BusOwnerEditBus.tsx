@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import Header from '@/components/layout/Header';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useRoutes, useAddRoute } from '@/hooks/useRoutes';
@@ -43,8 +44,10 @@ const BusOwnerEditBus = () => {
   const { busId } = useParams<{ busId: string }>();
   const { data: allRoutes = [] } = useRoutes();
   const addRouteMutation = useAddRoute();
+  const queryClient = useQueryClient();
   const [isCreateRouteOpen, setIsCreateRouteOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showEditStops, setShowEditStops] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<string>('');
   const [selectedReturnRoute, setSelectedReturnRoute] = useState<string>('none');
   const [routeFormData, setRouteFormData] = useState({
@@ -52,6 +55,12 @@ const BusOwnerEditBus = () => {
     to: '',
     viaPoints: [] as string[],
   });
+  const [originalViaPoints, setOriginalViaPoints] = useState<string[]>([]);
+
+  const areViaPointsEqual = (a: string[], b: string[]) =>
+    a.length === b.length && a.every((point, index) => point === b[index]);
+
+  const viaPointsChanged = !areViaPointsEqual(routeFormData.viaPoints, originalViaPoints);
 
   const getRouteName = (from: string, to: string) => {
     if (!from.trim() || !to.trim()) return '';
@@ -156,17 +165,27 @@ const BusOwnerEditBus = () => {
     }
   };
 
-  // Helper function to find return route
+  // Helper function to find a matching return route
   const findReturnRoute = (primaryRouteId: string): string => {
     const primaryRoute = allRoutes.find(route => route.id === primaryRouteId);
     if (!primaryRoute) return 'none';
 
-    // Find route with swapped from/to cities
-    const returnRoute = allRoutes.find(route =>
+    const reversedViaPoints = [...(primaryRoute.viaPoints || [])].reverse();
+
+    const exactReturnRoute = allRoutes.find(route =>
+      route.from === primaryRoute.to &&
+      route.to === primaryRoute.from &&
+      route.viaPoints?.length === reversedViaPoints.length &&
+      route.viaPoints?.every((point, index) => point === reversedViaPoints[index])
+    );
+
+    if (exactReturnRoute) return exactReturnRoute.id ?? 'none';
+
+    const fallbackReturnRoute = allRoutes.find(route =>
       route.from === primaryRoute.to && route.to === primaryRoute.from
     );
 
-    return returnRoute ? returnRoute.id : 'none';
+    return fallbackReturnRoute ? fallbackReturnRoute.id ?? 'none' : 'none';
   };
 
   // Handle primary route selection and auto-set return route
@@ -175,6 +194,41 @@ const BusOwnerEditBus = () => {
     const returnRouteId = findReturnRoute(routeId);
     setSelectedReturnRoute(returnRouteId);
   };
+
+  useEffect(() => {
+    if (!selectedRoute) return;
+    const returnRouteId = findReturnRoute(selectedRoute);
+    setSelectedReturnRoute(returnRouteId);
+  }, [selectedRoute, allRoutes]);
+
+  // When primary route changes, load route details (from/to/viaPoints)
+  useEffect(() => {
+    const loadRouteDetails = async () => {
+      if (!selectedRoute) return;
+      try {
+        const { data: routeDetails, error } = await supabase
+          .from('routes')
+          .select('id, name, from_city, to_city, via_points')
+          .eq('id', selectedRoute)
+          .single();
+
+        if (error && error.code !== 'PGRST116') throw error;
+        if (routeDetails) {
+          const viaPoints = routeDetails.via_points || [];
+          setRouteFormData({
+            from: routeDetails.from_city || '',
+            to: routeDetails.to_city || '',
+            viaPoints,
+          });
+          setOriginalViaPoints(viaPoints);
+        }
+      } catch (err) {
+        console.warn('Failed to load route details', err);
+      }
+    };
+
+    loadRouteDetails();
+  }, [selectedRoute]);
   const [busFormData, setBusFormData] = useState<BusFormData>({
     busNumber: '',
     busType: '',
@@ -228,12 +282,7 @@ const BusOwnerEditBus = () => {
 
       if (routeError && routeError.code !== 'PGRST116') throw routeError;
       if (routeData && routeData.length > 0) {
-        // Set primary route and auto-detect return route
         handlePrimaryRouteChange(routeData[0].route_id);
-        // If there's a second route, override the auto-detected one
-        if (routeData.length > 1) {
-          setSelectedReturnRoute(routeData[1].route_id);
-        }
       }
 
       const { data: driverData, error: driverError } = await supabase
@@ -268,6 +317,19 @@ const BusOwnerEditBus = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchPrimaryRouteIdForBus = async (): Promise<string | undefined> => {
+    if (!busId) return undefined;
+
+    const { data, error } = await supabase
+      .from('owner_routes')
+      .select('route_id')
+      .eq('owner_bus_id', busId)
+      .limit(1);
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return data?.[0]?.route_id;
   };
 
   const handleBusInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -376,9 +438,70 @@ const BusOwnerEditBus = () => {
 
       if (updateBusError) throw updateBusError;
 
-      const routeIds = [selectedRoute, selectedReturnRoute].filter(
-        (routeId, index, arr) => routeId && arr.indexOf(routeId) === index
-      );
+      // Update the routes table via_points for the selected primary route
+      let effectiveReturnRoute = selectedReturnRoute && selectedReturnRoute !== 'none'
+        ? selectedReturnRoute
+        : undefined;
+
+      let primaryRouteToUpdate = selectedRoute || await fetchPrimaryRouteIdForBus();
+      if (!primaryRouteToUpdate) {
+        throw new Error('No primary route is assigned to this bus.');
+      }
+
+      const { data: updatedRouteData, error: updateRouteError } = await supabase
+        .from('routes')
+        .update({ via_points: routeFormData.viaPoints })
+        .eq('id', primaryRouteToUpdate)
+        .select();
+
+      if (updateRouteError) throw updateRouteError;
+      if (!updatedRouteData || updatedRouteData.length === 0) {
+        const fallbackRouteId = await fetchPrimaryRouteIdForBus();
+        if (fallbackRouteId && fallbackRouteId !== primaryRouteToUpdate) {
+          const { data: fallbackRouteData, error: fallbackRouteError } = await supabase
+            .from('routes')
+            .update({ via_points: routeFormData.viaPoints })
+            .eq('id', fallbackRouteId)
+            .select();
+
+          if (fallbackRouteError) throw fallbackRouteError;
+          if (!fallbackRouteData || fallbackRouteData.length === 0) {
+            throw new Error('Primary route could not be updated.');
+          }
+          primaryRouteToUpdate = fallbackRouteId;
+        } else {
+          throw new Error('Primary route could not be updated.');
+        }
+      }
+
+      if (!effectiveReturnRoute) {
+        const { data: returnRouteData, error: returnRouteError } = await supabase
+          .from('routes')
+          .select('id')
+          .eq('from_city', routeFormData.to)
+          .eq('to_city', routeFormData.from)
+          .limit(1);
+
+        if (returnRouteError) throw returnRouteError;
+        effectiveReturnRoute = returnRouteData?.[0]?.id;
+      }
+
+      if (effectiveReturnRoute && effectiveReturnRoute !== primaryRouteToUpdate) {
+        const reversed = [...routeFormData.viaPoints].reverse();
+        const { data: updatedReturnData, error: updateReturnError } = await supabase
+          .from('routes')
+          .update({ via_points: reversed })
+          .eq('id', effectiveReturnRoute)
+          .select();
+
+        if (updateReturnError) throw updateReturnError;
+        if (!updatedReturnData || updatedReturnData.length === 0) {
+          throw new Error('Return route could not be updated.');
+        }
+      }
+
+      const routeIds = [primaryRouteToUpdate, effectiveReturnRoute]
+        .filter((routeId, index, arr) => routeId && routeId !== 'none' && arr.indexOf(routeId) === index);
 
       const { error: routeDeleteError } = await supabase
         .from('owner_routes')
@@ -401,6 +524,8 @@ const BusOwnerEditBus = () => {
 
         if (routeInsertError) throw routeInsertError;
       }
+
+      queryClient.invalidateQueries({ queryKey: ['routes'] });
 
       const { error: driverUpdateError } = await supabase
         .from('bus_drivers')
@@ -458,7 +583,9 @@ const BusOwnerEditBus = () => {
 
       toast({
         title: 'Bus Updated',
-        description: 'Your bus details have been saved successfully.',
+        description: viaPointsChanged
+          ? 'Your bus details and route stops have been saved successfully.'
+          : 'Your bus details have been saved successfully.',
       });
       navigate('/bus-owner/dashboard');
     } catch (error: any) {
@@ -474,9 +601,11 @@ const BusOwnerEditBus = () => {
 
   if (!busId) {
     return (
-      <div className="min-h-screen bg-background/60 backdrop-blur-xl flex flex-col">
+      <div className="min-h-screen page-shell page-bg bg-fixed booking-blur text-foreground">
         <Header />
-        <div className="flex-1 container mx-auto px-4 py-8">
+        <div className="absolute inset-0 pointer-events-none bg-black/10 backdrop-blur-lg" />
+
+        <main className="relative z-10 flex-1 container mx-auto px-4 py-8">
           <Card>
             <CardContent className="text-center">
               <p className="text-muted-foreground">No bus selected for editing.</p>
@@ -485,16 +614,17 @@ const BusOwnerEditBus = () => {
               </Button>
             </CardContent>
           </Card>
-        </div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background/60 backdrop-blur-xl flex flex-col">
+    <div className="min-h-screen page-shell page-bg bg-fixed booking-blur text-foreground">
       <Header />
+      <div className="absolute inset-0 pointer-events-none bg-black/10 backdrop-blur-lg" />
 
-      <div className="flex-1 container mx-auto px-4 py-8 max-w-3xl">
+      <main className="relative z-10 flex-1 container mx-auto px-4 py-8 max-w-3xl">
         <div className="mb-8">
           <Button
             variant="ghost"
@@ -532,21 +662,50 @@ const BusOwnerEditBus = () => {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <Label htmlFor="route">Route for this Bus</Label>
-                      <Button type="button" variant="secondary" size="sm" onClick={() => setIsCreateRouteOpen(true)}>
-                        Create route
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button type="button" variant="secondary" size="sm" onClick={() => setIsCreateRouteOpen(true)}>
+                          Create route
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowEditStops((s) => !s)}
+                        >
+                          {showEditStops ? 'Hide stops' : 'Edit stops'}
+                        </Button>
+                      </div>
                     </div>
 
                     {selectedRoute ? (
-                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                        <p className="text-sm font-semibold text-foreground">Primary route</p>
-                        <p className="text-sm text-muted-foreground">
-                          {allRoutes.find(r => r.id === selectedRoute)?.name || 'Custom route'}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {allRoutes.find(r => r.id === selectedRoute)?.from} → {allRoutes.find(r => r.id === selectedRoute)?.to}
-                        </p>
-                      </div>
+                      <>
+                        {viaPointsChanged && (
+                          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 mb-4">
+                            <p className="text-sm font-semibold text-emerald-900">Route stops changed</p>
+                            <p className="text-sm text-emerald-700">
+                              You have updated the intermediate stops for this route. These changes will be saved when you submit the form.
+                            </p>
+                          </div>
+                        )}
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                          <p className="text-sm font-semibold text-foreground">Primary route</p>
+                          <p className="text-sm text-muted-foreground">
+                            {allRoutes.find(r => r.id === selectedRoute)?.name || 'Custom route'}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {(routeFormData.from || allRoutes.find(r => r.id === selectedRoute)?.from) || ''} → {(routeFormData.to || allRoutes.find(r => r.id === selectedRoute)?.to) || ''}
+                          </p>
+                          {routeFormData.viaPoints?.length ? (
+                            <p className="text-sm text-muted-foreground mt-2">
+                              Intermediate stops: {routeFormData.viaPoints.join(' → ')}
+                            </p>
+                          ) : allRoutes.find(r => r.id === selectedRoute)?.viaPoints?.length ? (
+                            <p className="text-sm text-muted-foreground mt-2">
+                              Intermediate stops: {allRoutes.find(r => r.id === selectedRoute)?.viaPoints.join(' → ')}
+                            </p>
+                          ) : null}
+                        </div>
+                      </>
                     ) : (
                       <p className="text-sm text-muted-foreground">
                         This bus must have a route assigned. Create a route and the reverse route will be created automatically.
@@ -559,6 +718,26 @@ const BusOwnerEditBus = () => {
                         <p className="text-sm text-muted-foreground">
                           {allRoutes.find(r => r.id === selectedReturnRoute)?.name || 'Custom reverse route'}
                         </p>
+                      </div>
+                    )}
+                    {/* Allow editing intermediate stops for the selected primary route */}
+                    {selectedRoute && showEditStops && (
+                      <div className="space-y-4">
+                        <Label>Intermediate Stops (editable)</Label>
+                        <div className="rounded-lg border border-white/10 bg-card p-4">
+                          <ViaPointsEditor
+                            viaPoints={routeFormData.viaPoints}
+                            onChange={(viaPoints) => updateRouteForm('viaPoints', viaPoints)}
+                            fromCity={routeFormData.from}
+                            toCity={routeFormData.to}
+                          />
+                        </div>
+                        {routeFormData.viaPoints?.length > 0 && (
+                          <div className="rounded-lg border border-muted/20 bg-muted/10 p-4 text-sm text-muted-foreground">
+                            <p className="font-semibold text-foreground mb-2">Current intermediate stops</p>
+                            <p>{routeFormData.viaPoints.join(' → ')}</p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -766,7 +945,7 @@ const BusOwnerEditBus = () => {
             </form>
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
   );
 };
