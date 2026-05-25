@@ -178,10 +178,14 @@ const BusOwnerAddBus = () => {
       }
 
       setSelectedRoute(forwardRoute.id);
-      setSelectedRouteName(forwardRoute.name);
+      setSelectedRouteName(forwardRoute.name || getRouteName(routeFormData.from, routeFormData.to));
       setSelectedReturnRoute(reverseRoute?.id || 'none');
       setSelectedReturnRouteName(reverseRoute?.name || reverseRouteName);
-      setRouteFormData({ from: '', to: '', viaPoints: [] });
+      setRouteFormData({
+        from: (forwardRoute as any).from_city || routeFormData.from,
+        to: (forwardRoute as any).to_city || routeFormData.to,
+        viaPoints: (forwardRoute as any).via_points || routeFormData.viaPoints || [],
+      });
       setIsCreateRouteOpen(false);
     } catch (error: any) {
       toast({
@@ -413,10 +417,11 @@ const BusOwnerAddBus = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background/60 backdrop-blur-xl flex flex-col">
+    <div className="min-h-screen page-shell page-bg bg-fixed booking-blur text-foreground">
       <Header />
+      <div className="absolute inset-0 pointer-events-none bg-black/10 backdrop-blur-lg" />
 
-      <div className="flex-1 container mx-auto px-4 py-8 max-w-3xl">
+      <main className="relative z-10 flex-1 container mx-auto px-4 py-8 max-w-3xl">
         {/* Header */}
         <div className="mb-8">
           <Button
@@ -483,6 +488,15 @@ const BusOwnerAddBus = () => {
                         <p className="text-sm text-muted-foreground">
                           {allRoutes.find(r => r.id === selectedRoute)?.from || routeFormData.from} → {allRoutes.find(r => r.id === selectedRoute)?.to || routeFormData.to}
                         </p>
+                        {routeFormData.viaPoints?.length ? (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Intermediate stops: {routeFormData.viaPoints.join(' → ')}
+                          </p>
+                        ) : allRoutes.find(r => r.id === selectedRoute)?.viaPoints?.length ? (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Intermediate stops: {allRoutes.find(r => r.id === selectedRoute)?.viaPoints.join(' → ')}
+                          </p>
+                        ) : null}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">
@@ -752,7 +766,7 @@ const BusOwnerAddBus = () => {
             </form>
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
   );
 };
