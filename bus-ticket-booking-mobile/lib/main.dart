@@ -1,12 +1,17 @@
 ﻿import 'package:flutter/material.dart';
 import 'models/booking_models.dart';
 import 'pages/booking_summary_page.dart';
+import 'pages/bus_owner_login_page.dart';
+import 'pages/bus_owner_signup_page.dart';
+import 'pages/bus_owner_dashboard_page.dart';
+import 'pages/staff_dashboard_page.dart';
 import 'pages/home_page.dart';
 import 'pages/login_page.dart';
 import 'pages/my_bookings_page.dart';
 import 'pages/profile_page.dart';
 import 'pages/search_page.dart';
 import 'pages/select_seat_page.dart';
+import 'pages/staff_login_page.dart';
 import 'pages/signup_page.dart';
 import 'services/supabase_service.dart';
 
@@ -137,6 +142,11 @@ class _MyAppState extends State<MyApp> {
       routes: {
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignupPage(),
+        '/owner-login': (context) => const BusOwnerLoginPage(),
+        '/owner-signup': (context) => const BusOwnerSignupPage(),
+        '/owner-dashboard': (context) => const BusOwnerDashboardPage(),
+        '/staff-login': (context) => const StaffLoginPage(),
+        '/staff-dashboard': (context) => const StaffDashboardPage(),
         '/home': (context) => HomePage(onToggleTheme: _toggleTheme),
         '/search': (context) => const SearchPage(),
         '/my-bookings': (context) => const MyBookingsPage(),
