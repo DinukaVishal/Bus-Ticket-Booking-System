@@ -104,26 +104,50 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Search Trips'),
+        title: Row(
+          children: [
+            Icon(Icons.directions_bus_filled, color: colorScheme.primary, size: 28),
+            const SizedBox(width: 12),
+            Text(
+              'Search Trips',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.primary,
+                  ),
+            ),
+          ],
+        ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Card(
+        child: Column(
+          children: [
+            // Search Panel
+            Container(
+              color: colorScheme.primary.withAlpha(15),
+              padding: const EdgeInsets.all(20),
+              child: Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                 child: Padding(
                   padding: const EdgeInsets.all(18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text('Plan your next trip', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      Text(
+                        'Plan Your Next Trip',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                      ),
                       const SizedBox(height: 18),
                       DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(labelText: 'From'),
+                        decoration: const InputDecoration(
+                          labelText: 'From',
+                          prefixIcon: Icon(Icons.location_on_outlined),
+                        ),
                         initialValue: _fromCity,
                         items: _cities.map((city) {
                           return DropdownMenuItem(value: city, child: Text(city));
@@ -132,7 +156,10 @@ class _SearchPageState extends State<SearchPage> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(labelText: 'To'),
+                        decoration: const InputDecoration(
+                          labelText: 'To',
+                          prefixIcon: Icon(Icons.location_on),
+                        ),
                         initialValue: _toCity,
                         items: _cities.map((city) {
                           return DropdownMenuItem(value: city, child: Text(city));
@@ -144,62 +171,111 @@ class _SearchPageState extends State<SearchPage> {
                         onTap: _pickDate,
                         borderRadius: BorderRadius.circular(18),
                         child: InputDecorator(
-                          decoration: const InputDecoration(labelText: 'Travel date'),
+                          decoration: const InputDecoration(
+                            labelText: 'Travel Date',
+                            prefixIcon: Icon(Icons.calendar_month),
+                          ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(_formattedDate),
-                              const Icon(Icons.calendar_month),
+                              const Icon(Icons.calendar_month, size: 20),
                             ],
                           ),
                         ),
                       ),
                       const SizedBox(height: 18),
-                      ElevatedButton(
+                      ElevatedButton.icon(
                         onPressed: _searchRoutes,
-                        child: const Text('Search Buses'),
+                        icon: const Icon(Icons.search),
+                        label: const Text('Search Buses'),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
-              Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : _errorMessage != null
-                        ? Center(child: Text(_errorMessage!, textAlign: TextAlign.center))
-                        : _searchResults.isEmpty
-                            ? Center(
-                                child: Text(
-                                  'Search to see available buses between your chosen cities.',
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                  textAlign: TextAlign.center,
-                                ),
-                              )
-                            : ListView.separated(
-                                itemCount: _searchResults.length,
-                                separatorBuilder: (context, _) => const SizedBox(height: 14),
-                                itemBuilder: (context, index) {
-                                  final pair = _searchResults[index];
-                                  return _RouteCard(
-                                    route: pair.route,
-                                    trip: pair.trip,
-                                    onTap: () => Navigator.pushNamed(
-                                      context,
-                                      '/select-seat',
-                                      arguments: {
-                                        'route': pair.route,
-                                        'trip': pair.trip,
-                                        'date': _travelDate,
+            ),
+            const SizedBox(height: 20),
+            // Results Section
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error_outline, size: 56, color: colorScheme.error.withAlpha(179)),
+                              const SizedBox(height: 16),
+                              Text(
+                                _errorMessage!,
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ],
+                          ),
+                        )
+                      : _searchResults.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.search_off, size: 56, color: colorScheme.onSurface.withAlpha(127)),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Search to see available buses',
+                                    style: Theme.of(context).textTheme.bodyMedium,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'between your chosen cities',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            )
+                          : Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${_searchResults.length} buses found',
+                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Expanded(
+                                    child: ListView.separated(
+                                      itemCount: _searchResults.length,
+                                      separatorBuilder: (context, _) => const SizedBox(height: 14),
+                                      itemBuilder: (context, index) {
+                                        final pair = _searchResults[index];
+                                        return _RouteCard(
+                                          route: pair.route,
+                                          trip: pair.trip,
+                                          onTap: () => Navigator.pushNamed(
+                                            context,
+                                            '/select-seat',
+                                            arguments: {
+                                              'route': pair.route,
+                                              'trip': pair.trip,
+                                              'date': _travelDate,
+                                            },
+                                          ),
+                                        );
                                       },
                                     ),
-                                  );
-                                },
+                                  ),
+                                ],
                               ),
-              ),
-            ],
-          ),
+                            ),
+            ),
+          ],
         ),
       ),
     );
