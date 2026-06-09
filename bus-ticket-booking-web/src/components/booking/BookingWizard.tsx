@@ -76,8 +76,13 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
   // Store passenger details and go to payment
   const handleBookingSubmit = async (data: { passengerName: string; phoneNumber: string; gender: 'male' | 'female' }) => {
     setPassengerDetails(data);
-    setStep(5); // Go to payment step
   };
+
+  useEffect(() => {
+    if (passengerDetails && step === 4) {
+      setStep(5);
+    }
+  }, [passengerDetails, step]);
 
 
   const canGoNext = () => {
@@ -85,11 +90,10 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
       case 1: return !!selectedRoute && !!selectedTrip;
       case 2: return !!selectedDate;
       case 3: return selectedSeats.length > 0;
-      case 4: return true;
+      case 4: return !!passengerDetails;
       default: return true;
     }
   };
-
 
   const handleNext = () => {
     if (step < STEPS.length && canGoNext()) {
@@ -148,7 +152,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.8fr_0.9fr]">
+      <div className={`grid gap-6 ${step < 5 ? 'lg:grid-cols-[1.8fr_0.9fr]' : 'lg:grid-cols-1'}`}>
         <div className="relative min-h-[620px]">
           <div className={cn(
             "absolute inset-0 transition-all duration-500 ease-out",
@@ -267,8 +271,37 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
               </div>
             )}
           </div>
+
+          {/* Step 5: Payment (render inside same relative container to avoid extra blank space) */}
+          <div className={cn(
+            "absolute inset-0 transition-all duration-500 ease-out overflow-y-auto",
+            step === 5 ? "translate-x-0 opacity-100 pointer-events-auto" : "translate-x-full opacity-0 pointer-events-none"
+          )}>
+            {selectedRoute && selectedTrip && selectedDate && passengerDetails && selectedSeats.length > 0 && (
+              <div className="h-full">
+                <PaymentPage
+                  bookingData={{
+                    tripId: selectedTrip.id,
+                    routeId: selectedRoute.id,
+                    routeName: `${selectedRoute.from} → ${selectedRoute.to}`,
+                    date: dateStr!,
+                    seatNumbers: [...selectedSeats].sort((a,b)=>a-b).join(', '),
+                    passengerName: passengerDetails.passengerName,
+                    phoneNumber: passengerDetails.phoneNumber,
+                    gender: passengerDetails.gender,
+                    totalAmount: (selectedTrip.price || 0) * selectedSeats.length,
+                  }}
+                  onPaymentSuccess={(bookings) => {
+                    onBookingComplete(bookings, selectedRoute, selectedTrip);
+                  }}
+                  onCancel={() => setStep(4)}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
+        {step < 5 && (
         <div className="lg:sticky lg:top-4 h-fit">
           <div className="rounded-[2rem] border border-white/10 bg-slate-900/80 shadow-2xl overflow-hidden backdrop-blur-xl">
             <div className="p-5 border-b border-white/10">
@@ -311,30 +344,11 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
             </div>
             <RouteMap route={selectedRoute} selectedTrip={selectedTrip} className="h-[300px] lg:h-[400px]" />
           </div>
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Step 5: Payment */}
-      {step === 5 && selectedRoute && selectedTrip && selectedDate && passengerDetails && selectedSeats.length > 0 && (
-        <PaymentPage
-          bookingData={{
-            tripId: selectedTrip.id,
-            routeId: selectedRoute.id,
-            routeName: `${selectedRoute.from} → ${selectedRoute.to}`,
-            date: dateStr!,
-              seatNumbers: selectedSeats.sort((a,b)=>a-b).join(', '),
-            passengerName: passengerDetails.passengerName,
-            phoneNumber: passengerDetails.phoneNumber,
-            gender: passengerDetails.gender,
-            totalAmount: (selectedTrip.price || 0) * selectedSeats.length,
-          }}
-          onPaymentSuccess={(bookings) => {
-            // Call the parent onBookingComplete callback
-            onBookingComplete(bookings, selectedRoute, selectedTrip);
-          }}
-          onCancel={() => setStep(4)}
-        />
-      )}
+      {/* Payment panel moved inside the left column to prevent extra blank space */}
 
       {step < 5 && (
         <div className="flex flex-col gap-4 sm:flex-row justify-between">
