@@ -39,8 +39,8 @@ export default function Reviews() {
   const [search, setSearch] = useState<string>("");
   const [minRating, setMinRating] = useState<number>(0);
   const [sortMode, setSortMode] = useState<SortMode>("newest");
-  const [page, setPage] = useState<number>(1);
-  const pageSize = 6;
+  const pageSize = 10000;
+
 
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
 
@@ -48,13 +48,13 @@ export default function Reviews() {
     setFetchLoading(true);
     setError("");
 
-    let query = supabase.from("trip_reviews").select("*").order("created_at", { ascending: false });
+    // Load ALL reviews from Supabase (no route filtering)
+    const query = supabase
+      .from("trip_reviews")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-    if (routeId) {
-      query = query.eq("route_id", routeId);
-    } else if (routeName) {
-      query = query.ilike("route_name", `%${routeName}%`);
-    }
+
 
     const { data, error } = await query;
 
@@ -92,17 +92,13 @@ export default function Reviews() {
     return list;
   }, [reviews, search, minRating, sortMode]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredSorted.length / pageSize));
-
   const paged = useMemo(() => {
-    const safePage = Math.min(Math.max(1, page), totalPages);
-    const start = (safePage - 1) * pageSize;
-    return filteredSorted.slice(start, start + pageSize);
-  }, [filteredSorted, page, totalPages]);
+    // With pagination removed, just return the full (filtered/sorted) list
+    return filteredSorted;
+  }, [filteredSorted]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [search, minRating, sortMode]);
+
+
 
   const avgRating = useMemo(() => {
     if (!reviews.length) return 0;
@@ -418,30 +414,7 @@ export default function Reviews() {
                 ))}
               </div>
 
-              <div className="flex items-center justify-between gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page <= 1}
-                  className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 disabled:opacity-50"
-                >
-                  Prev
-                </button>
-
-                <div className="text-sm text-gray-600">
-                  Page <span className="font-semibold">{Math.min(page, totalPages)}</span> of{" "}
-                  <span className="font-semibold">{totalPages}</span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page >= totalPages}
-                  className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-gray-700 disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
+              {/* Pagination removed: displaying all matching reviews */}
             </>
           )}
         </div>
