@@ -1,18 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Shield, Lock, CreditCard, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import { PaymentIntent, CardDetails, PAYHERE_CONFIG } from '@/types/payment';
+import { Shield, Lock, CreditCard, CheckCircle, Loader2 } from 'lucide-react';
+import { PaymentIntent, CardDetails } from '@/types/payment';
 import { Booking } from '@/types/booking';
 import { usePayment } from '@/hooks/usePayment';
-import { cn } from '@/lib/utils';
-import { toast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 
 const cardSchema = z.object({
@@ -41,7 +36,6 @@ interface PaymentPageProps {
 }
 
 const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPageProps) => {
-  const navigate = useNavigate();
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntent | null>(null);
   const form = useForm<CardFormData>({
     resolver: zodResolver(cardSchema),
@@ -82,259 +76,261 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop with blur */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"></div>
-
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-purple-500/5 to-blue-500/5 rounded-full blur-3xl animate-pulse delay-500"></div>
-      </div>
-
-      {/* Popup Container */}
-      <div className="relative w-full max-w-lg animate-in zoom-in-95 duration-300 ease-out">
-        {/* Close Button */}
-        <button
-          onClick={onCancel}
-          disabled={loading}
-          className="absolute -top-12 right-0 z-10 text-white/80 hover:text-white transition-colors disabled:opacity-50"
-        >
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-
-        {/* Main Payment Card */}
-        <div className="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/30 overflow-hidden">
-          {/* Card Header */}
-          <div className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 p-6 text-white relative overflow-hidden">
-            {/* Header background pattern */}
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/20 rounded-full -translate-y-16 translate-x-16"></div>
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/20 rounded-full translate-y-12 -translate-x-12"></div>
+    <div className="h-full min-h-0 bg-transparent text-white">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-6 rounded-[2rem] border border-white/10 bg-slate-950/80 p-6 shadow-[0_40px_120px_-60px_rgba(15,23,42,0.8)] backdrop-blur-xl">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-3">
+              <p className="text-xs uppercase tracking-[0.35em] text-sky-300">Secure checkout</p>
+              <h1 className="text-3xl font-semibold tracking-tight text-white">Pay for your booking</h1>
+              <p className="max-w-2xl text-sm leading-6 text-slate-400">
+                Complete your payment securely with PayHere sandbox. Your card details are encrypted and handled safely.
+              </p>
             </div>
-
-            <div className="relative flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                  <Shield className="w-6 h-6" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold">Secure Payment</h2>
-                  <p className="text-purple-100 text-sm">PayHere Certified</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold">LKR {bookingData.totalAmount.toLocaleString()}</div>
-                <div className="text-purple-100 text-xs">Total Amount</div>
-              </div>
-            </div>
-
-            {/* Security badges */}
-            <div className="relative flex flex-wrap gap-2">
-              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/20">
-                <Lock className="w-3 h-3" />
-                <span className="text-xs font-medium">256-bit SSL</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/20">
-                <Shield className="w-3 h-3" />
-                <span className="text-xs font-medium">PCI DSS</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1.5 border border-white/20">
-                <CheckCircle className="w-3 h-3" />
-                <span className="text-xs font-medium">Fraud Protected</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-6">
-            {/* Booking Summary */}
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-5 mb-6 border border-gray-200/50 shadow-inner">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-purple-600" />
-                Booking Summary
-              </h3>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="space-y-2.5">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Seats</span>
-                    <span className="font-semibold text-gray-800">#{bookingData.seatNumbers}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Route</span>
-                    <span className="font-semibold text-gray-800">{bookingData.routeName}</span>
-                  </div>
-                </div>
-                <div className="space-y-2.5">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Date</span>
-                    <span className="font-semibold text-gray-800">{new Date(bookingData.date).toLocaleDateString('en-LK')}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Passenger</span>
-                    <span className="font-semibold text-gray-800">{bookingData.passengerName}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-300/50 mt-4 pt-4">
-                <div className="flex justify-between items-center text-lg font-bold text-purple-600">
-                  <span>Total Amount</span>
-                  <span>LKR {bookingData.totalAmount.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Form */}
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-                {/* Cardholder Name */}
-                <FormField
-                  control={form.control}
-                  name="cardholderName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-700 font-semibold text-sm">Cardholder Name</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input
-                            placeholder="John Doe"
-                            className="pl-11 h-11 text-base border-2 border-gray-200 focus:border-purple-500 rounded-xl transition-all duration-200 focus:ring-2 focus:ring-purple-500/20"
-                            {...field}
-                          />
-                          <div className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center">
-                            <span className="text-purple-600 font-bold text-xs">👤</span>
-                          </div>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Card Number */}
-                <FormField
-                  control={form.control}
-                  name="cardNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-700 font-semibold text-sm">Card Number</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-500" />
-                          <Input
-                            className="pl-11 h-11 text-base border-2 border-gray-200 focus:border-purple-500 rounded-xl font-mono tracking-wider transition-all duration-200 focus:ring-2 focus:ring-purple-500/20"
-                            placeholder="1234 5678 9012 3456"
-                            {...field}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim();
-                              field.onChange(value);
-                            }}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Expiry and CVC */}
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    control={form.control}
-                    name="expiry"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700 font-semibold text-sm">Expiry Date</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="MM/YY"
-                            maxLength={5}
-                            className="h-11 text-base border-2 border-gray-200 focus:border-purple-500 rounded-xl font-mono transition-all duration-200 focus:ring-2 focus:ring-purple-500/20"
-                            {...field}
-                            onChange={(e) => {
-                              let value = e.target.value;
-                              if (/^\d{2}$/.test(value)) value += '/';
-                              field.onChange(value);
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="cvc"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700 font-semibold text-sm">CVC</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="123"
-                            maxLength={4}
-                            className="h-11 text-base border-2 border-gray-200 focus:border-purple-500 rounded-xl font-mono transition-all duration-200 focus:ring-2 focus:ring-purple-500/20"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Pay Button */}
-                <Button
-                  type="submit"
-                  className="w-full h-12 text-lg font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 hover:from-purple-700 hover:via-blue-700 hover:to-indigo-700 shadow-xl rounded-xl transform transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      Processing Payment...
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="w-5 h-5 mr-2" />
-                      Pay LKR {bookingData.totalAmount.toLocaleString()}
-                    </>
-                  )}
-                </Button>
-              </form>
-            </Form>
-
-            {/* Security Footer */}
-            <div className="mt-6 pt-4 border-t border-gray-200/50 text-center">
-              <div className="flex items-center justify-center gap-2 mb-2 text-gray-600">
-                <Shield className="w-4 h-4 text-green-500" />
-                <span className="font-medium text-sm">Your payment is protected by bank-grade security</span>
-              </div>
-              <div className="flex flex-wrap justify-center gap-2 text-xs text-gray-500">
-                <span>🔒 SSL Encrypted</span>
-                <span>•</span>
-                <span>🛡️ Fraud Protection</span>
-                <span>•</span>
-                <span>💳 PayHere Secure</span>
-              </div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-slate-900/80 px-4 py-3 text-sm text-slate-200 ring-1 ring-white/10">
+              <Lock className="h-4 w-4 text-emerald-400" />
+              Sandbox mode enabled
             </div>
           </div>
         </div>
 
-        {/* Cancel Button */}
-        <div className="text-center mt-4">
+        <div className="grid gap-6 xl:grid-cols-[1.7fr_0.95fr]">
+          <section className="space-y-6">
+            <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/90 shadow-[0_35px_80px_-30px_rgba(15,23,42,0.8)]">
+              <div className="bg-gradient-to-r from-sky-600 via-cyan-500 to-slate-950/0 px-6 py-7 sm:px-8">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.32em] text-slate-200/70">Payment method</p>
+                    <h2 className="mt-2 text-2xl font-semibold text-white">Card checkout</h2>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-2 text-sm text-white/90 ring-1 ring-white/10">
+                    <CreditCard className="h-4 w-4" />
+                    Pay with card
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-200">
+                  <div className="flex items-center gap-2 rounded-full bg-slate-900/80 px-3 py-2 ring-1 ring-white/10">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#1A1F71] text-[10px] font-bold uppercase text-white">V</span>
+                    Visa
+                  </div>
+                  <div className="flex items-center gap-2 rounded-full bg-slate-900/80 px-3 py-2 ring-1 ring-white/10">
+                    <span className="relative flex h-6 w-6 items-center justify-center">
+                      <span className="absolute left-0 h-4 w-4 rounded-full bg-[#EB001B]" />
+                      <span className="absolute right-0 h-4 w-4 rounded-full bg-[#F79E1B]" />
+                    </span>
+                    Mastercard
+                  </div>
+                  <div className="flex items-center gap-2 rounded-full bg-slate-900/80 px-3 py-2 ring-1 ring-white/10">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2D9CDB] text-[10px] font-bold uppercase text-white">AM</span>
+                    Amex
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-6 py-8 sm:px-8 sm:py-10">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      <FormField
+                        control={form.control}
+                        name="cardholderName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-semibold text-slate-300">Cardholder name</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="John Doe"
+                                className="h-12 rounded-2xl border border-white/10 bg-slate-800 px-4 text-sm text-white shadow-sm transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="cardNumber"
+                        render={({ field }) => (
+                          <FormItem className="sm:col-span-2">
+                            <FormLabel className="text-sm font-semibold text-slate-300">Card number</FormLabel>
+                            <FormControl>
+                              <Input
+                                className="h-12 rounded-2xl border border-white/10 bg-slate-800 px-4 text-sm font-mono tracking-[0.25em] text-white shadow-sm transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10"
+                                placeholder="1234 5678 9012 3456"
+                                {...field}
+                                onChange={(e) => {
+                                  const value = e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim();
+                                  field.onChange(value);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid gap-5 sm:grid-cols-3">
+                      <FormField
+                        control={form.control}
+                        name="expiry"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-semibold text-slate-300">Expiry</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="MM/YY"
+                                maxLength={5}
+                                className="h-12 rounded-2xl border border-white/10 bg-slate-800 px-4 text-sm font-mono text-white shadow-sm transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10"
+                                {...field}
+                                onChange={(e) => {
+                                  let value = e.target.value;
+                                  if (/^\d{2}$/.test(value)) value += '/';
+                                  field.onChange(value);
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="cvc"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-semibold text-slate-300">CVC</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="password"
+                                placeholder="123"
+                                maxLength={4}
+                                className="h-12 rounded-2xl border border-white/10 bg-slate-800 px-4 text-sm font-mono text-white shadow-sm transition focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex items-end">
+                        <div className="rounded-3xl border border-white/10 bg-slate-900 p-4 text-xs leading-5 text-slate-300 shadow-[0_20px_45px_-20px_rgba(15,23,42,0.7)]">
+                          <p className="font-semibold text-white">Security</p>
+                          <p className="mt-2">Your card details are encrypted and processed securely.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      className="w-full rounded-3xl bg-sky-500 px-6 py-4 text-base font-semibold text-white shadow-2xl shadow-sky-500/20 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-70"
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <span className="inline-flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Processing payment...
+                        </span>
+                      ) : (
+                        <>Pay LKR {bookingData.totalAmount.toLocaleString()}</>
+                      )}
+                    </Button>
+                  </form>
+                </Form>
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] bg-slate-900/80 px-6 py-6 shadow-sm ring-1 ring-white/10 sm:px-8">
+              <h3 className="text-lg font-semibold text-white">Need help?</h3>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                If you have trouble completing the payment, contact support or try again with a different card.
+              </p>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <span className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-2 text-sm text-slate-300">
+                  <CheckCircle className="h-4 w-4 text-emerald-400" /> 100% secure checkout
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-3 py-2 text-sm text-slate-300">
+                  <Shield className="h-4 w-4 text-blue-400" /> PayHere sandbox mode
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <aside className="space-y-6">
+            <div className="rounded-[2rem] border border-white/10 bg-slate-950/95 p-6 shadow-[0_35px_80px_-30px_rgba(15,23,42,0.8)]">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-300">Order summary</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-white">Booking details</h2>
+                </div>
+                <div className="rounded-full bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-200">
+                  LKR {bookingData.totalAmount.toLocaleString()}
+                </div>
+              </div>
+
+              <div className="mt-6 space-y-4 text-sm text-slate-300">
+                <div className="grid gap-3 rounded-[1.75rem] bg-slate-900/80 p-4">
+                  <span className="text-slate-400">Route</span>
+                  <span className="font-semibold text-white">{bookingData.routeName}</span>
+                </div>
+                <div className="grid gap-3 rounded-[1.75rem] bg-slate-900/80 p-4">
+                  <span className="text-slate-400">Date</span>
+                  <span className="font-semibold text-white">{new Date(bookingData.date).toLocaleDateString('en-LK', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                </div>
+                <div className="grid gap-3 rounded-[1.75rem] bg-slate-900/80 p-4">
+                  <span className="text-slate-400">Seats</span>
+                  <span className="font-semibold text-white">#{bookingData.seatNumbers}</span>
+                </div>
+                <div className="grid gap-3 rounded-[1.75rem] bg-slate-900/80 p-4">
+                  <span className="text-slate-400">Passenger</span>
+                  <span className="font-semibold text-white">{bookingData.passengerName}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[2rem] border border-white/10 bg-slate-950/90 p-6 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.7)]">
+              <h3 className="text-lg font-semibold text-white">Secure payment</h3>
+              <p className="mt-3 text-sm leading-6 text-slate-400">
+                This transaction is protected by the PayHere sandbox gateway. No payment information is stored on our servers.
+              </p>
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-800 px-4 py-3">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-white">
+                    <Lock className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="font-semibold text-white">Encrypted card data</p>
+                    <p className="text-sm text-slate-300">Your card details are transmitted over HTTPS.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-800 px-4 py-3">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-500 text-white">
+                    <Shield className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="font-semibold text-white">Fraud detection</p>
+                    <p className="text-sm text-slate-300">We monitor every payment for suspicious activity.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-slate-300">
+            <span className="font-medium text-white">Need to change details?</span> Use the back button to update your booking information.
+          </div>
           <Button
             variant="ghost"
             onClick={onCancel}
-            className="text-white/80 hover:text-white hover:bg-white/10 rounded-xl px-4 py-2 text-sm transition-all duration-200 disabled:opacity-50"
+            className="rounded-3xl border border-white/10 bg-slate-900/80 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
             disabled={loading}
           >
-            ← Back to Booking Details
+            Back to booking
           </Button>
         </div>
       </div>
