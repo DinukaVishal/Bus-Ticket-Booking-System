@@ -62,6 +62,42 @@ const Home = () => {
               <ChevronRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>
+
+          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <a
+              href="#"
+              className="inline-flex items-center gap-4 rounded-[28px] border border-white/10 bg-transparent px-5 py-4 text-left text-white shadow-xl shadow-black/10 ring-1 ring-white/10 transition hover:bg-white/5"
+            >
+              <span className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white/10 ring-1 ring-white/10 overflow-hidden">
+                <img
+                  src="/app-store.png"
+                  alt="App Store"
+                  className="h-10 w-auto object-contain"
+                />
+              </span>
+              <div className="space-y-1">
+                <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Coming soon</p>
+                <p className="text-sm font-semibold">App Store</p>
+              </div>
+            </a>
+
+            <a
+              href="#"
+              className="inline-flex items-center gap-4 rounded-[28px] border border-white/10 bg-transparent px-5 py-4 text-left text-white shadow-xl shadow-black/10 ring-1 ring-white/10 transition hover:bg-white/5"
+            >
+              <span className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white/10 ring-1 ring-white/10 overflow-hidden">
+                <img
+                  src="/play-store.png"
+                  alt="Google Play"
+                  className="h-10 w-auto object-contain"
+                />
+              </span>
+              <div className="space-y-1">
+                <p className="text-[11px] uppercase tracking-[0.35em] text-slate-400">Available on</p>
+                <p className="text-sm font-semibold">Google Play</p>
+              </div>
+            </a>
+          </div>
         </div>
       </section>
 
