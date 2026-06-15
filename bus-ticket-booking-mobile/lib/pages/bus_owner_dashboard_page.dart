@@ -147,7 +147,13 @@ class _BusOwnerDashboardPageState extends State<BusOwnerDashboardPage> {
                                 onPressed: () {
                                   Navigator.pushReplacementNamed(context, '/owner-signup');
                                 },
-                                child: const Text('Add a bus'),
+                                style: ElevatedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text(
+                                  'Add a bus',
+                                  style: TextStyle(color: Colors.white),
+                                ),
                               ),
                             ],
                           ),
@@ -217,8 +223,14 @@ class _BusOwnerDashboardPageState extends State<BusOwnerDashboardPage> {
                     const SizedBox(height: 24),
                     ElevatedButton.icon(
                       onPressed: _loadOwnerDashboard,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Refresh dashboard'),
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: const Icon(Icons.refresh, color: Colors.white),
+                      label: const Text(
+                        'Refresh dashboard',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
