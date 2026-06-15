@@ -191,6 +191,8 @@ class _SearchPageState extends State<SearchPage> {
                         label: const Text('Search Buses'),
                         style: ElevatedButton.styleFrom(
                           minimumSize: const Size.fromHeight(48),
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.onPrimary,
                         ),
                       ),
                     ],
