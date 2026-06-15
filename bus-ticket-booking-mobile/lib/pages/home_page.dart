@@ -684,6 +684,8 @@ class _HomeSearchPanelState extends State<_HomeSearchPanel> {
                       label: const Text('Search Buses'),
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
+                        backgroundColor: widget.colorScheme.primary,
+                        foregroundColor: widget.colorScheme.onPrimary,
                       ),
                     ),
                   ),
