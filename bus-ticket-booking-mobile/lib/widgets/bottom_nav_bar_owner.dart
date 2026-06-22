@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 
-class BottomNavBar extends StatefulWidget {
+class BottomNavBarOwner extends StatefulWidget {
   final Function(int) onTabChanged;
 
-  const BottomNavBar({
+  const BottomNavBarOwner({
     Key? key,
     required this.onTabChanged,
   }) : super(key: key);
 
   @override
-  State<BottomNavBar> createState() => _BottomNavBarState();
+  State<BottomNavBarOwner> createState() => _BottomNavBarOwnerState();
 }
 
-class _BottomNavBarState extends State<BottomNavBar> {
+class _BottomNavBarOwnerState extends State<BottomNavBarOwner> {
   int _selectedIndex = 0;
 
   @override
