@@ -2,7 +2,7 @@ import { useEffect, useRef, useMemo, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Route, Trip } from '@/types/booking';
-import { findCityCoordinates, SRI_LANKA_CENTER, SRI_LANKA_ZOOM, CityCoordinate } from '@/lib/sriLankaCoordinates';
+import { findCityCoordinates, findRoutePath, SRI_LANKA_CENTER, SRI_LANKA_ZOOM, CityCoordinate } from '@/lib/sriLankaCoordinates';
 import { MapPin, Navigation, Clock, MapPinned } from 'lucide-react';
 import { useBusAnimation } from '@/hooks/useBusAnimation';
 
@@ -43,6 +43,48 @@ const estimateTravelTime = (distanceKm: number, busType: string): { hours: numbe
   return { hours, minutes };
 };
 
+const PUBLIC_OSRM_URL = 'https://router.project-osrm.org';
+
+const buildOsrmRouteUrl = (baseUrl: string | undefined, coordinatePairs: string): string => {
+  const trimmedBase = String(baseUrl || '').trim();
+  const safeBase = trimmedBase && trimmedBase !== '/'
+    ? trimmedBase.replace(/\/+$/,'')
+    : PUBLIC_OSRM_URL;
+
+  if (!coordinatePairs) {
+    throw new Error('OSRM coordinate pairs are empty');
+  }
+
+  const routePath = `/route/v1/driving/${coordinatePairs}?overview=full&geometries=polyline6`;
+
+  if (safeBase.startsWith('/')) {
+    return `${safeBase.replace(/\/+$/,'')}${routePath}`;
+  }
+
+  try {
+    return new URL(routePath, safeBase).toString();
+  } catch (error) {
+    console.warn('Invalid OSRM base URL, falling back to public OSRM. Base:', safeBase, 'Error:', error);
+    return `${PUBLIC_OSRM_URL}${routePath}`;
+  }
+};
+
+const fetchOsrmRoute = async (baseUrl: string | undefined, coordinatePairs: string, signal?: AbortSignal) => {
+  const localUrl = buildOsrmRouteUrl(baseUrl, coordinatePairs);
+  let response = await fetch(localUrl, { signal });
+  let data = await response.json();
+
+  if (data?.code !== 'Ok' || !data?.routes?.length) {
+    const fallbackUrl = buildOsrmRouteUrl(PUBLIC_OSRM_URL, coordinatePairs);
+    console.warn('Local OSRM failed, falling back to public OSRM:', data?.code || 'unknown');
+    response = await fetch(fallbackUrl, { signal });
+    data = await response.json();
+    return { data, url: fallbackUrl, usedFallback: true, localFailure: data };
+  }
+
+  return { data, url: localUrl, usedFallback: false };
+};
+
 const decodePolyline = (encoded: string, precision = 6): [number, number][] => {
   let index = 0;
   let lat = 0;
@@ -51,29 +93,29 @@ const decodePolyline = (encoded: string, precision = 6): [number, number][] => {
   const factor = 10 ** precision;
 
   while (index < encoded.length) {
-    let result = 1;
+    let result = 0;
     let shift = 0;
     let byte = 0;
 
     do {
       byte = encoded.charCodeAt(index++) - 63;
-      result += (byte & 0x1f) << shift;
+      result |= (byte & 0x1f) << shift;
       shift += 5;
     } while (byte >= 0x20);
 
-    const deltaLat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+    const deltaLat = (result & 1) ? ~(result >> 1) : result >> 1;
     lat += deltaLat;
 
-    result = 1;
+    result = 0;
     shift = 0;
 
     do {
       byte = encoded.charCodeAt(index++) - 63;
-      result += (byte & 0x1f) << shift;
+      result |= (byte & 0x1f) << shift;
       shift += 5;
     } while (byte >= 0x20);
 
-    const deltaLng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+    const deltaLng = (result & 1) ? ~(result >> 1) : result >> 1;
     lng += deltaLng;
 
     coordinates.push([lat / factor, lng / factor]);
@@ -94,11 +136,55 @@ const RouteMap = ({ route, selectedTrip, className = '' }: RouteMapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
+  const decodedMarkersRef = useRef<L.CircleMarker[]>([]);
   const polylineRef = useRef<L.Polyline | null>(null);
   const busMarkerRef = useRef<L.Marker | null>(null);
   const [viaPoints, setViaPoints] = useState<CityCoordinate[]>([]);
   const [showLiveTracking, setShowLiveTracking] = useState(!!route);
-  const [allRoutePoints, setAllRoutePoints] = useState<CityCoordinate[]>([]);
+  const [allRoutePoints, setAllRoutePoints] = useState<Array<{ lat: number; lng: number; name?: string }>>([]);
+  const [osrmAvailable, setOsrmAvailable] = useState<boolean | null>(null);
+  const [lastOsrmResponse, setLastOsrmResponse] = useState<string | null>(null);
+  const [showOsrmDebug, setShowOsrmDebug] = useState(false);
+  const [showDecodedPoints, setShowDecodedPoints] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
+
+  const testOsrm = async () => {
+    if (!route) {
+      setLastOsrmResponse('No route selected');
+      return;
+    }
+
+    const from = findCityCoordinates(route.from);
+    const to = findCityCoordinates(route.to);
+    if (!from || !to) {
+      setLastOsrmResponse('Invalid route coordinates');
+      setOsrmAvailable(false);
+      return;
+    }
+
+    const viaNames = route.viaPoints && route.viaPoints.length > 0
+      ? route.viaPoints
+      : findRoutePath(route.from, route.to) || [];
+
+    const viaCoordsLocal = viaNames
+      .map(name => findCityCoordinates(name))
+      .filter((c): c is CityCoordinate => !!c);
+
+    const pts = [from, ...viaCoordsLocal, to];
+    const coordPairs = pts.map(p => `${p.lng},${p.lat}`).join(';');
+    const OSRM_SERVICE_URL = (import.meta.env.VITE_OSRM_URL as string) || PUBLIC_OSRM_URL;
+
+    try {
+      const { data: json, url, usedFallback } = await fetchOsrmRoute(OSRM_SERVICE_URL, coordPairs);
+
+      console.debug('OSRM test request URL:', url, 'usedFallback:', usedFallback);
+      setLastOsrmResponse(JSON.stringify(json, null, 2));
+      setOsrmAvailable(!usedFallback && !!json?.routes?.length);
+    } catch (err) {
+      setLastOsrmResponse(String(err));
+      setOsrmAvailable(false);
+    }
+  };
   const stopArrivalTimes = selectedTrip?.stopArrivalTimes || [];
 
   // Bus animation hook
@@ -125,6 +211,9 @@ const RouteMap = ({ route, selectedTrip, className = '' }: RouteMapProps) => {
         subdomains: 'abcd',
         maxZoom: 19,
       }).addTo(mapInstanceRef.current);
+
+      mapInstanceRef.current.invalidateSize();
+      setMapReady(true);
     }
 
     return () => {
@@ -136,11 +225,16 @@ const RouteMap = ({ route, selectedTrip, className = '' }: RouteMapProps) => {
   }, []);
 
   useEffect(() => {
-    if (!mapInstanceRef.current) return;
+    if (!mapInstanceRef.current || !mapReady) return;
+
+    mapInstanceRef.current.invalidateSize();
 
     // Clear existing markers and polyline
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
+    // Clear decoded geometry markers as well
+    decodedMarkersRef.current.forEach(m => m.remove());
+    decodedMarkersRef.current = [];
     if (polylineRef.current) {
       polylineRef.current.remove();
       polylineRef.current = null;
@@ -157,16 +251,16 @@ const RouteMap = ({ route, selectedTrip, className = '' }: RouteMapProps) => {
 
     if (!fromCity || !toCity) return;
 
-    // ONLY use custom via points from route - do NOT fall back to predefined paths
-    // This ensures admin-defined routes show exactly what was configured
-    const viaPointNames = route.viaPoints && route.viaPoints.length > 0 
-      ? route.viaPoints 
-      : [];  // Empty array - no fallback to predefined paths
-    
+    // Prefer explicit via points configured for this route.
+    // If no via points exist, fall back to common Sri Lanka route paths so the map follows real roads.
+    const viaPointNames = route.viaPoints && route.viaPoints.length > 0
+      ? route.viaPoints
+      : findRoutePath(route.from, route.to) || [];
+
     const viaCoords = viaPointNames
       .map(name => findCityCoordinates(name))
       .filter((coord): coord is CityCoordinate => coord !== undefined);
-    
+
     setViaPoints(viaCoords);
     setAllRoutePoints([fromCity, ...viaCoords, toCity]);
 
@@ -238,49 +332,139 @@ const RouteMap = ({ route, selectedTrip, className = '' }: RouteMapProps) => {
     ];
 
     const coordinatePairs = allPoints.map(([lat, lng]) => `${lng},${lat}`).join(';');
-    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordinatePairs}?overview=full&geometries=polyline6`;
+    const OSRM_SERVICE_URL = (import.meta.env.VITE_OSRM_URL as string) || PUBLIC_OSRM_URL;
     const controller = new AbortController();
+
+    
 
     const drawRouteLine = async () => {
       if (allPoints.length < 2) return;
 
+      mapInstanceRef.current?.invalidateSize();
+
       try {
-        const response = await fetch(osrmUrl, { signal: controller.signal });
-        const data = await response.json();
+        const { data, url: resolvedOsrmUrl, usedFallback } = await fetchOsrmRoute(OSRM_SERVICE_URL, coordinatePairs, controller.signal);
+        console.debug('OSRM draw route URL:', resolvedOsrmUrl, 'usedFallback:', usedFallback);
         const encodedGeometry = data?.routes?.[0]?.geometry;
         const routePoints = encodedGeometry
           ? decodePolyline(encodedGeometry, 6)
           : allPoints;
 
-        polylineRef.current = L.polyline(routePoints, {
-          color: '#22c55e',
-          weight: 5,
-          opacity: 0.85,
-          lineJoin: 'round',
-          lineCap: 'round',
-        }).addTo(mapInstanceRef.current);
+        // Mark that OSRM provided a route
+        setOsrmAvailable(!usedFallback && (!!encodedGeometry || !!data?.routes?.length));
+
+        // Use the OSRM road geometry for both the route line and bus animation path.
+        setAllRoutePoints(routePoints.map(([lat, lng]) => ({ lat, lng })));
+
+        const drawHighlightedRoute = (points: [number, number][]) => {
+          // Add a subtle glow background to make the route stand out on any map style.
+          L.polyline(points, {
+            color: '#ffffff',
+            weight: 12,
+            opacity: 0.35,
+            lineJoin: 'round',
+            lineCap: 'round',
+            interactive: false,
+            pane: 'overlayPane',
+          }).addTo(mapInstanceRef.current!);
+
+          polylineRef.current = L.polyline(points, {
+            color: '#3b82f6',
+            weight: 7,
+            opacity: 0.95,
+            lineJoin: 'round',
+            lineCap: 'round',
+            interactive: false,
+            pane: 'overlayPane',
+          }).addTo(mapInstanceRef.current!);
+
+          requestAnimationFrame(() => {
+            mapInstanceRef.current?.invalidateSize();
+            polylineRef.current?.bringToFront();
+          });
+        };
+
+        drawHighlightedRoute(routePoints);
       } catch (error) {
-        polylineRef.current = L.polyline(allPoints, {
-          color: '#22c55e',
-          weight: 5,
-          opacity: 0.85,
-          lineJoin: 'round',
-          lineCap: 'round',
-        }).addTo(mapInstanceRef.current);
+        // OSRM not reachable or failed — fall back to straight-line points
+        setOsrmAvailable(false);
+        const drawHighlightedRoute = (points: [number, number][]) => {
+          L.polyline(points, {
+            color: '#ffffff',
+            weight: 12,
+            opacity: 0.35,
+            lineJoin: 'round',
+            lineCap: 'round',
+            interactive: false,
+            pane: 'overlayPane',
+          }).addTo(mapInstanceRef.current!);
+
+          polylineRef.current = L.polyline(points, {
+            color: '#3b82f6',
+            weight: 7,
+            opacity: 0.95,
+            lineJoin: 'round',
+            lineCap: 'round',
+            interactive: false,
+            pane: 'overlayPane',
+          }).addTo(mapInstanceRef.current!);
+
+          polylineRef.current.bringToFront();
+        };
+
+        drawHighlightedRoute(allPoints);
       }
     };
 
-    drawRouteLine();
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.whenReady(() => {
+        mapInstanceRef.current?.invalidateSize();
+        drawRouteLine();
 
-    // Fit map to show all points using underlying road tiles
-    const bounds = L.latLngBounds(allPoints);
-    mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
+        const bounds = L.latLngBounds(allPoints);
+        mapInstanceRef.current?.fitBounds(bounds, { padding: [50, 50] });
+      });
+    } else {
+      drawRouteLine();
+      const bounds = L.latLngBounds(allPoints);
+      mapInstanceRef.current?.fitBounds(bounds, { padding: [50, 50] });
+    }
 
     return () => {
       controller.abort();
     };
 
-  }, [route, selectedTrip]);
+  }, [route, selectedTrip, mapReady]);
+
+  // Draw decoded geometry points as small circle markers for debugging/visual verification
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+
+    // remove previous decoded markers
+    decodedMarkersRef.current.forEach(m => m.remove());
+    decodedMarkersRef.current = [];
+
+    if (!showDecodedPoints || allRoutePoints.length === 0) return;
+
+    allRoutePoints.forEach((p, idx) => {
+      const cm = L.circleMarker([p.lat, p.lng], {
+        radius: 4,
+        color: '#f59e0b',
+        weight: 1,
+        fillColor: '#f59e0b',
+        fillOpacity: 0.95,
+        pane: 'overlayPane',
+      }).addTo(mapInstanceRef.current!);
+
+      cm.bindTooltip(`${idx + 1}`, { permanent: false, direction: 'top', className: 'text-xs' });
+      decodedMarkersRef.current.push(cm);
+    });
+
+    return () => {
+      decodedMarkersRef.current.forEach(m => m.remove());
+      decodedMarkersRef.current = [];
+    };
+  }, [showDecodedPoints, allRoutePoints]);
 
   // Update live tracking when route changes
   useEffect(() => {
@@ -365,6 +549,40 @@ const RouteMap = ({ route, selectedTrip, className = '' }: RouteMapProps) => {
     <>
       <div className={`relative rounded-xl overflow-hidden border border-border ${className}`}>
         <div ref={mapRef} className="w-full h-full min-h-[280px]" />
+
+        {/* OSRM connectivity status badge + debug */}
+        {route && (
+          <div className="absolute left-3 bottom-3 z-[1200] max-w-[320px]">
+            <div className="flex gap-2 items-center">
+              {osrmAvailable === null && (
+                <div className="px-3 py-1 rounded-md bg-yellow-400/10 border border-yellow-500/20 text-yellow-600 text-sm">Checking routing backend…</div>
+              )}
+              {osrmAvailable === true && (
+                <div className="px-3 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">Routing: OSRM</div>
+              )}
+              {osrmAvailable === false && (
+                <div className="px-3 py-1 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">OSRM unreachable — using fallback</div>
+              )}
+
+              <button
+                onClick={() => { testOsrm(); setShowOsrmDebug(s => !s); }}
+                className="ml-2 px-2 py-1 rounded-md bg-sky-50 border border-sky-200 text-sky-700 text-sm"
+              >
+                Test OSRM
+              </button>
+              <button
+                onClick={() => setShowDecodedPoints(s => !s)}
+                className="ml-2 px-2 py-1 rounded-md bg-sky-50 border border-sky-200 text-sky-700 text-sm"
+              >
+                {showDecodedPoints ? 'Hide decoded points' : 'Show decoded points'}
+              </button>
+            </div>
+
+            {showOsrmDebug && lastOsrmResponse && (
+              <pre className="mt-2 max-h-40 overflow-auto text-xs p-2 bg-slate-900/80 text-white rounded">{lastOsrmResponse}</pre>
+            )}
+          </div>
+        )}
 
         {!route && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">

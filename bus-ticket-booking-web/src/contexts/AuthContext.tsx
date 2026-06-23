@@ -7,6 +7,10 @@ interface Profile {
   userId: string;
   displayName: string | null;
   avatarUrl: string | null;
+  bankName?: string | null;
+  bankAccountHolder?: string | null;
+  bankAccountNumber?: string | null;
+  bankBranch?: string | null;
 }
 
 interface AuthContextType {

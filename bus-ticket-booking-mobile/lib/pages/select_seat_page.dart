@@ -408,89 +408,181 @@ class _SelectSeatPageState extends State<SelectSeatPage> {
     );
   }
 
+  void _continueBooking() {
+    if (_selectedSeats.isEmpty) return;
+    Navigator.pushNamed(
+      context,
+      '/booking-summary',
+      arguments: {
+        'route': widget.route,
+        'trip': widget.trip,
+        'travelDate': widget.travelDate,
+        'seatNumbers': _selectedSeats.toList(),
+      },
+    );
+  }
+
+  Widget _buildSeatMap() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorMessage != null) {
+      return Center(child: Text(_errorMessage!));
+    }
+
+    return Column(
+      children: _buildLayoutRows().map((row) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: row,
+      )).toList(),
+    );
+  }
+
+  Widget _buildStepIndicator(String title, bool active) {
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: active ? Theme.of(context).colorScheme.primary : Colors.grey.shade300,
+            ),
+            child: Icon(active ? Icons.check : Icons.circle, size: 16, color: active ? Colors.white : Colors.grey.shade700),
+          ),
+          const SizedBox(height: 6),
+          Text(title, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: active ? Theme.of(context).colorScheme.onSurface : Colors.grey.shade600)),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryStat(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withAlpha(140), fontSize: 12)),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Theme.of(context).colorScheme.onSurface)),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final selectedSeats = _selectedSeats.toList()..sort();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Select Seat'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(widget.route.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 10),
-                    Text('${widget.route.from} → ${widget.route.to}', style: const TextStyle(fontSize: 16)),
-                    const SizedBox(height: 8),
-                    Text('${widget.trip.departureTime} - ${widget.trip.arrivalTime}', style: const TextStyle(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 8,
-                      children: [
-                        Chip(label: Text(widget.route.serviceType)),
-                        Chip(label: Text(widget.route.busType.name.toUpperCase())),
-                        Chip(label: Text('${widget.route.totalSeats} seats')),
-                        Chip(label: Text(_mainSeatCount == widget.route.totalSeats ? 'Main seats $_mainSeatCount' : '$_effectiveSeatCount seats')),
-                      ],
-                    ),
-                  ],
-                ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  _buildStepIndicator('Search', true),
+                  const SizedBox(width: 10),
+                  _buildStepIndicator('Seats', true),
+                  const SizedBox(width: 10),
+                  _buildStepIndicator('Review', false),
+                  const SizedBox(width: 10),
+                  _buildStepIndicator('Pay', false),
+                ],
               ),
-            ),
-            const SizedBox(height: 18),
-            const Text('Choose your seat', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 14),
-            if (_isLoading)
-              const Expanded(child: Center(child: CircularProgressIndicator()))
-            else if (_errorMessage != null)
-              Expanded(child: Center(child: Text(_errorMessage!)))
-            else
-              Expanded(
-                child: SingleChildScrollView(
+              const SizedBox(height: 18),
+              Card(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                elevation: 4,
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
                   child: Column(
-                    children: _buildLayoutRows().map((row) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: row,
-                    )).toList(),
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(widget.route.name, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 6),
+                              Text('${widget.route.from} → ${widget.route.to}', style: theme.textTheme.bodyMedium),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text('${widget.trip.departureTime} - ${widget.trip.arrivalTime}', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 6),
+                              Chip(label: Text(widget.route.busType.name.toUpperCase())),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Expanded(child: _summaryStat('Selected', selectedSeats.length.toString())),
+                          const SizedBox(width: 10),
+                          Expanded(child: _summaryStat('Total', 'LKR ${(_selectedSeats.length * widget.trip.price).toStringAsFixed(2)}')),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
-            const SizedBox(height: 16),
-            _buildLegend(),
-            const SizedBox(height: 12),
-            Text(
-              _selectedSeats.isEmpty
-                  ? 'Select at least one seat to continue'
-                  : 'Selected seats: ${_selectedSeats.toList()..sort()}'.replaceAll('[', '').replaceAll(']', ''),
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withAlpha(180)),
+              const SizedBox(height: 18),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildSeatMap(),
+                      const SizedBox(height: 18),
+                      _buildLegend(),
+                      const SizedBox(height: 12),
+                      Text(
+                        _selectedSeats.isEmpty
+                            ? 'Choose one or more seats from the map above.'
+                            : 'Selected seats: ${selectedSeats.join(', ')}',
+                        style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withAlpha(180)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 18),
+          child: ElevatedButton(
+            onPressed: _selectedSeats.isEmpty ? null : _continueBooking,
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _selectedSeats.isEmpty
-                  ? null
-                  : () {
-                      Navigator.pushNamed(
-                        context,
-                        '/booking-summary',
-                        arguments: {
-                          'route': widget.route,
-                          'trip': widget.trip,
-                          'travelDate': widget.travelDate,
-                          'seatNumbers': _selectedSeats.toList(),
-                        },
-                      );
-                    },
-              child: const Text('Continue to summary'),
+            child: Text(
+              _selectedSeats.isEmpty ? 'Select seats to continue' : 'Continue with ${selectedSeats.length} seat(s)',
+              style: const TextStyle(fontSize: 16),
             ),
-          ],
+          ),
         ),
       ),
     );

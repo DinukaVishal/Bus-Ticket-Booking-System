@@ -17,6 +17,7 @@ import {
   Trash,
   Edit,
   Radio,
+  DollarSign,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -47,6 +48,8 @@ const BusOwnerDashboard = () => {
   const navigate = useNavigate();
   const [buses, setBuses] = useState<BusInfo[]>([]);
   const [staffInfo, setStaffInfo] = useState<Map<string, StaffInfo>>(new Map());
+  const [monthlyRevenue, setMonthlyRevenue] = useState<number>(0);
+  const [bankStatus, setBankStatus] = useState<string>('Not set');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -70,6 +73,7 @@ const BusOwnerDashboard = () => {
 
       let busesWithRoute = busesData || [];
 
+      const routeIdMap = new Map<string, string[]>();
       if (busesData && busesData.length > 0) {
         // Fetch route assignments
         const { data: routeAssignments, error: routeError } = await supabase
@@ -82,7 +86,6 @@ const BusOwnerDashboard = () => {
         if (routeError) throw routeError;
 
         // Group route IDs by bus
-        const routeIdMap = new Map<string, string[]>();
         routeAssignments?.forEach((assignment: any) => {
           const existing = routeIdMap.get(assignment.owner_bus_id) || [];
           routeIdMap.set(assignment.owner_bus_id, [...existing, assignment.route_id]);
@@ -120,6 +123,29 @@ const BusOwnerDashboard = () => {
       }
 
       setBuses(busesWithRoute);
+
+      // Load owner revenue and bank status
+      if (user) {
+        const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+        const nextMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString();
+
+        const { data: revenueData, error: revenueError } = await supabase
+          .from('owner_monthly_revenue')
+          .select('revenue')
+          .eq('bus_owner_id', user.id)
+          .gte('month', monthStart)
+          .lt('month', nextMonth)
+          .limit(1);
+
+        if (!revenueError && revenueData && revenueData.length > 0) {
+          setMonthlyRevenue(revenueData[0].revenue || 0);
+        }
+
+        if (profile) {
+          const hasBank = profile.bankAccountNumber || profile.bankName;
+          setBankStatus(hasBank ? 'Setup' : 'Not set');
+        }
+      }
 
       // Load driver and conductor info for each bus
       if (busesWithRoute && busesWithRoute.length > 0) {
@@ -269,6 +295,10 @@ const BusOwnerDashboard = () => {
                 <User className="w-4 h-4 mr-2" />
                 Profile
               </Button>
+              <Button variant="outline" onClick={() => navigate('/bus-owner/offers')}>
+                <Settings className="w-4 h-4 mr-2" />
+                Manage Offers
+              </Button>
               <Button variant="outline" onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
@@ -278,7 +308,7 @@ const BusOwnerDashboard = () => {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -311,6 +341,30 @@ const BusOwnerDashboard = () => {
                   <p className="text-3xl font-bold">{buses.filter(b => b.approval_status === 'pending').length}</p>
                 </div>
                 <Calendar className="w-8 h-8 text-orange-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-muted-foreground text-sm">Monthly Revenue</p>
+                  <p className="text-3xl font-bold">Rs {monthlyRevenue.toLocaleString()}</p>
+                </div>
+                <DollarSign className="w-8 h-8 text-emerald-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-muted-foreground text-sm">Bank Account</p>
+                  <p className="text-3xl font-bold">{bankStatus}</p>
+                </div>
+                <User className="w-8 h-8 text-primary" />
               </div>
             </CardContent>
           </Card>

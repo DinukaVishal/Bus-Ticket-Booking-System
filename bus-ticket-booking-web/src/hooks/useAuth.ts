@@ -7,6 +7,10 @@ interface Profile {
   userId: string;
   displayName: string | null;
   avatarUrl: string | null;
+  bankName?: string | null;
+  bankAccountHolder?: string | null;
+  bankAccountNumber?: string | null;
+  bankBranch?: string | null;
 }
 
 interface AuthState {
@@ -50,6 +54,10 @@ export function useAuth() {
         userId: profileData.user_id,
         displayName: profileData.display_name,
         avatarUrl: profileData.avatar_url,
+        bankName: profileData.bank_name,
+        bankAccountHolder: profileData.bank_account_holder,
+        bankAccountNumber: profileData.bank_account_number,
+        bankBranch: profileData.bank_branch,
       } : null,
       isAdmin: isAdminData || false,
       isBusOwner: isBusOwnerData || false,

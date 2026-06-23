@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useRoutes } from '@/hooks/useRoutes';
 import HomeSearchPanel from '@/components/booking/HomeSearchPanel';
+import HomePageMap from '@/components/home/HomePageMap';
+import OffersBanner from '@/components/home/OffersBanner';
 
 const Home = () => {
   const { theme } = useTheme();
@@ -103,8 +105,19 @@ const Home = () => {
 
       {/* Search Panel Section */}
       <section className="py-24 bg-slate-900/80">
-        <div className="container mx-auto px-4 max-w-5xl">
-          <HomeSearchPanel routes={routes} />
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-8 items-stretch">
+            {/* Search Panel - Left Side */}
+            <div className="rounded-3xl h-full">
+              <OffersBanner />
+              <HomeSearchPanel routes={routes} />
+            </div>
+            
+            {/* Map - Right Side */}
+            <div className="hidden lg:block h-full">
+              <HomePageMap routes={routes} />
+            </div>
+          </div>
         </div>
       </section>
 

@@ -72,6 +72,14 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
+  void _swapLocations() {
+    setState(() {
+      final temp = _fromCity;
+      _fromCity = _toCity;
+      _toCity = temp;
+    });
+  }
+
   void _searchRoutes() {
     if (_fromCity == null || _toCity == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -109,64 +117,65 @@ class _SearchPageState extends State<SearchPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Icon(Icons.directions_bus_filled, color: colorScheme.primary, size: 28),
-            const SizedBox(width: 12),
-            Text(
-              'Search Trips',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.primary,
-                  ),
-            ),
-          ],
-        ),
+        title: Text('Search Trips', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+        elevation: 0,
       ),
       body: SafeArea(
         child: Column(
           children: [
-            // Search Panel
-            Container(
-              color: colorScheme.primary.withAlpha(15),
-              padding: const EdgeInsets.all(20),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               child: Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+                elevation: 6,
                 child: Padding(
-                  padding: const EdgeInsets.all(18),
+                  padding: const EdgeInsets.all(22),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        'Plan Your Next Trip',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 18),
+                      Text('Find your next ride', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Text('Fast, safe and easy bus booking in a few taps.', style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface.withAlpha(160))),
+                      const SizedBox(height: 22),
                       DropdownButtonFormField<String>(
                         decoration: const InputDecoration(
                           labelText: 'From',
                           prefixIcon: Icon(Icons.location_on_outlined),
                         ),
-                        initialValue: _fromCity,
-                        items: _cities.map((city) {
-                          return DropdownMenuItem(value: city, child: Text(city));
-                        }).toList(),
+                        value: _fromCity,
+                        items: _cities.map((city) => DropdownMenuItem(value: city, child: Text(city))).toList(),
                         onChanged: (value) => setState(() => _fromCity = value),
                       ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(
-                          labelText: 'To',
-                          prefixIcon: Icon(Icons.location_on),
-                        ),
-                        initialValue: _toCity,
-                        items: _cities.map((city) {
-                          return DropdownMenuItem(value: city, child: Text(city));
-                        }).toList(),
-                        onChanged: (value) => setState(() => _toCity = value),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              decoration: const InputDecoration(
+                                labelText: 'To',
+                                prefixIcon: Icon(Icons.location_on),
+                              ),
+                              value: _toCity,
+                              items: _cities.map((city) => DropdownMenuItem(value: city, child: Text(city))).toList(),
+                              onChanged: (value) => setState(() => _toCity = value),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          InkWell(
+                            onTap: _swapLocations,
+                            borderRadius: BorderRadius.circular(18),
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary.withAlpha(15),
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: Icon(Icons.swap_vert, color: colorScheme.primary),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       InkWell(
                         onTap: _pickDate,
                         borderRadius: BorderRadius.circular(18),
@@ -184,22 +193,19 @@ class _SearchPageState extends State<SearchPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 20),
                       ElevatedButton.icon(
                         onPressed: _searchRoutes,
                         icon: const Icon(Icons.search),
                         label: const Text('Search Buses'),
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(48),
-                        ),
+                        style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
                       ),
                     ],
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            // Results Section
+            const SizedBox(height: 18),
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -208,13 +214,9 @@ class _SearchPageState extends State<SearchPage> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.error_outline, size: 56, color: colorScheme.error.withAlpha(179)),
+                              Icon(Icons.error_outline, size: 56, color: colorScheme.error.withAlpha(180)),
                               const SizedBox(height: 16),
-                              Text(
-                                _errorMessage!,
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
+                              Text(_errorMessage!, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
                             ],
                           ),
                         )
@@ -223,19 +225,11 @@ class _SearchPageState extends State<SearchPage> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.search_off, size: 56, color: colorScheme.onSurface.withAlpha(127)),
+                                  Icon(Icons.search_off, size: 56, color: colorScheme.onSurface.withAlpha(120)),
                                   const SizedBox(height: 16),
-                                  Text(
-                                    'Search to see available buses',
-                                    style: Theme.of(context).textTheme.bodyMedium,
-                                    textAlign: TextAlign.center,
-                                  ),
+                                  Text('Search to see available buses', style: theme.textTheme.bodyMedium, textAlign: TextAlign.center),
                                   const SizedBox(height: 8),
-                                  Text(
-                                    'between your chosen cities',
-                                    style: Theme.of(context).textTheme.bodySmall,
-                                    textAlign: TextAlign.center,
-                                  ),
+                                  Text('Choose departure and destination to continue.', style: theme.textTheme.bodySmall, textAlign: TextAlign.center),
                                 ],
                               ),
                             )
@@ -244,10 +238,7 @@ class _SearchPageState extends State<SearchPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    '${_searchResults.length} buses found',
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                                  ),
+                                  Text('${_searchResults.length} buses found', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                                   const SizedBox(height: 12),
                                   Expanded(
                                     child: ListView.separated(
@@ -298,41 +289,48 @@ class _RouteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      elevation: 4,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Expanded(
-                    child: Text(route.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  ),
-                  Text('LKR ${trip.price.toStringAsFixed(2)}', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
+                  Expanded(child: Text(route.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+                  Text('LKR ${trip.price.toStringAsFixed(2)}', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
                 ],
               ),
               const SizedBox(height: 10),
               Text('${route.from} → ${route.to}', style: const TextStyle(fontSize: 16)),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Wrap(
-                spacing: 10,
+                spacing: 8,
                 runSpacing: 8,
                 children: [
-                  Chip(label: Text(route.serviceType)),
-                  Chip(label: Text(route.busType.name.toUpperCase())),
-                  Chip(label: Text('${route.totalSeats} seats')),
+                  _detailChip(context, route.serviceType),
+                  _detailChip(context, route.busType.name.toUpperCase()),
+                  _detailChip(context, '${route.totalSeats} seats'),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('${trip.departureTime} - ${trip.arrivalTime}', style: const TextStyle(fontWeight: FontWeight.w500)),
+                  Row(
+                    children: [
+                      const Icon(Icons.schedule, size: 18),
+                      const SizedBox(width: 6),
+                      Text('${trip.departureTime} - ${trip.arrivalTime}', style: const TextStyle(fontWeight: FontWeight.w500)),
+                    ],
+                  ),
                   Text(route.duration, style: const TextStyle(color: Colors.grey)),
                 ],
               ),
@@ -340,6 +338,13 @@ class _RouteCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _detailChip(BuildContext context, String label) {
+    return Chip(
+      backgroundColor: Theme.of(context).colorScheme.primary.withAlpha(12),
+      label: Text(label, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600)),
     );
   }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom'; // අලුතින් useNavigate ගත්තා
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,9 +10,16 @@ import { supabase } from '@/integrations/supabase/client';
 
 const Login = () => {
   const navigate = useNavigate();
+  const { user, signIn } = useAuthContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      navigate('/booking');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,19 +27,18 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data } = await signIn(email, password);
+      const session = data?.session ?? (await supabase.auth.getSession()).data.session;
 
-      if (error) throw error;
+      if (!session?.user) {
+        throw new Error('Unable to confirm login. Please try again.');
+      }
 
       toast({
         title: 'Welcome back!',
         description: 'You have successfully logged in.',
       });
       navigate('/booking');
-
     } catch (error: any) {
       toast({
         title: 'Login Failed',

@@ -43,6 +43,7 @@ export interface Booking {
   phoneNumber: string;
   gender: 'male' | 'female';
   status: 'pending' | 'confirmed' | 'cancelled';
+  payment_method?: 'Card' | 'Mobile Money';
   payment_status?: 'pending' | 'paid' | 'failed' | 'refunded';
   payment_id?: string;
   createdAt: string;
