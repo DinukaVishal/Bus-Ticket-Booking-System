@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'models/booking_models.dart';
 import 'pages/booking_summary_page.dart';
 import 'pages/payment_gateway_page.dart';
@@ -79,6 +79,7 @@ class _MyAppState extends State<MyApp> {
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.deepPurple,
+            foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             minimumSize: const Size.fromHeight(56),
             textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
@@ -125,6 +126,7 @@ class _MyAppState extends State<MyApp> {
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: darkColorScheme.primary,
+            foregroundColor: darkColorScheme.onPrimary,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             minimumSize: const Size.fromHeight(56),
             textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),

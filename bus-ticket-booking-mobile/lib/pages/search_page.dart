@@ -198,7 +198,15 @@ class _SearchPageState extends State<SearchPage> {
                         onPressed: _searchRoutes,
                         icon: const Icon(Icons.search),
                         label: const Text('Search Buses'),
+<<<<<<< HEAD
                         style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+=======
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: colorScheme.onPrimary,
+                        ),
+>>>>>>> 3271614d8279c8bf2f1af3859ac85b01b36121a9
                       ),
                     ],
                   ),

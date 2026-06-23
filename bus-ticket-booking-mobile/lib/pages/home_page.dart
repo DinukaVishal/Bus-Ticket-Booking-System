@@ -4,6 +4,7 @@ import '../services/supabase_service.dart';
 import 'search_page.dart';
 import 'my_bookings_page.dart';
 import 'profile_page.dart';
+import '../widgets/map.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.onToggleTheme});
@@ -27,6 +28,7 @@ class _HomePageState extends State<HomePage> {
       const SearchPage(),
       const MyBookingsPage(),
       const ProfilePage(),
+      const GoogleMapWidget()
     ];
   }
 
@@ -60,6 +62,10 @@ class _HomePageState extends State<HomePage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             label: 'Profile',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.map),
+            label: 'Map',
           ),
         ],
       ),
@@ -691,6 +697,8 @@ class _HomeSearchPanelState extends State<_HomeSearchPanel> {
                       label: const Text('Search Buses'),
                       style: ElevatedButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
+                        backgroundColor: widget.colorScheme.primary,
+                        foregroundColor: widget.colorScheme.onPrimary,
                       ),
                     ),
                   ),
