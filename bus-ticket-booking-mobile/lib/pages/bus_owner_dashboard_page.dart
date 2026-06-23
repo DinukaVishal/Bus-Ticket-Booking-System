@@ -1,13 +1,8 @@
 import 'package:bus_ticket_booking_mobile/pages/bus_owner_page_one.dart';
 import 'package:bus_ticket_booking_mobile/pages/bus_owner_page_two.dart';
 import 'package:flutter/material.dart';
-<<<<<<< HEAD
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/booking_models.dart';
-=======
-import 'package:bus_ticket_booking_mobile/widgets/bottom_nav_bar_owner.dart';
-import 'bus_owner_home_page.dart';
->>>>>>> 3271614d8279c8bf2f1af3859ac85b01b36121a9
 import '../services/supabase_service.dart';
 
 class BusOwnerDashboardPage extends StatefulWidget {
@@ -17,7 +12,6 @@ class BusOwnerDashboardPage extends StatefulWidget {
   State<BusOwnerDashboardPage> createState() => _BusOwnerDashboardPageState();
 }
 
-<<<<<<< HEAD
 class _BusOwnerDashboardPageState extends State<BusOwnerDashboardPage> with TickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = true;
@@ -267,18 +261,6 @@ class _BusOwnerDashboardPageState extends State<BusOwnerDashboardPage> with Tick
     }
   }
 
-=======
-class _BusOwnerDashboardPageState extends State<BusOwnerDashboardPage> {
-  int _currentIndex = 0;
-
-  final List<Widget> _pages = [
-    const BusOwnerHomePage(),
-    const BusOwnerPageOne(),
-    const BusOwnerPageTwo(),
-  ];
-
-  
->>>>>>> 3271614d8279c8bf2f1af3859ac85b01b36121a9
   Future<void> _handleLogout() async {
     await SupabaseService.signOut();
     if (!mounted) return;
@@ -287,11 +269,7 @@ class _BusOwnerDashboardPageState extends State<BusOwnerDashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
     final colorScheme = Theme.of(context).colorScheme;
-
-=======
->>>>>>> 3271614d8279c8bf2f1af3859ac85b01b36121a9
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -335,7 +313,6 @@ class _BusOwnerDashboardPageState extends State<BusOwnerDashboardPage> {
           ],
         ),
       ),
-<<<<<<< HEAD
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -925,16 +902,3 @@ class _BusOwnerDashboardPageState extends State<BusOwnerDashboardPage> {
     );
   }
 }
-=======
-      body: _pages[_currentIndex],
-      bottomNavigationBar: BottomNavBarOwner(
-        onTabChanged: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-      ),
-    );
-  }
-}
->>>>>>> 3271614d8279c8bf2f1af3859ac85b01b36121a9
