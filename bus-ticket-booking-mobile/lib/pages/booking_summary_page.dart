@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/booking_models.dart';
-import '../services/supabase_service.dart';
 
 class BookingSummaryPage extends StatefulWidget {
   const BookingSummaryPage({
@@ -8,13 +7,13 @@ class BookingSummaryPage extends StatefulWidget {
     required this.route,
     required this.trip,
     required this.travelDate,
-    required this.seatNumber,
+    required this.seatNumbers,
   });
 
   final RouteOption route;
   final TripOption trip;
   final DateTime travelDate;
-  final int seatNumber;
+  final List<int> seatNumbers;
 
   @override
   State<BookingSummaryPage> createState() => _BookingSummaryPageState();
@@ -23,7 +22,10 @@ class BookingSummaryPage extends StatefulWidget {
 class _BookingSummaryPageState extends State<BookingSummaryPage> {
   final _fullNameController = TextEditingController();
   final _phoneController = TextEditingController();
-  bool _isSubmitting = false;
+  String _selectedPaymentMethod = 'Card';
+  final List<String> _paymentMethods = ['Card', 'Mobile Money'];
+  String _selectedGender = 'male';
+  final List<String> _genderOptions = ['male', 'female'];
 
   @override
   void dispose() {
@@ -43,37 +45,20 @@ class _BookingSummaryPageState extends State<BookingSummaryPage> {
       return;
     }
 
-    setState(() {
-      _isSubmitting = true;
-    });
-
-    try {
-      await SupabaseService.createBooking(
-        route: widget.route,
-        trip: widget.trip,
-        travelDate: widget.travelDate,
-        seatNumber: widget.seatNumber,
-        passengerName: passengerName,
-        passengerPhone: passengerPhone,
-      );
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Booking confirmed! See it under My Bookings.')),
-      );
-      Navigator.pushNamedAndRemoveUntil(context, '/my-bookings', (route) => route.settings.name == '/home');
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Booking failed: ${error.toString()}')),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSubmitting = false;
-        });
-      }
-    }
+    Navigator.pushNamed(
+      context,
+      '/payment',
+      arguments: {
+        'route': widget.route,
+        'trip': widget.trip,
+        'travelDate': widget.travelDate,
+        'seatNumbers': widget.seatNumbers,
+        'passengerName': passengerName,
+        'passengerPhone': passengerPhone,
+        'paymentMethod': _selectedPaymentMethod,
+        'gender': _selectedGender,
+      },
+    );
   }
 
   @override
@@ -81,66 +66,175 @@ class _BookingSummaryPageState extends State<BookingSummaryPage> {
     final route = widget.route;
     final trip = widget.trip;
 
+    final totalPrice = trip.price * widget.seatNumbers.length;
+    final seatsLabel = widget.seatNumbers.toList()..sort();
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Booking Summary'),
+        title: const Text('Review & Pay'),
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(18),
+              Expanded(
+                child: SingleChildScrollView(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Text('Trip details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 12),
-                      Text(route.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 6),
-                      Text('${route.from} → ${route.to} • Seat ${widget.seatNumber}'),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('${trip.departureTime} - ${trip.arrivalTime}'),
-                          Text(route.duration, style: const TextStyle(color: Colors.grey)),
-                        ],
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(22),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Trip details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 16),
+                              Text(route.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  const Icon(Icons.location_on_outlined, size: 18, color: Colors.deepPurple),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: Text('${route.from} → ${route.to}', style: const TextStyle(fontSize: 14))),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  const Icon(Icons.event_seat_outlined, size: 18, color: Colors.deepPurple),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: Text('Seats ${seatsLabel.join(', ')}', style: const TextStyle(fontSize: 14))),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                children: seatsLabel.map((seat) {
+                                  return Chip(
+                                    label: Text('Seat $seat'),
+                                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                  );
+                                }).toList(),
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('${trip.departureTime} - ${trip.arrivalTime}', style: const TextStyle(fontSize: 14)),
+                                  Text(route.duration, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.primary.withAlpha(20),
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('Total amount', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                                    const SizedBox(height: 4),
+                                    Text('LKR ${totalPrice.toStringAsFixed(2)}', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      Text('Fare: LKR ${trip.price.toStringAsFixed(2)}', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 18),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(22),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Passenger details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 16),
+                              TextField(
+                                controller: _fullNameController,
+                                decoration: const InputDecoration(labelText: 'Full name'),
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: _phoneController,
+                                decoration: const InputDecoration(labelText: 'Phone number (optional)'),
+                                keyboardType: TextInputType.phone,
+                              ),
+                              const SizedBox(height: 18),
+                              const Text('Passenger gender', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 10),
+                              DropdownButtonFormField<String>(
+                                initialValue: _selectedGender,
+                                decoration: const InputDecoration(labelText: 'Gender'),
+                                items: _genderOptions.map((gender) {
+                                  return DropdownMenuItem(value: gender, child: Text(gender[0].toUpperCase() + gender.substring(1)));
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value == null) return;
+                                  setState(() {
+                                    _selectedGender = value;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(22),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Payment method', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 16),
+                              DropdownButtonFormField<String>(
+                                initialValue: _selectedPaymentMethod,
+                                decoration: const InputDecoration(labelText: 'Payment method'),
+                                items: _paymentMethods.map((method) {
+                                  return DropdownMenuItem(value: method, child: Text(method));
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value == null) return;
+                                  setState(() {
+                                    _selectedPaymentMethod = value;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'You will continue to a secure payment gateway after confirming your booking details.',
+                                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 18),
-              const Text('Passenger details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _fullNameController,
-                decoration: const InputDecoration(labelText: 'Full name'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _phoneController,
-                decoration: const InputDecoration(labelText: 'Phone number (optional)'),
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 22),
-              ElevatedButton(
-                onPressed: _isSubmitting ? null : _confirmBooking,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  child: _isSubmitting
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Confirm booking', style: TextStyle(fontSize: 16)),
-                ),
-              ),
             ],
           ),
+        ),
+      ),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: ElevatedButton(
+          onPressed: _confirmBooking,
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          ),
+          child: const Text('Proceed to payment', style: TextStyle(fontSize: 16)),
         ),
       ),
     );

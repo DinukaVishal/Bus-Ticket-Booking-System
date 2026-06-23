@@ -88,6 +88,21 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                                             const SizedBox(height: 8),
                                             Text('Seat ${booking.seatNumber} • ${booking.travelDate.day}/${booking.travelDate.month}/${booking.travelDate.year}'),
                                             const SizedBox(height: 6),
+                                            Wrap(
+                                              spacing: 8,
+                                              runSpacing: 6,
+                                              children: [
+                                                Chip(
+                                                  label: Text('${booking.gender[0].toUpperCase()}${booking.gender.substring(1)}'),
+                                                  backgroundColor: booking.gender.toLowerCase() == 'female' ? Colors.pink.shade100 : Colors.blue.shade100,
+                                                ),
+                                                Chip(
+                                                  label: Text('Payment: ${booking.paymentMethod}'),
+                                                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 6),
                                             Text('Booked on ${booking.createdAt.day}/${booking.createdAt.month}/${booking.createdAt.year}', style: const TextStyle(color: Colors.grey)),
                                             const SizedBox(height: 8),
                                             Text('Booking code: ${booking.bookingId}', style: const TextStyle(fontWeight: FontWeight.w500)),

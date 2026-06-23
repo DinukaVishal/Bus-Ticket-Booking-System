@@ -19,8 +19,8 @@ class SelectSeatPage extends StatefulWidget {
 }
 
 class _SelectSeatPageState extends State<SelectSeatPage> {
-  final Set<int> _bookedSeats = {};
-  int? _selectedSeat;
+  final Map<int, String> _bookedSeatGender = {};
+  final Set<int> _selectedSeats = {};
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -31,7 +31,7 @@ class _SelectSeatPageState extends State<SelectSeatPage> {
 
   bool get _allMainSeatsBooked {
     return List.generate(_mainSeatCount, (index) => index + 1).every(
-      (seatNumber) => _bookedSeats.contains(seatNumber),
+      (seatNumber) => _bookedSeatGender.containsKey(seatNumber),
     );
   }
 
@@ -48,13 +48,13 @@ class _SelectSeatPageState extends State<SelectSeatPage> {
     });
 
     try {
-      final seats = await SupabaseService.fetchBookedSeats(
+      final bookedSeats = await SupabaseService.fetchBookedSeats(
         tripId: widget.trip.id,
         travelDate: widget.travelDate,
       );
       setState(() {
-        _bookedSeats.clear();
-        _bookedSeats.addAll(seats);
+        _bookedSeatGender.clear();
+        _bookedSeatGender.addEntries(bookedSeats.map((seat) => MapEntry(seat.seatNumber, seat.gender)));
       });
     } catch (error) {
       setState(() {
@@ -72,7 +72,7 @@ class _SelectSeatPageState extends State<SelectSeatPage> {
   }
 
   bool _isSeatBooked(int seatNumber) {
-    return _bookedSeats.contains(seatNumber);
+    return _bookedSeatGender.containsKey(seatNumber);
   }
 
   bool _isSeatSelectable(int seatNumber) {
@@ -86,22 +86,33 @@ class _SelectSeatPageState extends State<SelectSeatPage> {
   void _toggleSeat(int seatNumber) {
     if (!_isSeatSelectable(seatNumber)) return;
     setState(() {
-      _selectedSeat = _selectedSeat == seatNumber ? null : seatNumber;
+      if (_selectedSeats.contains(seatNumber)) {
+        _selectedSeats.remove(seatNumber);
+      } else {
+        _selectedSeats.add(seatNumber);
+      }
     });
   }
 
   Widget _buildSeatButton(int seatNumber, {bool isWindow = false, bool isJump = false, bool isSmall = false}) {
     final isBooked = _isSeatBooked(seatNumber);
-    final isSelected = _selectedSeat == seatNumber;
+    final isSelected = _selectedSeats.contains(seatNumber);
     final jumpLocked = isJump && !_allMainSeatsBooked;
     final isEnabled = _isSeatSelectable(seatNumber);
     final theme = Theme.of(context);
+    final gender = _bookedSeatGender[seatNumber] ?? 'unknown';
 
     Color background;
     Color foreground;
 
     if (isBooked) {
-      background = Colors.grey.shade700;
+      if (gender == 'female') {
+        background = Colors.pink.shade300;
+      } else if (gender == 'male') {
+        background = Colors.blue.shade300;
+      } else {
+        background = Colors.grey.shade700;
+      }
       foreground = Colors.white;
     } else if (isSelected) {
       background = theme.colorScheme.primary;
@@ -125,16 +136,27 @@ class _SelectSeatPageState extends State<SelectSeatPage> {
           height: isSmall ? 40 : 52,
           decoration: BoxDecoration(
             color: background,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isSelected ? theme.colorScheme.primary : Colors.transparent,
               width: 2,
             ),
+            boxShadow: isSelected
+                ? [BoxShadow(color: theme.colorScheme.primary.withAlpha(51), blurRadius: 8, offset: const Offset(0, 4))]
+                : null,
           ),
           child: Stack(
             alignment: Alignment.center,
             children: [
               Text(label, style: TextStyle(color: foreground, fontWeight: FontWeight.bold, fontSize: isSmall ? 12 : 14)),
+              if (isBooked && gender != 'unknown')
+                Positioned(
+                  bottom: 4,
+                  child: Text(
+                    gender == 'female' ? 'F' : 'M',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ),
               if (isJump)
                 Positioned(
                   top: 4,
@@ -361,6 +383,31 @@ class _SelectSeatPageState extends State<SelectSeatPage> {
     }
   }
 
+  Widget _buildLegend() {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        _legendChip(label: 'Available', color: Theme.of(context).colorScheme.surfaceContainerHighest, textColor: Theme.of(context).colorScheme.onSurface),
+        _legendChip(label: 'Selected', color: Theme.of(context).colorScheme.primary, textColor: Colors.white),
+        _legendChip(label: 'Booked male', color: Colors.blue.shade300, textColor: Colors.white),
+        _legendChip(label: 'Booked female', color: Colors.pink.shade300, textColor: Colors.white),
+        _legendChip(label: 'Jump seat', color: Colors.grey.shade300, textColor: Colors.grey.shade800),
+      ],
+    );
+  }
+
+  Widget _legendChip({required String label, required Color color, required Color textColor}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(label, style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -416,16 +463,18 @@ class _SelectSeatPageState extends State<SelectSeatPage> {
                   ),
                 ),
               ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
+            _buildLegend(),
+            const SizedBox(height: 12),
             Text(
-              _selectedSeat == null
-                  ? 'Select a seat to continue'
-                  : 'Selected seat: $_selectedSeat',
+              _selectedSeats.isEmpty
+                  ? 'Select at least one seat to continue'
+                  : 'Selected seats: ${_selectedSeats.toList()..sort()}'.replaceAll('[', '').replaceAll(']', ''),
               style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withAlpha(180)),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _selectedSeat == null
+              onPressed: _selectedSeats.isEmpty
                   ? null
                   : () {
                       Navigator.pushNamed(
@@ -435,7 +484,7 @@ class _SelectSeatPageState extends State<SelectSeatPage> {
                           'route': widget.route,
                           'trip': widget.trip,
                           'travelDate': widget.travelDate,
-                          'seatNumber': _selectedSeat!,
+                          'seatNumbers': _selectedSeats.toList(),
                         },
                       );
                     },

@@ -1,9 +1,14 @@
 ﻿import 'package:flutter/material.dart';
 import 'models/booking_models.dart';
 import 'pages/booking_summary_page.dart';
+import 'pages/payment_gateway_page.dart';
 import 'pages/bus_owner_login_page.dart';
 import 'pages/bus_owner_signup_page.dart';
 import 'pages/bus_owner_dashboard_page.dart';
+import 'pages/bus_owner_add_bus_page.dart';
+import 'pages/bus_owner_edit_bus_page.dart';
+import 'pages/bus_owner_routes_page.dart';
+import 'pages/bus_owner_trips_page.dart';
 import 'pages/staff_dashboard_page.dart';
 import 'pages/home_page.dart';
 import 'pages/login_page.dart';
@@ -145,6 +150,9 @@ class _MyAppState extends State<MyApp> {
         '/owner-login': (context) => const BusOwnerLoginPage(),
         '/owner-signup': (context) => const BusOwnerSignupPage(),
         '/owner-dashboard': (context) => const BusOwnerDashboardPage(),
+        '/owner-add-bus': (context) => const BusOwnerAddBusPage(),
+        '/owner-routes': (context) => const BusOwnerRoutesPage(),
+        '/owner-trips': (context) => const BusOwnerTripsPage(),
         '/staff-login': (context) => const StaffLoginPage(),
         '/staff-dashboard': (context) => const StaffDashboardPage(),
         '/home': (context) => HomePage(onToggleTheme: _toggleTheme),
@@ -154,6 +162,12 @@ class _MyAppState extends State<MyApp> {
       },
       onGenerateRoute: (settings) {
         switch (settings.name) {
+          case '/owner-edit-bus':
+            final arguments = settings.arguments as OwnerBus?;
+            if (arguments == null) return null;
+            return MaterialPageRoute(
+              builder: (_) => BusOwnerEditBusPage(bus: arguments),
+            );
           case '/select-seat':
             final arguments = settings.arguments as Map<String, dynamic>?;
             if (arguments == null) return null;
@@ -172,7 +186,22 @@ class _MyAppState extends State<MyApp> {
                 route: arguments['route'] as RouteOption,
                 trip: arguments['trip'] as TripOption,
                 travelDate: arguments['travelDate'] as DateTime,
-                seatNumber: arguments['seatNumber'] as int,
+                seatNumbers: List<int>.from(arguments['seatNumbers'] as List<dynamic>),
+              ),
+            );
+          case '/payment':
+            final arguments = settings.arguments as Map<String, dynamic>?;
+            if (arguments == null) return null;
+            return MaterialPageRoute(
+              builder: (_) => PaymentGatewayPage(
+                route: arguments['route'] as RouteOption,
+                trip: arguments['trip'] as TripOption,
+                travelDate: arguments['travelDate'] as DateTime,
+                seatNumbers: List<int>.from(arguments['seatNumbers'] as List<dynamic>),
+                passengerName: arguments['passengerName'] as String,
+                passengerPhone: arguments['passengerPhone'] as String,
+                paymentMethod: arguments['paymentMethod'] as String,
+                gender: arguments['gender'] as String,
               ),
             );
           default:

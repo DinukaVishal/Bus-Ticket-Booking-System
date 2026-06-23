@@ -306,6 +306,13 @@ class _HomeContent extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     _PartnerAccessCard(
+                      icon: Icons.dashboard,
+                      title: 'Bus Owner Dashboard',
+                      subtitle: 'Jump to your dashboard if already logged in.',
+                      onTap: () => Navigator.pushNamed(context, '/owner-dashboard'),
+                    ),
+                    const SizedBox(height: 12),
+                    _PartnerAccessCard(
                       icon: Icons.admin_panel_settings,
                       title: 'Staff Login',
                       subtitle: 'Access the staff portal for drivers and conductors.',
