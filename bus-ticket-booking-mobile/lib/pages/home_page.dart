@@ -47,14 +47,8 @@ class _HomePageState extends State<HomePage> {
         onTap: _onNavTapped,
         type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_filled),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Search',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
           BottomNavigationBarItem(
             icon: Icon(Icons.receipt_long),
             label: 'Bookings',
@@ -91,14 +85,18 @@ class _HomeContent extends StatelessWidget {
       appBar: AppBar(
         title: Row(
           children: [
-            Icon(Icons.directions_bus_filled, color: colorScheme.primary, size: 28),
+            Icon(
+              Icons.directions_bus_filled,
+              color: colorScheme.primary,
+              size: 28,
+            ),
             const SizedBox(width: 12),
             Text(
               'QuickBus',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.primary,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: colorScheme.primary,
+              ),
             ),
           ],
         ),
@@ -140,7 +138,9 @@ class _HomeContent extends StatelessWidget {
                     // Hero Section
                     Card(
                       elevation: 8,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(28),
+                      ),
                       child: Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -198,7 +198,8 @@ class _HomeContent extends StatelessWidget {
                             ),
                             const SizedBox(height: 20),
                             ElevatedButton.icon(
-                              onPressed: () => Navigator.pushNamed(context, '/search'),
+                              onPressed: () =>
+                                  Navigator.pushNamed(context, '/search'),
                               icon: const Icon(Icons.directions_bus_filled),
                               label: const Text('Book Your Ticket'),
                               style: ElevatedButton.styleFrom(
@@ -234,7 +235,8 @@ class _HomeContent extends StatelessWidget {
                       step: 1,
                       icon: Icons.search,
                       title: 'Search Your Route',
-                      description: 'Enter your departure, destination and travel date for instant options.',
+                      description:
+                          'Enter your departure, destination and travel date for instant options.',
                       color: Colors.blue,
                     ),
                     const SizedBox(height: 12),
@@ -242,7 +244,8 @@ class _HomeContent extends StatelessWidget {
                       step: 2,
                       icon: Icons.directions_bus_filled,
                       title: 'Pick Your Bus & Seat',
-                      description: 'Choose the vehicle, seat and amenities that suit your journey.',
+                      description:
+                          'Choose the vehicle, seat and amenities that suit your journey.',
                       color: Colors.green,
                     ),
                     const SizedBox(height: 12),
@@ -250,7 +253,8 @@ class _HomeContent extends StatelessWidget {
                       step: 3,
                       icon: Icons.credit_card,
                       title: 'Pay Securely',
-                      description: 'Complete payment and travel with confidence.',
+                      description:
+                          'Complete payment and travel with confidence.',
                       color: Colors.purple,
                     ),
                     const SizedBox(height: 32),
@@ -268,21 +272,24 @@ class _HomeContent extends StatelessWidget {
                     _FeatureCard(
                       icon: Icons.shield_outlined,
                       title: 'Secure Payments',
-                      description: 'Payments protected with encryption and multiple secure gateways.',
+                      description:
+                          'Payments protected with encryption and multiple secure gateways.',
                       color: Colors.green,
                     ),
                     const SizedBox(height: 12),
                     _FeatureCard(
                       icon: Icons.access_time,
                       title: '24/7 Support',
-                      description: 'Our team is available anytime to support your travel plans.',
+                      description:
+                          'Our team is available anytime to support your travel plans.',
                       color: Colors.orange,
                     ),
                     const SizedBox(height: 12),
                     _FeatureCard(
                       icon: Icons.location_on_outlined,
                       title: 'All Routes Covered',
-                      description: 'Travel across Sri Lanka with a wide network of trusted routes.',
+                      description:
+                          'Travel across Sri Lanka with a wide network of trusted routes.',
                       color: Colors.red,
                     ),
                     const SizedBox(height: 32),
@@ -300,8 +307,10 @@ class _HomeContent extends StatelessWidget {
                     _PartnerAccessCard(
                       icon: Icons.person_add_alt_1,
                       title: 'Bus Owner Sign Up',
-                      subtitle: 'Register as a bus owner to manage buses and trips.',
-                      onTap: () => Navigator.pushNamed(context, '/owner-signup'),
+                      subtitle:
+                          'Register as a bus owner to manage buses and trips.',
+                      onTap: () =>
+                          Navigator.pushNamed(context, '/owner-signup'),
                     ),
                     const SizedBox(height: 12),
                     _PartnerAccessCard(
@@ -314,7 +323,8 @@ class _HomeContent extends StatelessWidget {
                     _PartnerAccessCard(
                       icon: Icons.admin_panel_settings,
                       title: 'Staff Login',
-                      subtitle: 'Access the staff portal for drivers and conductors.',
+                      subtitle:
+                          'Access the staff portal for drivers and conductors.',
                       onTap: () => Navigator.pushNamed(context, '/staff-login'),
                     ),
                     const SizedBox(height: 32),
@@ -431,7 +441,9 @@ class _PartnerAccessCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
-              color: theme.brightness == Brightness.dark ? Colors.black26 : const Color.fromRGBO(0, 0, 0, 0.06),
+              color: theme.brightness == Brightness.dark
+                  ? Colors.black26
+                  : const Color.fromRGBO(0, 0, 0, 0.06),
               blurRadius: 18,
               spreadRadius: 1,
             ),
@@ -442,8 +454,14 @@ class _PartnerAccessCard extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 26,
-              backgroundColor: Theme.of(context).colorScheme.primary.withAlpha(31),
-              child: Icon(icon, size: 28, color: Theme.of(context).colorScheme.primary),
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.primary.withAlpha(31),
+              child: Icon(
+                icon,
+                size: 28,
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -453,17 +471,29 @@ class _PartnerAccessCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     subtitle,
-                    style: TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface.withAlpha(179)),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withAlpha(179),
+                    ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.black38),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.black38,
+            ),
           ],
         ),
       ),
@@ -573,9 +603,9 @@ class _HomeSearchPanelState extends State<_HomeSearchPanel> {
         _isLoadingCities = false;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load cities')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to load cities')));
       }
     }
   }
@@ -603,7 +633,11 @@ class _HomeSearchPanelState extends State<_HomeSearchPanel> {
       return;
     }
 
-    Navigator.pushNamed(context, '/search');
+    Navigator.pushNamed(context, '/search', arguments: {
+      'from': _fromCity,
+      'to': _toCity,
+      'date': _travelDate,
+    });
   }
 
   @override
@@ -633,14 +667,16 @@ class _HomeSearchPanelState extends State<_HomeSearchPanel> {
           children: [
             Text(
               'Find Your Next Journey',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               'Search and book buses instantly',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
-                  ),
+                color: Theme.of(context).colorScheme.onSurface.withAlpha(153),
+              ),
             ),
             const SizedBox(height: 20),
             if (_isLoadingCities)
@@ -649,22 +685,38 @@ class _HomeSearchPanelState extends State<_HomeSearchPanel> {
               Column(
                 children: [
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'From',
                       prefixIcon: Icon(Icons.location_on_outlined),
                     ),
                     initialValue: _fromCity,
-                    items: _cities.map((city) => DropdownMenuItem(value: city, child: Text(city))).toList(),
+                    items: _cities
+                        .map(
+                          (city) => DropdownMenuItem(
+                            value: city,
+                            child: Text(city, overflow: TextOverflow.ellipsis),
+                          ),
+                        )
+                        .toList(),
                     onChanged: (value) => setState(() => _fromCity = value),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'To',
                       prefixIcon: Icon(Icons.location_on),
                     ),
                     initialValue: _toCity,
-                    items: _cities.map((city) => DropdownMenuItem(value: city, child: Text(city))).toList(),
+                    items: _cities
+                        .map(
+                          (city) => DropdownMenuItem(
+                            value: city,
+                            child: Text(city, overflow: TextOverflow.ellipsis),
+                          ),
+                        )
+                        .toList(),
                     onChanged: (value) => setState(() => _toCity = value),
                   ),
                   const SizedBox(height: 12),
