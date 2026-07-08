@@ -627,7 +627,11 @@ class _HomeSearchPanelState extends State<_HomeSearchPanel> {
       return;
     }
 
-    Navigator.pushNamed(context, '/search');
+    Navigator.pushNamed(context, '/search', arguments: {
+      'from': _fromCity,
+      'to': _toCity,
+      'date': _travelDate,
+    });
   }
 
   @override
