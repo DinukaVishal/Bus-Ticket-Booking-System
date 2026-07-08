@@ -18,6 +18,7 @@ class _SearchPageState extends State<SearchPage> {
   DateTime _travelDate = DateTime.now().add(const Duration(days: 1));
   bool _isLoading = true;
   String? _errorMessage;
+  bool _hasProcessedArgs = false;
 
   String get _formattedDate {
     return '${_travelDate.day.toString().padLeft(2, '0')} / ${_travelDate.month.toString().padLeft(2, '0')} / ${_travelDate.year}';
@@ -27,6 +28,23 @@ class _SearchPageState extends State<SearchPage> {
   void initState() {
     super.initState();
     _loadRoutes();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_hasProcessedArgs) {
+      _hasProcessedArgs = true;
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      if (args != null) {
+        _fromCity = args['from'] as String?;
+        _toCity = args['to'] as String?;
+        final date = args['date'] as DateTime?;
+        if (date != null) {
+          _travelDate = date;
+        }
+      }
+    }
   }
 
   Future<void> _loadRoutes() async {
@@ -46,6 +64,11 @@ class _SearchPageState extends State<SearchPage> {
         _cities.clear();
         _cities.addAll(cities.toList()..sort());
       });
+
+      // Auto-search if arguments were passed from Home page
+      if (_fromCity != null && _toCity != null) {
+        _searchRoutes();
+      }
     } catch (error) {
       setState(() {
         _errorMessage = 'Unable to load routes. Please try again.';
