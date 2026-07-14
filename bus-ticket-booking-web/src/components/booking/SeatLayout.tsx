@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { SeatStatus, BusType, BUS_TYPE_CONFIGS } from '@/types/booking';
+import { SeatStatus, BusType, BUS_TYPE_CONFIGS, normalizeBusType } from '@/types/booking';
 import { User, DoorOpen, Wind, Snowflake, Armchair, UserCheck, UserX } from 'lucide-react';
 
 interface SeatLayoutProps {
@@ -20,7 +20,8 @@ const SeatLayout = ({
   readOnly = true
 }: SeatLayoutProps) => {
   
-  const config = BUS_TYPE_CONFIGS[busType] || BUS_TYPE_CONFIGS.normal;
+  const normalizedBusType = normalizeBusType(busType);
+  const config = BUS_TYPE_CONFIGS[normalizedBusType] || BUS_TYPE_CONFIGS.normal;
   const mainSeats = totalSeats || config.defaultSeats;
   const jumpSeats = config.jumpSeats || 0;
   const effectiveTotalSeats = mainSeats + jumpSeats;
@@ -369,7 +370,7 @@ const SeatLayout = ({
   };
 
   const renderLayout = () => {
-    switch (busType) {
+    switch (normalizedBusType) {
       case 'rosa':
         return renderRosaLayout();
       case 'luxury_ac':
@@ -383,7 +384,7 @@ const SeatLayout = ({
   };
 
   const getBusTypeBadgeStyle = () => {
-    switch (busType) {
+    switch (normalizedBusType) {
       case 'rosa':
         return "bg-purple-50 text-purple-600 border-purple-100";
       case 'luxury_ac':
