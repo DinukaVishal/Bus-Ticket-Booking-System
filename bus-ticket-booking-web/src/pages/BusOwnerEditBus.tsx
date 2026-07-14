@@ -20,7 +20,7 @@ import { toast } from '@/hooks/use-toast';
 import { Bus, ArrowLeft, MapPin, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import ViaPointsEditor from '@/components/admin/ViaPointsEditor';
-import { BusType } from '@/types/booking';
+import { BusType, normalizeBusType } from '@/types/booking';
 
 interface BusFormData {
   busNumber: string;
@@ -427,7 +427,7 @@ const BusOwnerEditBus = () => {
         .from('owner_buses')
         .update({
           bus_number: normalizedBusNumber,
-          bus_type: busFormData.busType,
+          bus_type: normalizeBusType(busFormData.busType),
           total_seats: parseInt(busFormData.totalSeats),
           registration_number: busFormData.registrationNumber,
           insurance_expiry: busFormData.insuranceExpiry,
