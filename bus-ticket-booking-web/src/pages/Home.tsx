@@ -106,16 +106,18 @@ const Home = () => {
       {/* Search Panel Section */}
       <section className="py-24 bg-slate-900/80">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-8 items-stretch">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-8 items-start">
             {/* Search Panel - Left Side */}
-            <div className="rounded-3xl h-full">
-              <OffersBanner />
+            <div className="rounded-3xl lg:h-auto">
               <HomeSearchPanel routes={routes} />
             </div>
             
-            {/* Map - Right Side */}
-            <div className="hidden lg:block h-full">
+            {/* Map + Offers - Right Side */}
+            <div className="space-y-8">
               <HomePageMap routes={routes} />
+              <div className="lg:block">
+                <OffersBanner />
+              </div>
             </div>
           </div>
         </div>
