@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { Route, Trip } from '@/types/booking';
+import { BUS_TYPE_CONFIGS, normalizeBusType, Route, Trip } from '@/types/booking';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { MapPin, Calendar, Bus, Clock, Users, Banknote, ChevronRight, Search as SearchIcon, ArrowLeft } from 'lucide-react';
@@ -215,7 +215,7 @@ const HomeSearchPanel = ({ routes }: HomeSearchPanelProps) => {
                         <Bus className="w-5 h-5 text-sky-400" />
                         <div>
                           <p className="font-semibold text-white text-sm">{route.name}</p>
-                          <p className="text-xs text-slate-400">{route.busType}</p>
+                          <p className="text-xs text-slate-400">{BUS_TYPE_CONFIGS[normalizeBusType(route.busType)]?.name || route.busType}</p>
                         </div>
                       </div>
                     </div>
