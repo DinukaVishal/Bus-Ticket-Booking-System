@@ -95,14 +95,6 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
-  void _swapLocations() {
-    setState(() {
-      final temp = _fromCity;
-      _fromCity = _toCity;
-      _toCity = temp;
-    });
-  }
-
   void _searchRoutes() {
     if (_fromCity == null || _toCity == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -165,15 +157,17 @@ class _SearchPageState extends State<SearchPage> {
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            // Search Panel
+            Container(
+              color: colorScheme.primary.withAlpha(15),
+              padding: const EdgeInsets.all(20),
               child: Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(22),
+                  padding: const EdgeInsets.all(18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -214,7 +208,7 @@ class _SearchPageState extends State<SearchPage> {
                         }).toList(),
                         onChanged: (value) => setState(() => _toCity = value),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       InkWell(
                         onTap: _pickDate,
                         borderRadius: BorderRadius.circular(18),
@@ -232,7 +226,7 @@ class _SearchPageState extends State<SearchPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 18),
                       ElevatedButton.icon(
                         onPressed: _searchRoutes,
                         icon: const Icon(Icons.search),
@@ -248,7 +242,8 @@ class _SearchPageState extends State<SearchPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
+            // Results Section
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -361,16 +356,13 @@ class _RouteCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      elevation: 4,
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -401,15 +393,15 @@ class _RouteCard extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Wrap(
-                spacing: 8,
+                spacing: 10,
                 runSpacing: 8,
                 children: [
-                  _detailChip(context, route.serviceType),
-                  _detailChip(context, route.busType.name.toUpperCase()),
-                  _detailChip(context, '${route.totalSeats} seats'),
+                  Chip(label: Text(route.serviceType)),
+                  Chip(label: Text(route.busType.name.toUpperCase())),
+                  Chip(label: Text('${route.totalSeats} seats')),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -427,13 +419,6 @@ class _RouteCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _detailChip(BuildContext context, String label) {
-    return Chip(
-      backgroundColor: Theme.of(context).colorScheme.primary.withAlpha(12),
-      label: Text(label, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w600)),
     );
   }
 }

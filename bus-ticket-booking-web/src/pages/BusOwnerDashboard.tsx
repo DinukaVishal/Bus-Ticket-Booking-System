@@ -17,7 +17,6 @@ import {
   Trash,
   Edit,
   Radio,
-  DollarSign,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -48,10 +47,7 @@ const BusOwnerDashboard = () => {
   const navigate = useNavigate();
   const [buses, setBuses] = useState<BusInfo[]>([]);
   const [staffInfo, setStaffInfo] = useState<Map<string, StaffInfo>>(new Map());
-  const [monthlyRevenue, setMonthlyRevenue] = useState<number>(0);
-  const [bankStatus, setBankStatus] = useState<string>('Not set');
   const [loading, setLoading] = useState(true);
-  const [cancelRequests, setCancelRequests] = useState<any[]>([]);
 
   useEffect(() => {
     if (user && isBusOwner) {
@@ -60,97 +56,6 @@ const BusOwnerDashboard = () => {
       console.log('Not loading buses - user:', !!user, 'isBusOwner:', isBusOwner);
     }
   }, [user, isBusOwner, authLoading]);
-
-  useEffect(() => {
-    if (user && isBusOwner) {
-      loadCancelRequests();
-    }
-  }, [user, isBusOwner]);
-
-  const loadCancelRequests = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('owner_cancel_requests')
-        .select('*')
-        .eq('owner_id', user?.id)
-        .order('requested_at', { ascending: false });
-
-      if (error) throw error;
-      const grouped = new Map<string, any>();
-
-      (data || []).forEach((req: any) => {
-        const bookingIds = req.booking_ids || (req.booking_id ? [req.booking_id] : []);
-        const seatNumbers = req.seat_numbers || (req.seat_number ? [req.seat_number] : []);
-        const key = [
-          req.user_id,
-          req.route_id,
-          req.trip_id,
-          req.travel_date,
-          req.status,
-          String(req.refund_amount),
-          req.note,
-          req.requested_at,
-        ].join('|');
-
-        if (!grouped.has(key)) {
-          grouped.set(key, {
-            ...req,
-            bookingIds,
-            seatNumbers,
-            cancelRequestIds: [req.cancel_request_id],
-          });
-        } else {
-          const groupedReq = grouped.get(key);
-          groupedReq.bookingIds = Array.from(new Set([...groupedReq.bookingIds, ...bookingIds]));
-          groupedReq.seatNumbers = Array.from(new Set([...groupedReq.seatNumbers, ...seatNumbers]));
-          groupedReq.cancelRequestIds = Array.from(new Set([...groupedReq.cancelRequestIds, req.cancel_request_id]));
-        }
-      });
-
-      setCancelRequests(Array.from(grouped.values()));
-    } catch (error: any) {
-      console.error('Failed to load cancel requests', error);
-    }
-  };
-
-  const handleApproveRequest = async (cancelRequestIds: string[], bookingIds: string[]) => {
-    try {
-      // Mark cancel request(s) approved
-      const { error: approveErr } = await supabase
-        .from('cancel_requests')
-        .update({ status: 'approved', processed_at: new Date().toISOString(), processed_by: user?.id })
-        .in('id', cancelRequestIds);
-      if (approveErr) throw approveErr;
-
-      // Update all related bookings to cancelled and set payment_status to refunded
-      const { error: bookingErr } = await supabase
-        .from('bookings')
-        .update({ status: 'cancelled', payment_status: 'refunded' })
-        .in('booking_id', bookingIds);
-      if (bookingErr) throw bookingErr;
-
-      toast({ title: 'Refund approved', description: 'The booking was cancelled and marked refunded.' });
-      await loadCancelRequests();
-      setTimeout(() => loadBuses(), 100); // refresh buses quietly
-    } catch (e: any) {
-      toast({ title: 'Error', description: e.message || 'Failed to approve request', variant: 'destructive' });
-    }
-  };
-
-  const handleRejectRequest = async (cancelRequestIds: string[]) => {
-    try {
-      const { error } = await supabase
-        .from('cancel_requests')
-        .update({ status: 'rejected', processed_at: new Date().toISOString(), processed_by: user?.id })
-        .in('id', cancelRequestIds);
-      if (error) throw error;
-
-      toast({ title: 'Request rejected', description: 'The cancel request has been rejected.' });
-      await loadCancelRequests();
-    } catch (e: any) {
-      toast({ title: 'Error', description: e.message || 'Failed to reject request', variant: 'destructive' });
-    }
-  };
 
   const loadBuses = async () => {
     try {
@@ -165,7 +70,6 @@ const BusOwnerDashboard = () => {
 
       let busesWithRoute = busesData || [];
 
-      const routeIdMap = new Map<string, string[]>();
       if (busesData && busesData.length > 0) {
         // Fetch route assignments
         const { data: routeAssignments, error: routeError } = await supabase
@@ -178,6 +82,7 @@ const BusOwnerDashboard = () => {
         if (routeError) throw routeError;
 
         // Group route IDs by bus
+        const routeIdMap = new Map<string, string[]>();
         routeAssignments?.forEach((assignment: any) => {
           const existing = routeIdMap.get(assignment.owner_bus_id) || [];
           routeIdMap.set(assignment.owner_bus_id, [...existing, assignment.route_id]);
@@ -215,29 +120,6 @@ const BusOwnerDashboard = () => {
       }
 
       setBuses(busesWithRoute);
-
-      // Load owner revenue and bank status
-      if (user) {
-        const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-        const nextMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString();
-
-        const { data: revenueData, error: revenueError } = await supabase
-          .from('owner_monthly_revenue')
-          .select('revenue')
-          .eq('bus_owner_id', user.id)
-          .gte('month', monthStart)
-          .lt('month', nextMonth)
-          .limit(1);
-
-        if (!revenueError && revenueData && revenueData.length > 0) {
-          setMonthlyRevenue(revenueData[0].revenue || 0);
-        }
-
-        if (profile) {
-          const hasBank = profile.bankAccountNumber || profile.bankName;
-          setBankStatus(hasBank ? 'Setup' : 'Not set');
-        }
-      }
 
       // Load driver and conductor info for each bus
       if (busesWithRoute && busesWithRoute.length > 0) {
@@ -387,10 +269,6 @@ const BusOwnerDashboard = () => {
                 <User className="w-4 h-4 mr-2" />
                 Profile
               </Button>
-              <Button variant="outline" onClick={() => navigate('/bus-owner/offers')}>
-                <Settings className="w-4 h-4 mr-2" />
-                Manage Offers
-              </Button>
               <Button variant="outline" onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-2" />
                 Logout
@@ -400,7 +278,7 @@ const BusOwnerDashboard = () => {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -436,30 +314,6 @@ const BusOwnerDashboard = () => {
               </div>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-muted-foreground text-sm">Monthly Revenue</p>
-                  <p className="text-3xl font-bold">Rs {monthlyRevenue.toLocaleString()}</p>
-                </div>
-                <DollarSign className="w-8 h-8 text-emerald-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-muted-foreground text-sm">Bank Account</p>
-                  <p className="text-3xl font-bold">{bankStatus}</p>
-                </div>
-                <User className="w-8 h-8 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Add Bus Button */}
@@ -471,31 +325,7 @@ const BusOwnerDashboard = () => {
         </div>
 
         {/* Buses List */}
-          <div>
-            {cancelRequests.length > 0 && (
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold mb-3">Cancel / Refund Requests</h2>
-                <div className="grid gap-4">
-                  {cancelRequests.map((req) => (
-                    <Card key={req.cancel_request_id} className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Booking</p>
-                          <p className="font-semibold">{req.bookingIds ? req.bookingIds.join(', ') : req.booking_id} • Seats {req.seatNumbers ? req.seatNumbers.map((seat: number) => `#${seat}`).join(', ') : req.seat_number ? `#${req.seat_number}` : 'N/A'}</p>
-                          <p className="text-sm text-muted-foreground">Passenger: {req.passenger_name || req.passengerName || 'Unknown'}</p>
-                          <p className="text-sm text-muted-foreground mt-1">Requested: {new Date(req.requested_at).toLocaleString()}</p>
-                          <p className="text-sm text-muted-foreground mt-1">Refund: Rs {Number(req.refund_amount).toFixed(2)}</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" onClick={async () => await handleApproveRequest(req.cancelRequestIds || [req.cancel_request_id], req.bookingIds || [req.booking_id])} className="bg-emerald-500 text-white">Approve</Button>
-                          <Button size="sm" variant="outline" onClick={async () => await handleRejectRequest(req.cancelRequestIds || [req.cancel_request_id])}>Reject</Button>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
+        <div>
           <h2 className="text-2xl font-bold mb-4">Your Buses</h2>
 
           {loading ? (

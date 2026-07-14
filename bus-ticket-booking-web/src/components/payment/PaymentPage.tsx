@@ -1,14 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Shield, Lock, CreditCard, CheckCircle, Loader2, Check } from 'lucide-react';
+import { Shield, Lock, CreditCard, CheckCircle, Loader2 } from 'lucide-react';
 import { PaymentIntent, CardDetails } from '@/types/payment';
 import { Booking } from '@/types/booking';
 import { usePayment } from '@/hooks/usePayment';
-import { useOffers, Offer } from '@/hooks/useOffers';
 import { z } from 'zod';
 
 const cardSchema = z.object({
@@ -38,10 +37,6 @@ interface PaymentPageProps {
 
 const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPageProps) => {
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntent | null>(null);
-  const [promoCode, setPromoCode] = useState('');
-  const [promoError, setPromoError] = useState('');
-  const [appliedOffer, setAppliedOffer] = useState<Offer | null>(null);
-
   const form = useForm<CardFormData>({
     resolver: zodResolver(cardSchema),
     defaultValues: {
@@ -52,58 +47,14 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
     },
   });
 
-  const { data: offers = [] } = useOffers(true);
-
-  const discountAmount = useMemo(() => {
-    if (!appliedOffer) return 0;
-    if (appliedOffer.discount_amount) return Number(appliedOffer.discount_amount);
-    if (appliedOffer.discount_percent) {
-      return Math.round((bookingData.totalAmount * Number(appliedOffer.discount_percent)) / 100);
-    }
-    return 0;
-  }, [appliedOffer, bookingData.totalAmount]);
-
-  const discountedTotal = Math.max(0, bookingData.totalAmount - discountAmount);
-
-  const paymentBookingData = useMemo(() => ({
-    ...bookingData,
-    totalAmount: discountedTotal,
-    seatNumbers: bookingData.seatNumbers.split(', ').map(Number).sort((a,b)=>a-b),
-    gender: bookingData.gender,
-  }), [bookingData, discountedTotal]);
-
-  const { processPayment, loading, completeBookingAfterPayment } = usePayment({ bookingData: paymentBookingData });
-
-  const validateOffer = (offer: Offer) => {
-    const today = new Date();
-    if (!offer.is_active) return false;
-    if (offer.route_id && offer.route_id !== bookingData.routeId) return false;
-    if (offer.starts_at && new Date(offer.starts_at) > today) return false;
-    if (offer.ends_at && new Date(offer.ends_at) < today) return false;
-    return true;
-  };
-
-  const applyPromoCode = () => {
-    setPromoError('');
-    const trimmed = promoCode.trim();
-    if (!trimmed) {
-      setPromoError('Please enter a promo code.');
-      return;
-    }
-
-    const matchingOffer = offers.find(
-      (offer) => offer.code?.toLowerCase() === trimmed.toLowerCase() && validateOffer(offer)
-    );
-
-    if (!matchingOffer) {
-      setPromoError('Invalid or expired promo code.');
-      setAppliedOffer(null);
-      return;
-    }
-
-    setAppliedOffer(matchingOffer);
-    setPromoError('');
-  };
+  const { processPayment, loading, completeBookingAfterPayment } = usePayment({ 
+    bookingData: {
+      ...bookingData,
+      totalAmount: bookingData.totalAmount,
+      seatNumbers: bookingData.seatNumbers.split(', ').map(Number).sort((a,b)=>a-b),
+      gender: bookingData.gender,
+    } 
+  });
 
   const onSubmit = async (data: CardFormData) => {
     const cardDetails: CardDetails = {
@@ -274,44 +225,6 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
                       </div>
                     </div>
 
-                    <div className="space-y-3 rounded-[1.75rem] border border-white/10 bg-slate-900/80 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-200">Promo code</p>
-                          <p className="text-xs text-slate-400">Paste an offer code to apply a discount.</p>
-                        </div>
-                        {appliedOffer ? (
-                          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300">
-                            <Check className="h-3.5 w-3.5" /> Applied
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                        <Input
-                          value={promoCode}
-                          onChange={(e) => setPromoCode(e.target.value)}
-                          placeholder="Enter promo code"
-                          className="h-12 rounded-2xl border border-white/10 bg-slate-800 px-4 text-sm text-white shadow-sm focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="h-12 rounded-2xl px-6 text-sm font-semibold"
-                          onClick={applyPromoCode}
-                        >
-                          Apply
-                        </Button>
-                      </div>
-                      {promoError ? <p className="text-sm text-rose-300">{promoError}</p> : null}
-                      {appliedOffer ? (
-                        <div className="rounded-2xl bg-slate-950/80 p-3 text-sm text-slate-300">
-                          <p className="font-semibold text-white">{appliedOffer.title || 'Promo code applied'}</p>
-                          <p>{appliedOffer.description || `Saved LKR ${discountAmount.toLocaleString()}`}</p>
-                        </div>
-                      ) : null}
-                    </div>
-
                     <Button
                       type="submit"
                       className="w-full rounded-3xl bg-sky-500 px-6 py-4 text-base font-semibold text-white shadow-2xl shadow-sky-500/20 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-70"
@@ -322,7 +235,7 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
                           <Loader2 className="h-4 w-4 animate-spin" /> Processing payment...
                         </span>
                       ) : (
-                        <>Pay LKR {discountedTotal.toLocaleString()}</>
+                        <>Pay LKR {bookingData.totalAmount.toLocaleString()}</>
                       )}
                     </Button>
                   </form>
@@ -354,20 +267,11 @@ const PaymentPage = ({ bookingData, onPaymentSuccess, onCancel }: PaymentPagePro
                   <h2 className="mt-2 text-2xl font-semibold text-white">Booking details</h2>
                 </div>
                 <div className="rounded-full bg-slate-900/80 px-4 py-2 text-sm font-semibold text-slate-200">
-                  LKR {discountedTotal.toLocaleString()}
+                  LKR {bookingData.totalAmount.toLocaleString()}
                 </div>
               </div>
 
               <div className="mt-6 space-y-4 text-sm text-slate-300">
-                {appliedOffer ? (
-                  <div className="grid gap-3 rounded-[1.75rem] bg-slate-900/80 p-4">
-                    <span className="text-slate-400">Discount</span>
-                    <div className="flex items-center justify-between gap-2 text-white">
-                      <span>{appliedOffer.title || 'Promo code applied'}</span>
-                      <span>-LKR {discountAmount.toLocaleString()}</span>
-                    </div>
-                  </div>
-                ) : null}
                 <div className="grid gap-3 rounded-[1.75rem] bg-slate-900/80 p-4">
                   <span className="text-slate-400">Route</span>
                   <span className="font-semibold text-white">{bookingData.routeName}</span>

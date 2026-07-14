@@ -52,88 +52,6 @@ const haversine = (lat1: number, lng1: number, lat2: number, lng2: number) => {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-const PUBLIC_OSRM_URL = 'https://router.project-osrm.org';
-
-const buildOsrmRouteUrl = (baseUrl: string | undefined, coordinatePairs: string): string => {
-  const trimmedBase = String(baseUrl || '').trim();
-  const safeBase = trimmedBase && trimmedBase !== '/'
-    ? trimmedBase.replace(/\/+$/,'')
-    : PUBLIC_OSRM_URL;
-
-  if (!coordinatePairs) {
-    throw new Error('OSRM coordinate pairs are empty');
-  }
-
-  const routePath = `/route/v1/driving/${coordinatePairs}?overview=full&geometries=polyline6`;
-
-  if (safeBase.startsWith('/')) {
-    return `${safeBase.replace(/\/+$/,'')}${routePath}`;
-  }
-
-  try {
-    return new URL(routePath, safeBase).toString();
-  } catch (error) {
-    console.warn('Invalid OSRM base URL, falling back to public OSRM. Base:', safeBase, 'Error:', error);
-    return `${PUBLIC_OSRM_URL}${routePath}`;
-  }
-};
-
-const fetchOsrmRoute = async (baseUrl: string | undefined, coordinatePairs: string, signal?: AbortSignal) => {
-  const localUrl = buildOsrmRouteUrl(baseUrl, coordinatePairs);
-  let response = await fetch(localUrl, { signal });
-  let data = await response.json();
-
-  if (data?.code !== 'Ok' || !data?.routes?.length) {
-    const fallbackUrl = buildOsrmRouteUrl(PUBLIC_OSRM_URL, coordinatePairs);
-    console.warn('Local OSRM failed, falling back to public OSRM:', data?.code || 'unknown');
-    response = await fetch(fallbackUrl, { signal });
-    data = await response.json();
-    return { data, url: fallbackUrl, usedFallback: true, localFailure: data };
-  }
-
-  return { data, url: localUrl, usedFallback: false };
-};
-
-// Decode polyline6 from OSRM
-const decodePolyline = (encoded: string, precision = 6): [number, number][] => {
-  let index = 0;
-  let lat = 0;
-  let lng = 0;
-  const coordinates: [number, number][] = [];
-  const factor = 10 ** precision;
-
-  while (index < encoded.length) {
-    let result = 0;
-    let shift = 0;
-    let byte = 0;
-
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20);
-
-    const deltaLat = (result & 1) ? ~(result >> 1) : result >> 1;
-    lat += deltaLat;
-
-    result = 0;
-    shift = 0;
-
-    do {
-      byte = encoded.charCodeAt(index++) - 63;
-      result |= (byte & 0x1f) << shift;
-      shift += 5;
-    } while (byte >= 0x20);
-
-    const deltaLng = (result & 1) ? ~(result >> 1) : result >> 1;
-    lng += deltaLng;
-
-    coordinates.push([lat / factor, lng / factor]);
-  }
-
-  return coordinates;
-};
-
 // --- Individual animated bus on the map ---
 interface AnimatedBusProps {
   route: Route;
@@ -148,7 +66,6 @@ interface AnimatedBusProps {
 const AnimatedBus = ({ route, mapInstance, isSelected, onSelect, liveLocation, allowSimulation = true, busNumber }: AnimatedBusProps) => {
   const markerRef = useRef<L.Marker | null>(null);
   const polylineRef = useRef<L.Polyline | null>(null);
-  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
 
   const routePoints = useMemo(() => {
     const from = findCityCoordinates(route.from);
@@ -160,39 +77,8 @@ const AnimatedBus = ({ route, mapInstance, isSelected, onSelect, liveLocation, a
     return [from, ...viaCoords, to];
   }, [route]);
 
-  // Fetch OSRM geometry for real road routes
-  useEffect(() => {
-    if (routePoints.length < 2) return;
-
-    const fetchOSRMRoute = async () => {
-      try {
-        const allPoints = routePoints.map(p => [p.lat, p.lng] as [number, number]);
-        const coordPairs = allPoints.map(([lat, lng]) => `${lng},${lat}`).join(';');
-        const OSRM_SERVICE_URL = import.meta.env.VITE_OSRM_URL || PUBLIC_OSRM_URL;
-        const { data, url: resolvedOsrmUrl, usedFallback } = await fetchOsrmRoute(OSRM_SERVICE_URL, coordPairs);
-
-        console.debug('OSRM LiveTracking URL:', resolvedOsrmUrl, 'usedFallback:', usedFallback);
-        const encodedGeometry = data?.routes?.[0]?.geometry;
-
-        if (encodedGeometry) {
-          const decodedPoints = decodePolyline(encodedGeometry, 6);
-          setRouteCoordinates(decodedPoints);
-        } else {
-          // Fallback to direct waypoints
-          setRouteCoordinates(allPoints);
-        }
-      } catch (error) {
-        // On error, fall back to direct waypoints
-        const allPoints = routePoints.map(p => [p.lat, p.lng] as [number, number]);
-        setRouteCoordinates(allPoints);
-      }
-    };
-
-    fetchOSRMRoute();
-  }, [routePoints]);
-
   const simulatedPosition = useBusAnimation({
-    routePoints: routeCoordinates.length > 0 ? routeCoordinates.map(([lat, lng]) => ({ lat, lng })) : routePoints,
+    routePoints,
     departureTime: route.departureTime,
     busType: route.busType,
     isSimulation: true,
@@ -206,38 +92,19 @@ const AnimatedBus = ({ route, mapInstance, isSelected, onSelect, liveLocation, a
 
   // Draw route polyline
   useEffect(() => {
-    if (routeCoordinates.length < 2 || !mapInstance.getPane('overlayPane')) return;
-
-    // Draw white glow background
-    L.polyline(routeCoordinates, {
-      color: '#ffffff',
-      weight: isSelected ? 12 : 6,
-      opacity: isSelected ? 0.35 : 0.1,
-      lineJoin: 'round',
-      lineCap: 'round',
-      interactive: false,
-      pane: 'overlayPane',
+    if (routePoints.length < 2 || !mapInstance.getPane('overlayPane')) return;
+    const coords: [number, number][] = routePoints.map((p) => [p.lat, p.lng]);
+    polylineRef.current = L.polyline(coords, {
+      color: isSelected ? 'hsl(var(--primary))' : '#94a3b8',
+      weight: isSelected ? 4 : 2,
+      opacity: isSelected ? 0.9 : 0.4,
+      dashArray: isSelected ? undefined : '6, 8',
     }).addTo(mapInstance);
-
-    // Draw main route line
-    polylineRef.current = L.polyline(routeCoordinates, {
-      color: isSelected ? '#3b82f6' : '#94a3b8',
-      weight: isSelected ? 7 : 2,
-      opacity: isSelected ? 0.95 : 0.4,
-      lineJoin: 'round',
-      lineCap: 'round',
-      interactive: false,
-      pane: 'overlayPane',
-    }).addTo(mapInstance);
-
-    if (isSelected && polylineRef.current) {
-      polylineRef.current.bringToFront();
-    }
 
     return () => {
       polylineRef.current?.remove();
     };
-  }, [routeCoordinates, mapInstance, isSelected]);
+  }, [routePoints, mapInstance, isSelected]);
 
   // Animate bus marker
   useEffect(() => {

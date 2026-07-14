@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { BUS_TYPE_CONFIGS, normalizeBusType, Route, Booking, Trip } from '@/types/booking';
+import { Route, Booking, Trip } from '@/types/booking';
 import { useBookedSeats, useAddMultipleBookings } from '@/hooks/useBookings';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -325,7 +325,7 @@ const BookingWizard = ({ routes, onBookingComplete }: BookingWizardProps) => {
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-slate-400">Bus Type</span>
-                    <span className="font-semibold text-white">{BUS_TYPE_CONFIGS[normalizeBusType(selectedRoute.busType)]?.name || selectedRoute.busType}</span>
+                    <span className="font-semibold text-white">{selectedRoute.busType}</span>
                   </div>
                   {selectedRoute.viaPoints?.length ? (
                     <div className="flex items-center justify-between gap-2">

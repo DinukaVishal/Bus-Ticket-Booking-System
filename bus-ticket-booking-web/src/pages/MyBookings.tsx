@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { useMyBookings, useMyCancelRequests, useUpdateBookingStatus, useRequestCancel } from '@/hooks/useBookings';
+import { useMyBookings, useUpdateBookingStatus } from '@/hooks/useBookings';
 import { useRoutes } from '@/hooks/useRoutes';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -25,11 +25,9 @@ import { supabase } from '@/integrations/supabase/client';
 
 const MyBookings = () => {
   const { data: bookings = [], isLoading, refetch } = useMyBookings();
-  const { data: cancelRequests = [] } = useMyCancelRequests();
   const { data: routes = [] } = useRoutes();
   const { user } = useAuth();
   const updateStatusMutation = useUpdateBookingStatus();
-  const requestCancelMutation = useRequestCancel();
   const [cancellingGroupKey, setCancellingGroupKey] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -87,12 +85,6 @@ const MyBookings = () => {
 
   const bookingGroups = Object.values(groupedBookings) as any[];
 
-  const findGroupCancelRequest = (group: any) => {
-    return cancelRequests.find((req: any) =>
-      req.bookingIds.some((bookingId: string) => group.bookingIds.includes(bookingId))
-    );
-  };
-
   const handleDownloadTicket = (group: any) => {
     const route = routes.find(r => r.id === group.routeId) || routes.find(r => r.name === group.routeName);
     const trip = route?.trips.find((t) => t.id === group.tripId);
@@ -111,54 +103,22 @@ const MyBookings = () => {
     }
   };
 
-  const handleCancelGroup = async (groupKey: string, bookingIds: string[], group: any) => {
+  const handleCancelGroup = async (groupKey: string, bookingIds: string[]) => {
     setCancellingGroupKey(groupKey);
     try {
-      // Compute refund eligibility: if cancellation is made more than 24 hours before departure, refund 90%
-      const route = routes.find(r => r.id === group.routeId) || routes.find(r => r.name === group.routeName);
-      const trip = route?.trips.find((t) => t.id === group.tripId) || route?.trips?.[0];
-      const price = trip?.price || 0;
-
-      // Build departure datetime if possible
-      let departure = new Date(group.date);
-      if (trip && trip.departureTime) {
-        // Attempt to parse time into the date
-        const time = trip.departureTime;
-        const parsed = new Date(`${group.date}T${time}`);
-        if (!isNaN(parsed.getTime())) departure = parsed;
-      }
-
-      const msAhead = departure.getTime() - Date.now();
-      const eligible = msAhead > 24 * 60 * 60 * 1000; // more than 24 hours
-
-      if (!eligible) {
-        // Within 24 hours — do not allow refund request
-        window.alert("You can't apply for refund: cancellations within 24 hours of departure are not eligible for automatic refund. Please contact the bus owner or support for help.");
-        return;
-      }
-
-      const refundPerSeat = price * 0.9;
-      const totalRefund = refundPerSeat * bookingIds.length;
-
-      await requestCancelMutation.mutateAsync({
-        bookingIds,
-        seatNumbers: group.seatNumbers,
-        routeId: group.routeId,
-        tripId: group.tripId,
-        travelDate: group.date,
-        refundAmount: totalRefund,
-        note: 'Eligible for 90% refund',
-      });
+      await Promise.all(bookingIds.map(id =>
+        updateStatusMutation.mutateAsync({ bookingId: id, status: 'cancelled' })
+      ));
 
       toast({
-        title: 'Cancel request submitted',
-        description: 'A refund request has been submitted. The bus owner will review and take action.',
+        title: 'Booking Cancelled',
+        description: 'Your bookings have been cancelled successfully.',
       });
       refetch();
     } catch (error: any) {
       toast({
         title: 'Error',
-        description: error.message || 'Failed to submit cancel request.',
+        description: error.message || 'Failed to cancel booking.',
         variant: 'destructive',
       });
     } finally {
@@ -252,7 +212,6 @@ const MyBookings = () => {
                   {upcomingGroups.map((group, index) => {
                     const identifier = group.tripId || group.routeId || group.routeName;
                     const groupKey = `${identifier}-${group.date}-${group.status}`;
-                    const groupRequest = findGroupCancelRequest(group);
                     return (
                       <div key={index} className="rounded-[1.75rem] border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-xl">
                         <div className="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-start">
@@ -297,60 +256,44 @@ const MyBookings = () => {
                           </Button>
                         </div>
 
-                        {groupRequest ? (
-                          <div className="mt-4 rounded-3xl bg-slate-950/80 p-4 text-sm text-slate-300 border border-sky-500/20">
-                            <div className="flex items-center justify-between gap-4">
-                              <div>
-                                <p className="text-slate-400">Refund status</p>
-                                <p className="text-white font-semibold capitalize">{groupRequest.status}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-slate-400">Refund</p>
-                                <p className="text-white font-semibold">Rs {groupRequest.refundAmount.toFixed(2)}</p>
-                              </div>
-                            </div>
-                            {groupRequest.note && <p className="mt-3 text-slate-400">{groupRequest.note}</p>}
-                          </div>
-                        ) : (
-                          <div className="mt-4">
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="w-full border-destructive text-destructive hover:bg-destructive/10"
+                        <div className="mt-4">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full border-destructive text-destructive hover:bg-destructive/10"
+                              >
+                                <XCircle className="w-4 h-4 mr-2" />
+                                Cancel Booking
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Cancel this booking?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to cancel seats <strong>{group.seatNumbers.join(', ')}</strong> for this trip? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Keep Booking</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleCancelGroup(groupKey, group.bookingIds)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
-                                  <XCircle className="w-4 h-4 mr-2" />
-                                  Cancel Booking
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Cancel this booking?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to cancel seats <strong>{group.seatNumbers.join(', ')}</strong> for this trip? This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Keep Booking</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleCancelGroup(groupKey, group.bookingIds, group)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    {cancellingGroupKey === groupKey ? (
-                                      <>
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        Cancelling...
-                                      </>
-                                    ) : (
-                                      'Yes, Cancel'
-                                    )}
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        )}
+                                  {cancellingGroupKey === groupKey ? (
+                                    <>
+                                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                      Cancelling...
+                                    </>
+                                  ) : (
+                                    'Yes, Cancel'
+                                  )}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     );
                   })}

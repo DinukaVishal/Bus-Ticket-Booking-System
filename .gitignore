@@ -1,0 +1,25 @@
+# Large map data files
+bus-ticket-booking-web/sri\ lanka\ map\ details/
+bus-ticket-booking-web/*/osrm*/
+*.osm.pbf
+*.osrm
+*.osrm.*
+
+# Dependencies
+node_modules/
+/build/
+.dart_tool/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Flutter
+.packages
+pubspec.lock

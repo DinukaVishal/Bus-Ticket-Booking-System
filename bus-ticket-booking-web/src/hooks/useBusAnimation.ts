@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { CityCoordinate } from '@/lib/sriLankaCoordinates';
 
 interface BusPosition {
   lat: number;
@@ -43,14 +44,8 @@ const haversine = (lat1: number, lng1: number, lat2: number, lng2: number): numb
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-interface RoutePoint {
-  lat: number;
-  lng: number;
-  name?: string;
-}
-
 interface UseBusAnimationProps {
-  routePoints: RoutePoint[];
+  routePoints: CityCoordinate[];
   departureTime: string; // "HH:mm" format
   busType: string;
   isSimulation?: boolean; // if true, run a demo animation loop

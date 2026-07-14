@@ -1,13 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/booking_models.dart';
 
-class BookedSeat {
-  final int seatNumber;
-  final String gender;
-
-  const BookedSeat({required this.seatNumber, required this.gender});
-}
-
 class SupabaseService {
   static const _supabaseUrl = 'https://qiuuchynzecmblfgzdvo.supabase.co';
   static const _supabaseAnonKey = 'sb_publishable_H98wtolKPiZHMhTgURMmBQ_q-hPL23I';
@@ -112,7 +105,7 @@ class SupabaseService {
     return routes;
   }
 
-  static Future<List<BookedSeat>> fetchBookedSeats({
+  static Future<List<int>> fetchBookedSeats({
     required String tripId,
     required DateTime travelDate,
   }) async {
@@ -129,13 +122,11 @@ class SupabaseService {
     return records
         .map((child) {
           if (child is Map<String, dynamic>) {
-            final seatNumber = child['seat_number'] as int? ?? 0;
-            final gender = (child['gender'] as String?)?.toLowerCase() ?? 'unknown';
-            return BookedSeat(seatNumber: seatNumber, gender: gender);
+            return child['seat_number'] as int? ?? 0;
           }
-          return const BookedSeat(seatNumber: 0, gender: 'unknown');
+          return 0;
         })
-        .where((seat) => seat.seatNumber > 0)
+        .where((seatNumber) => seatNumber > 0)
         .toList();
   }
 
@@ -143,54 +134,27 @@ class SupabaseService {
     required RouteOption route,
     required TripOption trip,
     required DateTime travelDate,
-    required List<int> seatNumbers,
+    required int seatNumber,
     required String passengerName,
     required String passengerPhone,
-    required String paymentMethod,
-    required String gender,
   }) async {
-    if (seatNumbers.isEmpty) {
-      throw Exception('Please select at least one seat before booking.');
-    }
-
     final client = Supabase.instance.client;
+    final bookingId = 'BKG-${DateTime.now().millisecondsSinceEpoch}';
     final userId = currentUser?.id;
-    if (userId == null) {
-      throw Exception('You must be logged in to confirm a booking.');
-    }
 
-    final bookingIdBase = 'BKG-${DateTime.now().millisecondsSinceEpoch}';
-    final paymentStatus = 'paid';
-
-    final bookingsToInsert = seatNumbers.asMap().entries.map((entry) {
-      final index = entry.key;
-      final seatNumber = entry.value;
-      return {
-        'booking_id': '$bookingIdBase-${index + 1}',
-        'user_id': userId,
-        'route_id': route.id,
-        'route_name': route.name,
-        'trip_id': trip.id,
-        'date': travelDate.toIso8601String().split('T').first,
-        'seat_number': seatNumber,
-        'passenger_name': passengerName,
-        'phone_number': passengerPhone,
-        'payment_method': paymentMethod,
-        'payment_status': paymentStatus,
-        'gender': gender,
-        'status': 'confirmed',
-        'created_at': DateTime.now().toIso8601String(),
-      };
-    }).toList();
-
-    final dynamic response = await client.from('bookings').insert(bookingsToInsert).select();
-    if (response == null) {
-      throw Exception('Unable to create booking. Please try again.');
-    }
-
-    if (response is Map<String, dynamic> && response['error'] != null) {
-      throw Exception(response['error'].toString());
-    }
+    await client.from('bookings').insert({
+      'booking_id': bookingId,
+      'user_id': userId,
+      'route_id': route.id,
+      'route_name': route.name,
+      'trip_id': trip.id,
+      'date': travelDate.toIso8601String().split('T').first,
+      'seat_number': seatNumber,
+      'passenger_name': passengerName,
+      'passenger_phone': passengerPhone,
+      'status': 'confirmed',
+      'created_at': DateTime.now().toIso8601String(),
+    });
   }
 
   static Future<List<BookingRecord>> fetchMyBookings() async {
@@ -200,7 +164,7 @@ class SupabaseService {
 
     final response = await client
         .from('bookings')
-        .select('booking_id, route_name, trip_id, date, seat_number, passenger_name, gender, payment_method, status, created_at')
+        .select('booking_id, route_name, trip_id, date, seat_number, passenger_name, status, created_at')
         .eq('user_id', userId)
         .order('date', ascending: false);
     final bookingsData = response as List<dynamic>?;
@@ -215,8 +179,6 @@ class SupabaseService {
                 travelDate: DateTime.tryParse(record['date'] as String? ?? '') ?? DateTime.now(),
                 seatNumber: record['seat_number'] as int? ?? 0,
                 passengerName: record['passenger_name'] as String? ?? '',
-                gender: record['gender'] as String? ?? 'unknown',
-                paymentMethod: record['payment_method'] as String? ?? 'Unknown',
                 status: record['status'] as String? ?? 'unknown',
                 createdAt: DateTime.tryParse(record['created_at'] as String? ?? '') ?? DateTime.now(),
               );

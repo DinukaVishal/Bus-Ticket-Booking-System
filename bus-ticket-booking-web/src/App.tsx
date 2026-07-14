@@ -26,7 +26,6 @@ import BusOwnerAddBus from "./pages/BusOwnerAddBus";
 import BusOwnerAddTrips from "./pages/BusOwnerAddTrips";
 import BusOwnerEditBus from "./pages/BusOwnerEditBus";
 import BusOwnerProfile from "./pages/BusOwnerProfile";
-import BusOwnerOffers from "./pages/BusOwnerOffers";
 import StaffLogin from "./pages/StaffLogin";
 import StaffDashboard from "./pages/StaffDashboard";
 import Notification from "./pages/notification/Notification";
@@ -127,14 +126,6 @@ const AppShell = () => {
           element={
             <ProtectedRoute requireBusOwner>
               <BusOwnerProfile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/bus-owner/offers"
-          element={
-            <ProtectedRoute requireBusOwner>
-              <BusOwnerOffers />
             </ProtectedRoute>
           }
         />

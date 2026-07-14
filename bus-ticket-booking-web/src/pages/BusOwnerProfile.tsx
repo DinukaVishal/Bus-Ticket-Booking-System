@@ -15,10 +15,6 @@ interface BusOwnerProfile {
   user_id: string;
   display_name: string;
   email: string;
-  bank_name?: string | null;
-  bank_account_holder?: string | null;
-  bank_account_number?: string | null;
-  bank_branch?: string | null;
 }
 
 const BusOwnerProfile = () => {
@@ -29,10 +25,6 @@ const BusOwnerProfile = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     displayName: '',
-    bankName: '',
-    bankAccountHolder: '',
-    bankAccountNumber: '',
-    bankBranch: '',
   });
 
   useEffect(() => {
@@ -49,31 +41,15 @@ const BusOwnerProfile = () => {
       if (authError) throw authError;
 
       if (authUser.user) {
-        const { data: profileRow, error: profileError } = await supabase
-          .from('profiles')
-          .select('id, user_id, display_name, bank_name, bank_account_holder, bank_account_number, bank_branch')
-          .eq('user_id', authUser.user.id)
-          .single();
-
-        if (profileError) throw profileError;
-
         setProfileData({
           id: authUser.user.id,
           user_id: authUser.user.id,
-          display_name: profileRow?.display_name || profile?.displayName || 'Bus Owner',
+          display_name: profile?.displayName || 'Bus Owner',
           email: authUser.user.email || '',
-          bank_name: profileRow?.bank_name || null,
-          bank_account_holder: profileRow?.bank_account_holder || null,
-          bank_account_number: profileRow?.bank_account_number || null,
-          bank_branch: profileRow?.bank_branch || null,
         });
 
         setFormData({
-          displayName: profileRow?.display_name || profile?.displayName || '',
-          bankName: profileRow?.bank_name || '',
-          bankAccountHolder: profileRow?.bank_account_holder || '',
-          bankAccountNumber: profileRow?.bank_account_number || '',
-          bankBranch: profileRow?.bank_branch || '',
+          displayName: profile?.displayName || '',
         });
       }
     } catch (error: any) {
@@ -90,7 +66,7 @@ const BusOwnerProfile = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [e.target.name]: e.target.value
     }));
   };
 
@@ -104,10 +80,6 @@ const BusOwnerProfile = () => {
         .from('profiles')
         .update({
           display_name: formData.displayName,
-          bank_name: formData.bankName || null,
-          bank_account_holder: formData.bankAccountHolder || null,
-          bank_account_number: formData.bankAccountNumber || null,
-          bank_branch: formData.bankBranch || null,
           updated_at: new Date().toISOString(),
         })
         .eq('user_id', user?.id);
@@ -211,75 +183,18 @@ const BusOwnerProfile = () => {
                 </div>
               </div>
 
-              {/* Bank Account Info */}
+              {/* Account Info */}
               <div className="bg-muted/50 p-4 rounded-lg space-y-2">
                 <h4 className="font-semibold flex items-center gap-2">
                   <Phone className="w-4 h-4" />
-                  Bank Account Information
+                  Account Information
                 </h4>
                 <p className="text-sm text-muted-foreground">
-                  Bank Name: <span className="font-semibold">{profileData?.bank_name || 'Not set'}</span>
+                  User ID: <span className="font-mono text-xs">{profileData?.user_id}</span>
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Account Holder: <span className="font-semibold">{profileData?.bank_account_holder || 'Not set'}</span>
+                  Account Type: <span className="font-semibold">Bus Owner</span>
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  Account Number: <span className="font-mono text-xs">{profileData?.bank_account_number ? `****${String(profileData.bank_account_number).slice(-4)}` : 'Not set'}</span>
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Branch: <span className="font-semibold">{profileData?.bank_branch || 'Not set'}</span>
-                </p>
-              </div>
-
-              {/* Bank Info Fields */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bankName">Bank Name</Label>
-                  <Input
-                    id="bankName"
-                    name="bankName"
-                    type="text"
-                    placeholder="Bank name"
-                    value={formData.bankName}
-                    onChange={handleInputChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bankAccountHolder">Account Holder</Label>
-                  <Input
-                    id="bankAccountHolder"
-                    name="bankAccountHolder"
-                    type="text"
-                    placeholder="Account holder name"
-                    value={formData.bankAccountHolder}
-                    onChange={handleInputChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bankAccountNumber">Account Number</Label>
-                  <Input
-                    id="bankAccountNumber"
-                    name="bankAccountNumber"
-                    type="text"
-                    placeholder="Account number"
-                    value={formData.bankAccountNumber}
-                    onChange={handleInputChange}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bankBranch">Bank Branch</Label>
-                  <Input
-                    id="bankBranch"
-                    name="bankBranch"
-                    type="text"
-                    placeholder="Bank branch"
-                    value={formData.bankBranch}
-                    onChange={handleInputChange}
-                  />
-                </div>
               </div>
 
               {/* Save Button */}

@@ -48,40 +48,31 @@ export function useRoutes() {
       const isAdmin = user?.user_metadata?.role === 'admin';
 
       let filteredRoutesData = routesData;
-      const ownerBusByRouteId: Record<string, { bus_number?: string; bus_type?: string; total_seats?: number }> = {};
 
-      const { data: activeOwnerRoutesData, error: ownerRoutesError } = await supabase
-        .from('owner_routes')
-        .select('route_id, owner_buses!inner(bus_number, bus_type, total_seats, is_active)')
-        .eq('is_active', true)
-        .eq('owner_buses.is_active', true);
-
-      if (ownerRoutesError) {
-        console.warn('Failed to fetch owner route assignments:', ownerRoutesError);
-      }
-
-      // Map route_id -> owner bus info so passenger view can prefer owner-assigned bus values
-      (activeOwnerRoutesData || []).forEach((assignment: any) => {
-        if (!assignment || !assignment.route_id) return;
-        const ob = assignment.owner_buses;
-        if (ob && ob.is_active) {
-          ownerBusByRouteId[assignment.route_id] = {
-            bus_number: ob.bus_number,
-            bus_type: ob.bus_type,
-            total_seats: ob.total_seats,
-          };
-        }
-      });
-
-      if (!isBusOwner && !isAdmin) {
-        // For passengers, show only routes that currently have active trips.
-        // Prefer active owner-assigned bus info when available, but do not hide routes
-        // if they are not linked via owner_routes.
+      if (isBusOwner || isAdmin) {
+        // Bus owners and admins should be able to see all routes in the system,
+        // including newly created routes and those that are not yet assigned to an approved bus.
+        filteredRoutesData = routesData;
+      } else {
+        // For passengers, show only routes that currently have active trips
+        // and whose owner-route assignment is still active.
         const routesWithTrips = new Set(
           (tripsData || []).map(trip => trip.route_id)
         );
 
-        filteredRoutesData = routesData.filter(route => routesWithTrips.has(route.id));
+        const { data: activeOwnerRoutesData, error: ownerRoutesError } = await supabase
+          .from('owner_routes')
+        .select('route_id, owner_buses(is_active)')
+        .eq('is_active', true)
+        .eq('owner_buses.is_active', true);
+
+        const activeRouteIds = new Set(
+          (activeOwnerRoutesData || []).map((assignment: any) => assignment.route_id)
+        );
+
+        filteredRoutesData = routesData.filter(
+          route => routesWithTrips.has(route.id) && activeRouteIds.has(route.id)
+        );
       }
 
       console.log('Filtered routes:', filteredRoutesData.length);
@@ -91,18 +82,14 @@ export function useRoutes() {
         const routeTrips = (tripsData || []).filter(trip => trip.route_id === route.id);
         
         const firstTrip = routeTrips[0];
-        const ownerBus = (ownerBusByRouteId as any)[route.id];
-        const busTypeSource = ownerBus?.bus_type || route.bus_type;
-        const normalizedBusType = normalizeBusType(busTypeSource);
-        const seatsFromOwner = ownerBus?.total_seats;
         return {
           id: route.id,
           name: route.name,
           from: route.from_city,
           to: route.to_city,
-          busType: normalizedBusType,
-          totalSeats: seatsFromOwner || BUS_TYPE_CONFIGS[normalizedBusType]?.defaultSeats || 54,
-          busNumber: ownerBus?.bus_number || route.bus_number || undefined,
+          busType: normalizeBusType(route.bus_type),
+          totalSeats: BUS_TYPE_CONFIGS[normalizeBusType(route.bus_type)]?.defaultSeats || 54,
+          busNumber: route.bus_number || undefined,
           driverName: route.driver_name || undefined,
           driverPhone: route.driver_phone || undefined,
           conductorName: route.conductor_name || undefined,

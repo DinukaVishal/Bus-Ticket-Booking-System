@@ -43,26 +43,9 @@ export interface Booking {
   phoneNumber: string;
   gender: 'male' | 'female';
   status: 'pending' | 'confirmed' | 'cancelled';
-  payment_method?: 'Card' | 'Mobile Money';
   payment_status?: 'pending' | 'paid' | 'failed' | 'refunded';
   payment_id?: string;
   createdAt: string;
-}
-
-export interface CancelRequest {
-  cancel_request_id: string;
-  bookingId: string;
-  bookingIds: string[];
-  seatNumbers: number[];
-  userId: string;
-  routeId?: string;
-  tripId?: string;
-  travelDate?: string;
-  requestedAt: string;
-  status: 'pending' | 'approved' | 'rejected';
-  refundAmount: number;
-  processedAt?: string | null;
-  note?: string | null;
 }
 
 export interface Schedule {
@@ -135,29 +118,18 @@ export const BUS_TYPE_CONFIGS: Record<BusType, BusTypeConfig> = {
 
 export function normalizeBusType(value?: string): BusType {
   if (!value) return 'normal';
-
-  const normalized = value
-    .toLowerCase()
-    .trim()
-    .replace(/[_/\-]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/\s+bus$/g, '');
-
-  if (normalized.includes('luxury') || normalized === 'ac' || normalized === 'a c') {
-    return 'luxury_ac';
+  const normalized = value.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  switch (normalized) {
+    case 'ac':
+    case 'luxury_ac':
+    case 'luxuryac':
+      return 'luxury_ac';
+    case 'super_long':
+    case 'superlong':
+      return 'super_long';
+    case 'rosa':
+      return 'rosa';
+    default:
+      return 'normal';
   }
-
-  if (normalized.includes('rosa') || normalized.includes('coaster')) {
-    return 'rosa';
-  }
-
-  if (normalized.includes('super') && normalized.includes('long')) {
-    return 'super_long';
-  }
-
-  if (normalized.includes('normal')) {
-    return 'normal';
-  }
-
-  return 'normal';
 }

@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Booking, CancelRequest } from '@/types/booking';
+import { Booking } from '@/types/booking';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -48,7 +48,6 @@ export function useBookings() {
         seatNumber: booking.seat_number,
         passengerName: booking.passenger_name,
         phoneNumber: booking.phone_number,
-        payment_method: booking.payment_method,
         gender: booking.gender as 'male' | 'female',
         status: booking.status as 'confirmed' | 'cancelled',
         createdAt: booking.created_at,
@@ -109,7 +108,6 @@ export function useMyBookings() {
         seatNumber: booking.seat_number,
         passengerName: booking.passenger_name,
         phoneNumber: booking.phone_number,
-        payment_method: booking.payment_method,
         gender: booking.gender as 'male' | 'female',
         status: booking.status as 'confirmed' | 'cancelled',
         createdAt: booking.created_at,
@@ -124,90 +122,6 @@ export function useMyBookings() {
     refetch: query.refetch,
     isSuccess: query.isSuccess,
     isError: query.isError,
-  };
-}
-
-export function useMyCancelRequests() {
-  const queryClient = useQueryClient();
-  const { user, isLoading: authLoading } = useAuth();
-
-  const query = useQuery({
-    queryKey: ['my-cancel-requests', user?.id],
-    enabled: !authLoading && !!user,
-    queryFn: async (): Promise<CancelRequest[]> => {
-      if (!user) return [];
-
-      const { data, error } = await supabase
-        .from('cancel_requests')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('requested_at', { ascending: false });
-
-      if (error) throw error;
-
-      return (data || []).map((request: any) => ({
-        cancel_request_id: request.id,
-        bookingId: request.booking_id,
-        bookingIds: request.booking_ids || [request.booking_id],
-        seatNumbers: request.seat_numbers || (request.seat_number ? [request.seat_number] : []),
-        userId: request.user_id,
-        routeId: request.route_id,
-        tripId: request.trip_id,
-        travelDate: request.travel_date,
-        requestedAt: request.requested_at,
-        status: request.status as 'pending' | 'approved' | 'rejected',
-        refundAmount: Number(request.refund_amount ?? 0),
-        processedAt: request.processed_at,
-        note: request.note,
-      }));
-    },
-  });
-
-  return {
-    data: query.data || [],
-    isLoading: authLoading || query.isLoading,
-    error: query.error,
-    refetch: query.refetch,
-  };
-}
-
-export function useOwnerCancelRequests() {
-  const queryClient = useQueryClient();
-
-  const query = useQuery({
-    queryKey: ['owner-cancel-requests'],
-    queryFn: async (): Promise<CancelRequest[]> => {
-      const { data, error } = await supabase
-        .from('owner_cancel_requests')
-        .select('*')
-        .order('requested_at', { ascending: false });
-
-      if (error) throw error;
-
-      return (data || []).map((request: any) => ({
-        cancel_request_id: request.cancel_request_id,
-        bookingId: request.booking_id,
-        bookingIds: request.booking_ids || [request.booking_id],
-        seatNumbers: request.seat_numbers || (request.seat_number ? [request.seat_number] : []),
-        userId: request.user_id,
-        routeId: request.route_id,
-        tripId: request.trip_id,
-        travelDate: request.travel_date,
-        requestedAt: request.requested_at,
-        status: request.status as 'pending' | 'approved' | 'rejected',
-        refundAmount: Number(request.refund_amount ?? 0),
-        processedAt: request.processed_at,
-        note: request.note,
-        passengerName: request.passenger_name,
-      }));
-    },
-  });
-
-  return {
-    data: query.data || [],
-    isLoading: query.isLoading,
-    error: query.error,
-    refetch: query.refetch,
   };
 }
 
@@ -303,7 +217,6 @@ export function useAddMultipleBookings() {
         seat_number: seatNumber,
         passenger_name: input.passengerName,
         phone_number: input.phoneNumber,
-        payment_method: 'Card',
         gender: input.gender,
         status: input.status,
         user_id: user.id,
@@ -333,7 +246,6 @@ export function useAddMultipleBookings() {
         seatNumber: booking.seat_number,
         passengerName: booking.passenger_name,
         phoneNumber: booking.phone_number,
-        payment_method: booking.payment_method,
         gender: booking.gender as 'male' | 'female',
         status: booking.status as 'confirmed' | 'cancelled',
         payment_status: booking.payment_status as 'pending' | 'paid' | 'failed' | 'refunded',
@@ -372,7 +284,6 @@ export function useAddBooking() {
           seat_number: booking.seatNumber,
           passenger_name: booking.passengerName,
           phone_number: booking.phoneNumber,
-          payment_method: 'Card',
           status: booking.status,
           user_id: user.id,
         })
@@ -396,7 +307,6 @@ export function useAddBooking() {
         seatNumber: data.seat_number,
         passengerName: data.passenger_name,
         phoneNumber: data.phone_number,
-        payment_method: data.payment_method,
         gender: data.gender || 'male',
         status: data.status as 'confirmed' | 'cancelled',
         createdAt: data.created_at,
@@ -424,45 +334,6 @@ export function useUpdateBookingStatus() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['booked-seats'] });
-    },
-  });
-}
-
-export function useRequestCancel() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ bookingIds, seatNumbers, routeId, tripId, travelDate, refundAmount, note }: { bookingIds: string[]; seatNumbers: number[]; routeId?: string; tripId?: string; travelDate?: string; refundAmount: number; note?: string }) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('You must be logged in to request a refund.');
-      }
-
-      const representativeBookingId = bookingIds[0];
-      const { data, error } = await supabase
-        .from('cancel_requests')
-        .insert({
-          booking_id: representativeBookingId,
-          booking_ids: bookingIds,
-          seat_numbers: seatNumbers,
-          user_id: user.id,
-          route_id: routeId || null,
-          trip_id: tripId || null,
-          travel_date: travelDate || null,
-          refund_amount: refundAmount,
-          note: note || null,
-        })
-        .select();
-
-      if (error) throw error;
-
-      return data as CancelRequest[];
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
-      queryClient.invalidateQueries({ queryKey: ['my-cancel-requests'] });
-      queryClient.invalidateQueries({ queryKey: ['owner-cancel-requests'] });
     },
   });
 }

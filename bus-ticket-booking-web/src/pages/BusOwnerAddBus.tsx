@@ -21,7 +21,7 @@ import { toast } from '@/hooks/use-toast';
 import { Bus, Loader2, ArrowLeft, Save, MapPin, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import ViaPointsEditor from '@/components/admin/ViaPointsEditor';
-import { BusType, normalizeBusType } from '@/types/booking';
+import { BusType } from '@/types/booking';
 
 const BusOwnerAddBus = () => {
   const { user } = useAuthContext();
@@ -321,7 +321,7 @@ const BusOwnerAddBus = () => {
         .insert({
           bus_owner_id: user.id,
           bus_number: newBusNumber,
-          bus_type: normalizeBusType(busFormData.busType),
+          bus_type: busFormData.busType,
           total_seats: parseInt(busFormData.totalSeats),
           registration_number: busFormData.registrationNumber,
           insurance_expiry: busFormData.insuranceExpiry,
@@ -362,7 +362,7 @@ const BusOwnerAddBus = () => {
         for (const routeId of routeIds) {
           const { error: updateError } = await supabase
             .from('routes')
-            .update({ bus_type: normalizeBusType(busFormData.busType) })
+            .update({ bus_type: busFormData.busType })
             .eq('id', routeId);
 
           if (updateError) {
