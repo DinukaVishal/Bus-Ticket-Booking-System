@@ -1,0 +1,5 @@
+bus-ticket-booking-web/sri[[:space:]]lanka[[:space:]]map[[:space:]]details/osrm-server/data/*.osm.pbf filter=lfs diff=lfs merge=lfs -text
+bus-ticket-booking-web/sri[[:space:]]lanka[[:space:]]map[[:space:]]details/osrm-server/data/*.osrm filter=lfs diff=lfs merge=lfs -text
+bus-ticket-booking-web/sri[[:space:]]lanka[[:space:]]map[[:space:]]details/osrm-server/data/*.osrm.cell_metrics filter=lfs diff=lfs merge=lfs -text
+bus-ticket-booking-web/sri[[:space:]]lanka[[:space:]]map[[:space:]]details/osrm-server/data/*.osrm.fileIndex filter=lfs diff=lfs merge=lfs -text
+bus-ticket-booking-web/sri[[:space:]]lanka[[:space:]]map[[:space:]]details/osrm-server/data/*.osrm.geometry filter=lfs diff=lfs merge=lfs -text
