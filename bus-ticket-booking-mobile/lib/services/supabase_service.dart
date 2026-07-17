@@ -136,13 +136,13 @@ class SupabaseService {
     required DateTime travelDate,
     required int seatNumber,
     required String passengerName,
-    required String passengerPhone,
+    String? passengerPhone,
   }) async {
     final client = Supabase.instance.client;
     final bookingId = 'BKG-${DateTime.now().millisecondsSinceEpoch}';
     final userId = currentUser?.id;
 
-    await client.from('bookings').insert({
+    final data = {
       'booking_id': bookingId,
       'user_id': userId,
       'route_id': route.id,
@@ -151,10 +151,12 @@ class SupabaseService {
       'date': travelDate.toIso8601String().split('T').first,
       'seat_number': seatNumber,
       'passenger_name': passengerName,
-      'passenger_phone': passengerPhone,
+      'phone_number': passengerPhone ?? '',
       'status': 'confirmed',
       'created_at': DateTime.now().toIso8601String(),
-    });
+    };
+
+    await client.from('bookings').insert(data);
   }
 
   static Future<List<BookingRecord>> fetchMyBookings() async {
