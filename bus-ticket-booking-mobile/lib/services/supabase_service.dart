@@ -39,6 +39,29 @@ class SupabaseService {
     await Supabase.instance.client.auth.signOut();
   }
 
+  static Future<void> resetPassword({required String email}) async {
+    await Supabase.instance.client.auth.resetPasswordForEmail(email);
+  }
+
+  static Future<AuthResponse> verifyOtp({
+    required String email,
+    required String token,
+  }) async {
+    return await Supabase.instance.client.auth.verifyOTP(
+      email: email,
+      token: token,
+      type: OtpType.recovery,
+    );
+  }
+
+  static Future<UserResponse> updatePassword({
+    required String newPassword,
+  }) async {
+    return await Supabase.instance.client.auth.updateUser(
+      UserAttributes(password: newPassword),
+    );
+  }
+
   static User? get currentUser => Supabase.instance.client.auth.currentUser;
 
   static Future<List<RouteOption>> fetchRoutes() async {
