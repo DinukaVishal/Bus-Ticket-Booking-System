@@ -39,6 +39,29 @@ class SupabaseService {
     await Supabase.instance.client.auth.signOut();
   }
 
+  static Future<void> resetPassword({required String email}) async {
+    await Supabase.instance.client.auth.resetPasswordForEmail(email);
+  }
+
+  static Future<AuthResponse> verifyOtp({
+    required String email,
+    required String token,
+  }) async {
+    return await Supabase.instance.client.auth.verifyOTP(
+      email: email,
+      token: token,
+      type: OtpType.recovery,
+    );
+  }
+
+  static Future<UserResponse> updatePassword({
+    required String newPassword,
+  }) async {
+    return await Supabase.instance.client.auth.updateUser(
+      UserAttributes(password: newPassword),
+    );
+  }
+
   static User? get currentUser => Supabase.instance.client.auth.currentUser;
 
   static Future<List<RouteOption>> fetchRoutes() async {
@@ -136,13 +159,13 @@ class SupabaseService {
     required DateTime travelDate,
     required int seatNumber,
     required String passengerName,
-    required String passengerPhone,
+    String? passengerPhone,
   }) async {
     final client = Supabase.instance.client;
     final bookingId = 'BKG-${DateTime.now().millisecondsSinceEpoch}';
     final userId = currentUser?.id;
 
-    await client.from('bookings').insert({
+    final data = {
       'booking_id': bookingId,
       'user_id': userId,
       'route_id': route.id,
@@ -151,10 +174,12 @@ class SupabaseService {
       'date': travelDate.toIso8601String().split('T').first,
       'seat_number': seatNumber,
       'passenger_name': passengerName,
-      'passenger_phone': passengerPhone,
+      'phone_number': passengerPhone ?? '',
       'status': 'confirmed',
       'created_at': DateTime.now().toIso8601String(),
-    });
+    };
+
+    await client.from('bookings').insert(data);
   }
 
   static Future<List<BookingRecord>> fetchMyBookings() async {
