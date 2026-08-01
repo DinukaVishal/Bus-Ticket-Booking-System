@@ -352,9 +352,14 @@ const Admin = () => {
             <LayoutDashboard className="w-8 h-8 text-primary" />
             <h1 className="text-2xl md:text-3xl font-display font-bold">Admin Dashboard</h1>
           </div>
-          <Button onClick={() => navigate('/scan')} size="lg" className="shadow-lg hover:scale-105 transition-all">
-            <QrCode className="w-5 h-5 mr-2" /> Scan Tickets
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate('/admin/overview')} size="lg" className="shadow-lg hover:scale-105 transition-all">
+              <Users className="w-5 h-5 mr-2" /> Drivers &amp; Crew
+            </Button>
+            <Button onClick={() => navigate('/scan')} size="lg" className="shadow-lg hover:scale-105 transition-all">
+              <QrCode className="w-5 h-5 mr-2" /> Scan Tickets
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (

@@ -265,6 +265,10 @@ const BusOwnerDashboard = () => {
               <p className="text-muted-foreground">Welcome back, {profile?.displayName || 'Bus Owner'}</p>
             </div>
             <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate('/admin/overview')}>
+                <Users className="w-4 h-4 mr-2" />
+                Drivers &amp; Crew
+              </Button>
               <Button variant="outline" onClick={() => navigate('/bus-owner/profile')}>
                 <User className="w-4 h-4 mr-2" />
                 Profile

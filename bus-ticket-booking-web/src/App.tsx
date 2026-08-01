@@ -30,6 +30,11 @@ import StaffLogin from "./pages/StaffLogin";
 import StaffDashboard from "./pages/StaffDashboard";
 import Notification from "./pages/notification/Notification";
 import NotFound from "./pages/NotFound";
+import CrewManagementLayout from "./components/crew/CrewManagementLayout";
+import CrewDashboard from "./pages/CrewDashboard";
+import DriversPage from "./pages/DriversPage";
+import CrewPage from "./pages/CrewPage";
+import AssignmentsPage from "./pages/AssignmentsPage";
 
 
 const queryClient = new QueryClient();
@@ -133,6 +138,49 @@ const AppShell = () => {
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
         <Route path="/reviews" element={<Reviews />} />
         <Route path="/notification" element={<Notification />} />
+
+        {/* Driver & Crew Management (Admin + Bus Owner) */}
+        <Route
+          path="/admin/overview"
+          element={
+            <ProtectedRoute requireAdminOrBusOwner>
+              <CrewManagementLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<CrewDashboard />} />
+        </Route>
+        <Route
+          path="/admin/drivers"
+          element={
+            <ProtectedRoute requireAdminOrBusOwner>
+              <CrewManagementLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<DriversPage />} />
+        </Route>
+        <Route
+          path="/admin/crew"
+          element={
+            <ProtectedRoute requireAdminOrBusOwner>
+              <CrewManagementLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<CrewPage />} />
+        </Route>
+        <Route
+          path="/admin/assignments"
+          element={
+            <ProtectedRoute requireAdminOrBusOwner>
+              <CrewManagementLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<AssignmentsPage />} />
+        </Route>
+
         <Route path="*" element={<NotFound />} />
       </Routes>
 

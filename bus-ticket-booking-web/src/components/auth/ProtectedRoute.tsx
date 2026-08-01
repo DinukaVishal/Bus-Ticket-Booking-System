@@ -6,9 +6,15 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
   requireBusOwner?: boolean;
+  requireAdminOrBusOwner?: boolean;
 }
 
-const ProtectedRoute = ({ children, requireAdmin = false, requireBusOwner = false }: ProtectedRouteProps) => {
+const ProtectedRoute = ({
+  children,
+  requireAdmin = false,
+  requireBusOwner = false,
+  requireAdminOrBusOwner = false,
+}: ProtectedRouteProps) => {
   const { user, isAdmin, isBusOwner, isLoading } = useAuthContext();
 
   if (isLoading) {
@@ -28,6 +34,11 @@ const ProtectedRoute = ({ children, requireAdmin = false, requireBusOwner = fals
   }
 
   if (requireBusOwner && !isBusOwner) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Driver & Crew Management pages are accessible to BOTH Admin and Bus Owner.
+  if (requireAdminOrBusOwner && !isAdmin && !isBusOwner) {
     return <Navigate to="/" replace />;
   }
 
