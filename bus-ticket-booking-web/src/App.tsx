@@ -35,6 +35,14 @@ import CrewDashboard from "./pages/CrewDashboard";
 import DriversPage from "./pages/DriversPage";
 import CrewPage from "./pages/CrewPage";
 import AssignmentsPage from "./pages/AssignmentsPage";
+import SupportDashboard from "./pages/support/SupportDashboard";
+import CreateTicket from "./pages/support/CreateTicket";
+import MyTickets from "./pages/support/MyTickets";
+import TicketDetails from "./pages/support/TicketDetails";
+import StaffSupport from "./pages/support/StaffSupport";
+import AdminSupport from "./pages/support/AdminSupport";
+import SupportCategories from "./pages/support/SupportCategories";
+import SupportAnalytics from "./pages/support/SupportAnalytics";
 
 
 const queryClient = new QueryClient();
@@ -180,6 +188,65 @@ const AppShell = () => {
         >
           <Route index element={<AssignmentsPage />} />
         </Route>
+
+        {/* Customer Support & Helpdesk */}
+        <Route
+          path="/support"
+          element={
+            <ProtectedRoute>
+              <SupportDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/support/create"
+          element={
+            <ProtectedRoute>
+              <CreateTicket />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/support/my-tickets"
+          element={
+            <ProtectedRoute>
+              <MyTickets />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/support/assigned"
+          element={
+            <ProtectedRoute requireAdminOrStaff>
+              <StaffSupport />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/support/:ticketId" element={<ProtectedRoute><TicketDetails /></ProtectedRoute>} />
+        <Route
+          path="/admin/support"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminSupport />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/support/categories"
+          element={
+            <ProtectedRoute requireAdmin>
+              <SupportCategories />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/support/analytics"
+          element={
+            <ProtectedRoute requireAdmin>
+              <SupportAnalytics />
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="*" element={<NotFound />} />
       </Routes>

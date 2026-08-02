@@ -7,6 +7,8 @@ interface ProtectedRouteProps {
   requireAdmin?: boolean;
   requireBusOwner?: boolean;
   requireAdminOrBusOwner?: boolean;
+  requireStaff?: boolean;
+  requireAdminOrStaff?: boolean;
 }
 
 const ProtectedRoute = ({
@@ -14,8 +16,10 @@ const ProtectedRoute = ({
   requireAdmin = false,
   requireBusOwner = false,
   requireAdminOrBusOwner = false,
+  requireStaff = false,
+  requireAdminOrStaff = false,
 }: ProtectedRouteProps) => {
-  const { user, isAdmin, isBusOwner, isLoading } = useAuthContext();
+  const { user, isAdmin, isBusOwner, isStaff, isLoading } = useAuthContext();
 
   if (isLoading) {
     return (
@@ -39,6 +43,15 @@ const ProtectedRoute = ({
 
   // Driver & Crew Management pages are accessible to BOTH Admin and Bus Owner.
   if (requireAdminOrBusOwner && !isAdmin && !isBusOwner) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (requireStaff && !isStaff) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Support Desk pages are accessible to Staff and Admin.
+  if (requireAdminOrStaff && !isAdmin && !isStaff) {
     return <Navigate to="/" replace />;
   }
 

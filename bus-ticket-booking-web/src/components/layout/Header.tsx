@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Bus, LayoutDashboard, LogOut, User, Ticket, Radio, Navigation, ChevronDown, UserCircle, ShieldCheck, Moon, Sun } from 'lucide-react';
+import { Bus, LayoutDashboard, LogOut, User, Ticket, Radio, Navigation, ChevronDown, UserCircle, ShieldCheck, Moon, Sun, LifeBuoy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -121,6 +121,21 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
                 >
                   <Ticket className="w-4 h-4" />
                   <span className="hidden sm:inline">My Bookings</span>
+                </Link>
+              )}
+
+              {user && (
+                <Link
+                  to="/support"
+                  className={cn(
+                    'px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
+                    location.pathname.startsWith('/support') || location.pathname.startsWith('/admin/support')
+                      ? 'bg-white/20'
+                      : 'hover:bg-white/10'
+                  )}
+                >
+                  <LifeBuoy className="w-4 h-4" />
+                  <span className="hidden sm:inline">Support</span>
                 </Link>
               )}
 
@@ -257,6 +272,18 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
                   )}
                 >
                   My Bookings
+                </Link>
+              )}
+              {user && (
+                <Link
+                  to="/support"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    'block px-4 py-3 rounded-2xl text-sm font-medium transition-colors',
+                    location.pathname.startsWith('/support') || location.pathname.startsWith('/admin/support') ? 'bg-white/10' : 'hover:bg-white/10'
+                  )}
+                >
+                  Support Center
                 </Link>
               )}
               {isAdmin && (
