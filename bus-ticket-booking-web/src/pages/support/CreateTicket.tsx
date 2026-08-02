@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import { SupportLayout, AttachmentButton } from '@/components/support';
@@ -16,7 +16,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCategories, useCreateTicket } from '@/hooks/useSupport';
 import { toast } from '@/hooks/use-toast';
-import { TICKET_PRIORITIES } from '@/lib/support/constants';
+import { DEFAULT_CATEGORIES, TICKET_PRIORITIES } from '@/lib/support/constants';
 import type { TicketPriority } from '@/types/support';
 import { CATEGORY_EMOJI } from '@/lib/support/constants';
 import { fetchBookingById } from '@/lib/support/supportApi';
@@ -26,8 +26,36 @@ const CreateTicket = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const bookingIdParam = searchParams.get('bookingId') || '';
-  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
+  const {
+    data: categories = [],
+    isLoading: categoriesLoading,
+    error: categoriesError,
+  } = useCategories();
   const createTicket = useCreateTicket();
+
+  /**
+   * Category options for the dropdown.
+   *
+   * The database-backed list is the primary source. If the query fails or the
+   * `support_categories` table is empty (e.g. the seed migration hasn't been
+   * applied), we fall back to the built-in DEFAULT_CATEGORIES so the dropdown
+   * is never empty. Values are kept consistent between both sources so a
+   * selected category always matches what the backend expects.
+   */
+  const categoryOptions = useMemo(() => {
+    const dbNames = categories.map((c) => c.name);
+    if (categories.length === 0) {
+      console.warn(
+        '[CreateTicket] No support categories loaded from the database; using built-in defaults.' +
+          (categoriesError ? ` (${categoriesError.message})` : '')
+      );
+    }
+    // DB categories first (preserve admin-defined order), then any defaults
+    // that aren't already present (deduped) so values never mismatch.
+    return [...dbNames, ...DEFAULT_CATEGORIES.filter((name) => !dbNames.includes(name))];
+  }, [categories, categoriesError]);
+
+  const usingFallbackCategories = !categoriesLoading && categories.length === 0;
 
   const [category, setCategory] = useState('');
   const [priority, setPriority] = useState<TicketPriority>('Medium');
@@ -174,19 +202,26 @@ const CreateTicket = () => {
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((c) => (
-                        <SelectItem key={c.id} value={c.name}>
+                      {categoryOptions.map((name) => (
+                        <SelectItem key={name} value={name}>
                           <span className="inline-flex items-center gap-2">
-                            <span>{CATEGORY_EMOJI[c.name] || '📋'}</span>
-                            {c.name}
+                            <span>{CATEGORY_EMOJI[name] || '📋'}</span>
+                            {name}
                           </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 )}
-                {!categoriesLoading && categories.length === 0 && (
-                  <p className="text-xs text-muted-foreground">No categories available yet.</p>
+                {categoriesError && !categoriesLoading && (
+                  <p className="text-xs text-destructive">
+                    Couldn't load categories from the server. Showing built-in defaults.
+                  </p>
+                )}
+                {usingFallbackCategories && !categoriesError && (
+                  <p className="text-xs text-muted-foreground">
+                    No categories configured yet — showing built-in defaults.
+                  </p>
                 )}
               </div>
 
