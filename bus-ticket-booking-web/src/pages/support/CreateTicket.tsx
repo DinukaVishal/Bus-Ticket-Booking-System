@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Header from '@/components/layout/Header';
 import { SupportLayout, AttachmentButton } from '@/components/support';
 import { Button } from '@/components/ui/button';
@@ -19,10 +19,13 @@ import { toast } from '@/hooks/use-toast';
 import { TICKET_PRIORITIES } from '@/lib/support/constants';
 import type { TicketPriority } from '@/types/support';
 import { CATEGORY_EMOJI } from '@/lib/support/constants';
-import { Loader2, Send, Sparkles } from 'lucide-react';
+import { fetchBookingById } from '@/lib/support/supportApi';
+import { Loader2, Send, Sparkles, Calendar, MapPin, Armchair, User, X } from 'lucide-react';
 
 const CreateTicket = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const bookingIdParam = searchParams.get('bookingId') || '';
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const createTicket = useCreateTicket();
 
@@ -31,13 +34,67 @@ const CreateTicket = () => {
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
+  const [linkedBooking, setLinkedBooking] = useState<any | null>(null);
+  const [bookingLoading, setBookingLoading] = useState(!!bookingIdParam);
+
+  // Auto pre-fill booking information when arriving via ?bookingId=
+  useEffect(() => {
+    if (!bookingIdParam) return;
+    let active = true;
+    setBookingLoading(true);
+    fetchBookingById(bookingIdParam)
+      .then((booking) => {
+        if (!active) return;
+        setLinkedBooking(booking);
+        if (booking) {
+          setCategory((c) => c || 'Booking Issue');
+          setSubject(
+            (s) =>
+              s ||
+              `Issue with booking ${booking.booking_id || bookingIdParam}`
+          );
+          setDescription(
+            (d) =>
+              d ||
+              [
+                booking.route_name ? `Route: ${booking.route_name}` : '',
+                booking.date ? `Travel date: ${booking.date}` : '',
+                booking.seat_number ? `Seat: ${booking.seat_number}` : '',
+                booking.passenger_name ? `Passenger: ${booking.passenger_name}` : '',
+              ]
+                .filter(Boolean)
+                .join('\n')
+          );
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        toast({
+          title: 'Booking not found',
+          description: 'Could not load the related booking. You can still create a ticket.',
+          variant: 'destructive',
+        });
+      })
+      .finally(() => {
+        if (active) setBookingLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [bookingIdParam]);
 
   const canSubmit = category && subject.trim() && description.trim();
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
     try {
-      const created = await createTicket.mutateAsync({ category, subject: subject.trim(), description: description.trim(), priority });
+      const created = await createTicket.mutateAsync({
+        category,
+        subject: subject.trim(),
+        description: description.trim(),
+        priority,
+        bookingId: bookingIdParam || linkedBooking?.booking_id || null,
+      });
       toast({
         title: 'Ticket created',
         description: `Your ticket ${created.ticket_number} was created successfully.`,
@@ -59,6 +116,53 @@ const CreateTicket = () => {
         <SupportLayout title="Create a Support Ticket" description="Describe your issue and our team will help you.">
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 rounded-2xl border border-border/60 bg-card/70 p-6 space-y-5">
+              {/* Related booking banner */}
+              {bookingIdParam && (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+                  {bookingLoading ? (
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      Loading related booking…
+                    </div>
+                  ) : linkedBooking ? (
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="space-y-1 text-sm">
+                        <p className="font-semibold text-foreground flex items-center gap-1.5">
+                          <User className="h-4 w-4 text-primary" /> Related booking #{linkedBooking.booking_id}
+                        </p>
+                        {linkedBooking.route_name && (
+                          <p className="flex items-center gap-1.5 text-muted-foreground">
+                            <MapPin className="h-3.5 w-3.5" /> {linkedBooking.route_name}
+                          </p>
+                        )}
+                        {linkedBooking.date && (
+                          <p className="flex items-center gap-1.5 text-muted-foreground">
+                            <Calendar className="h-3.5 w-3.5" /> {linkedBooking.date}
+                          </p>
+                        )}
+                        {linkedBooking.seat_number != null && (
+                          <p className="flex items-center gap-1.5 text-muted-foreground">
+                            <Armchair className="h-3.5 w-3.5" /> Seat #{linkedBooking.seat_number}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setLinkedBooking(null)}
+                        className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        aria-label="Remove related booking"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Related booking not found. You can still create a ticket and mention it in the description.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Category */}
               <div className="space-y-2">
                 <Label htmlFor="category">Category *</Label>

@@ -89,6 +89,8 @@ export async function createTicket(input: CreateTicketInput): Promise<SupportTic
       subject: input.subject,
       description: input.description,
       priority: input.priority,
+      booking_id: input.bookingId || null,
+      source: 'user',
     })
     .select()
     .single();
@@ -208,6 +210,20 @@ export async function assignTicket(ticketId: string, staffUserId: string | null)
     .update({ assigned_staff_id: staffUserId })
     .eq('id', ticketId);
   if (error) throw error;
+}
+
+// ---------------------------------------------------------------------
+// Related booking lookup (used for /support/create?bookingId= pre-fill)
+// ---------------------------------------------------------------------
+
+export async function fetchBookingById(bookingId: string): Promise<any | null> {
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('*')
+    .eq('booking_id', bookingId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
 }
 
 // ---------------------------------------------------------------------

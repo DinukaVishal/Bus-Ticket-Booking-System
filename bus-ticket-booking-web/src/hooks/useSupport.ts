@@ -44,6 +44,7 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
 } from '@/lib/support/supportApi';
+import { fetchBusDelayThreshold } from '@/lib/support/autoTicket';
 
 // ---------------------------------------------------------------------
 // Realtime subscription helper
@@ -319,6 +320,18 @@ export function useStaffUsers() {
   return useQuery({
     queryKey: ['support-staff-users'],
     queryFn: fetchStaffUsers,
+  });
+}
+
+// ---------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------
+
+export function useBusDelayThreshold() {
+  return useQuery({
+    queryKey: ['support-bus-delay-threshold'],
+    queryFn: fetchBusDelayThreshold,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

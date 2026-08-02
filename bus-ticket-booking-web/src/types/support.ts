@@ -31,6 +31,8 @@ export interface SupportTicket {
   description: string;
   priority: TicketPriority;
   status: TicketStatus;
+  booking_id: string | null;
+  source: 'user' | 'system';
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
@@ -134,6 +136,7 @@ export interface CreateTicketInput {
   subject: string;
   description: string;
   priority: TicketPriority;
+  bookingId?: string | null;
 }
 
 export interface TicketFilters {

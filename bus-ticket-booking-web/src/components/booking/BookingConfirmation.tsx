@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Booking, Route, Trip } from '@/types/booking';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Home, Ticket, Download, Mail } from 'lucide-react';
+import { CheckCircle, Home, Ticket, Download, Mail, LifeBuoy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { generateTicketPDF } from '@/lib/pdfTicketGenerator';
@@ -201,6 +201,18 @@ const BookingConfirmation = ({ bookings, route, trip, onNewBooking }: BookingCon
           >
             <Mail className="w-4 h-4 mr-2" />
             Send Ticket Email
+          </Button>
+
+          <Button
+            onClick={() => {
+              const first = bookings[0];
+              navigate(`/support/create?bookingId=${first?.id || ''}`);
+            }}
+            variant="outline"
+            className="w-full h-12"
+          >
+            <LifeBuoy className="w-4 h-4 mr-2" />
+            Contact Support
           </Button>
 
           <Button onClick={onNewBooking} variant="outline" className="w-full h-12">

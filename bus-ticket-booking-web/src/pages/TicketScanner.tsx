@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, XCircle, RefreshCw, Camera } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import Header from '@/components/layout/Header';
+import { qrValidationFailureTicket } from '@/lib/support/autoTicket';
 
 const TicketScanner = () => {
   const [scanResult, setScanResult] = useState<string | null>(null);
@@ -33,7 +34,7 @@ const TicketScanner = () => {
       }
 
       // Booking IDs වෙන් කරගැනීම
-      const bookingIds = qrData.id.split(',');
+      const bookingIds = qrData.id.split(',').map((id: string) => id.trim()).filter(Boolean);
 
       // Database එකෙන් පරීක්ෂා කිරීම
       const { data: bookings, error } = await supabase
@@ -58,11 +59,31 @@ const TicketScanner = () => {
       } else {
         setVerificationStatus('invalid');
         toast({ title: "Invalid Ticket", description: "Ticket not found or cancelled.", variant: "destructive" });
+
+        // Auto-generate a support ticket for QR ticket validation failure
+        await qrValidationFailureTicket({
+          bookingId: bookingIds[0] || null,
+          routeName: qrData.route || undefined,
+          reason: 'No confirmed booking found for the scanned QR code.',
+        });
       }
 
     } catch (error) {
       console.error("Verification Error:", error);
       setVerificationStatus('invalid');
+
+      // Auto-generate a support ticket for invalid/parsing QR code
+      let qrBookingId: string | null = null;
+      try {
+        const parsed = JSON.parse(qrDataString);
+        if (parsed.id) qrBookingId = String(parsed.id).split(',')[0].trim();
+      } catch {
+        // QR is not valid JSON at all
+      }
+      await qrValidationFailureTicket({
+        bookingId: qrBookingId,
+        reason: error instanceof Error ? error.message : 'Invalid QR code format.',
+      });
     }
   };
 

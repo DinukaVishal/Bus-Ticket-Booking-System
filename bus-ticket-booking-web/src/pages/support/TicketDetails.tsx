@@ -36,13 +36,14 @@ import {
 } from '@/hooks/useSupport';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { CATEGORY_EMOJI, formatDateTime } from '@/lib/support/constants';
+import { fetchBookingById } from '@/lib/support/supportApi';
 import {
   ArrowLeft,
   Lock,
   Star,
   CheckCircle2,
-  XCircle,
   Calendar,
+  Ticket,
   User,
   Clock,
   LifeBuoy,
@@ -61,12 +62,32 @@ const TicketDetails = () => {
   const updateStatus = useUpdateTicketStatus();
 
   const [ratingOpen, setRatingOpen] = useState(false);
+  const [relatedBooking, setRelatedBooking] = useState<any | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages.length]);
+
+  // Load the related booking (when the ticket references one)
+  useEffect(() => {
+    if (!ticket?.booking_id) {
+      setRelatedBooking(null);
+      return;
+    }
+    let active = true;
+    fetchBookingById(ticket.booking_id)
+      .then((data) => {
+        if (active) setRelatedBooking(data || null);
+      })
+      .catch(() => {
+        if (active) setRelatedBooking(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [ticket?.booking_id]);
 
   if (isLoading) {
     return (
@@ -249,6 +270,46 @@ const TicketDetails = () => {
           {/* Sidebar */}
           <div className="space-y-4">
             {canManage && <TicketActions ticket={ticket} />}
+
+            {relatedBooking && (
+              <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
+                <h3 className="mb-3 flex items-center gap-2 font-semibold text-foreground">
+                  <Ticket className="h-4 w-4 text-primary" /> Related Booking
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-muted-foreground">Booking #</span>
+                    <span className="font-mono font-semibold text-primary">{ticket.booking_id}</span>
+                  </div>
+                  {relatedBooking.route_name && (
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-muted-foreground">Route</span>
+                      <span className="font-medium text-foreground text-right">{relatedBooking.route_name}</span>
+                    </div>
+                  )}
+                  {relatedBooking.date && (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground">Date</span>
+                      <span className="font-medium text-foreground">{relatedBooking.date}</span>
+                    </div>
+                  )}
+                  {relatedBooking.seat_number != null && (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground">Seat</span>
+                      <span className="font-medium text-foreground">#{relatedBooking.seat_number}</span>
+                    </div>
+                  )}
+                  {relatedBooking.status && (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-muted-foreground">Status</span>
+                      <Badge variant={relatedBooking.status === 'cancelled' ? 'destructive' : 'secondary'}>
+                        {relatedBooking.status}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {isOwner && (
               <div className="rounded-2xl border border-border/60 bg-card/70 p-4 space-y-2 text-sm">
