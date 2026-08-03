@@ -441,6 +441,65 @@ export async function fetchUnreadCount(): Promise<number> {
   return count || 0;
 }
 
+export interface CreateNotificationInput {
+  userId: string;
+  title: string;
+  message?: string | null;
+  type?: string;
+  entityType?: string | null;
+  entityId?: string | null;
+  link?: string | null;
+}
+
+/**
+ * Create a notification.
+ *
+ * Uses the `create_notification` SECURITY DEFINER RPC when available so the
+ * frontend can create notifications for any user (e.g. admin notifying a
+ * passenger, or a booking/payment flow notifying the booking owner).
+ *
+ * Falls back to a direct insert for the current user when the RPC is not
+ * present in the database (older environments) — this only succeeds if the
+ * notifications INSERT policy is in place (added by the migration).
+ */
+export async function createNotification(input: CreateNotificationInput): Promise<boolean> {
+  const { userId, title, message, type, entityType, entityId, link } = input;
+
+  try {
+    // Preferred path: SECURITY DEFINER RPC (works for any target user)
+    const { error: rpcError } = await supabase.rpc('create_notification', {
+      _user_id: userId,
+      _title: title,
+      _message: message ?? null,
+      _type: type ?? 'info',
+      _entity_type: entityType ?? null,
+      _entity_id: entityId ?? null,
+      _link: link ?? null,
+    });
+    if (!rpcError) return true;
+
+    // Fallback: direct insert (only works when the target is the current user)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.id !== userId) return false;
+
+    const { error: insertError } = await supabase.from('notifications').insert({
+      user_id: userId,
+      title,
+      message: message ?? null,
+      type: type ?? 'info',
+      entity_type: entityType ?? null,
+      entity_id: entityId ?? null,
+      link: link ?? null,
+    });
+    if (insertError) return false;
+
+    return true;
+  } catch (err) {
+    console.error('[createNotification] Failed to create notification:', err);
+    return false;
+  }
+}
+
 // ---------------------------------------------------------------------
 // Staff list (for admin assignment dropdowns)
 // ---------------------------------------------------------------------
