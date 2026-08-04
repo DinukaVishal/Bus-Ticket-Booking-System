@@ -7,6 +7,9 @@ interface Profile {
   userId: string;
   displayName: string | null;
   avatarUrl: string | null;
+  phoneNumber: string | null;
+  address: string | null;
+  city: string | null;
 }
 
 interface AuthState {
@@ -15,6 +18,7 @@ interface AuthState {
   profile: Profile | null;
   isAdmin: boolean;
   isBusOwner: boolean;
+  isStaff: boolean;
   isLoading: boolean;
 }
 
@@ -25,6 +29,7 @@ export function useAuth() {
     profile: null,
     isAdmin: false,
     isBusOwner: false,
+    isStaff: false,
     isLoading: true,
   });
 
@@ -44,15 +49,23 @@ export function useAuth() {
     const { data: isBusOwnerData } = await supabase
       .rpc('has_role', { _user_id: userId, _role: 'bus_owner' });
 
+    // Check if user is staff using the is_staff helper
+    const { data: isStaffData } = await supabase
+      .rpc('is_staff', { _user_id: userId });
+
     return {
       profile: profileData ? {
         id: profileData.id,
         userId: profileData.user_id,
         displayName: profileData.display_name,
         avatarUrl: profileData.avatar_url,
+        phoneNumber: profileData.phone_number,
+        address: profileData.address,
+        city: profileData.city,
       } : null,
       isAdmin: isAdminData || false,
       isBusOwner: isBusOwnerData || false,
+      isStaff: isStaffData || false,
     };
   }, []);
 
@@ -70,6 +83,7 @@ export function useAuth() {
               profile: userData.profile,
               isAdmin: userData.isAdmin,
               isBusOwner: userData.isBusOwner,
+              isStaff: userData.isStaff,
               isLoading: false,
             });
           }, 0);
@@ -80,6 +94,7 @@ export function useAuth() {
             profile: null,
             isAdmin: false,
             isBusOwner: false,
+            isStaff: false,
             isLoading: false,
           });
         }
@@ -96,6 +111,7 @@ export function useAuth() {
           profile: userData.profile,
           isAdmin: userData.isAdmin,
           isBusOwner: userData.isBusOwner,
+          isStaff: userData.isStaff,
           isLoading: false,
         });
       } else {

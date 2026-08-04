@@ -30,7 +30,28 @@ import StaffLogin from "./pages/StaffLogin";
 import StaffDashboard from "./pages/StaffDashboard";
 import Notification from "./pages/notification/Notification";
 import NotFound from "./pages/NotFound";
+import CrewManagementLayout from "./components/crew/CrewManagementLayout";
+import CrewDashboard from "./pages/CrewDashboard";
+import DriversPage from "./pages/DriversPage";
+import CrewPage from "./pages/CrewPage";
+import AssignmentsPage from "./pages/AssignmentsPage";
+import SupportDashboard from "./pages/support/SupportDashboard";
+import CreateTicket from "./pages/support/CreateTicket";
+import MyTickets from "./pages/support/MyTickets";
+import TicketDetails from "./pages/support/TicketDetails";
+import StaffSupport from "./pages/support/StaffSupport";
+import AdminSupport from "./pages/support/AdminSupport";
+import SupportCategories from "./pages/support/SupportCategories";
+import SupportAnalytics from "./pages/support/SupportAnalytics";
 
+// Compliance & Regulatory Management
+import AdminCompliance from "./pages/compliance/AdminCompliance";
+import AdminComplianceDocuments from "./pages/compliance/AdminComplianceDocuments";
+import AdminComplianceReports from "./pages/compliance/AdminComplianceReports";
+import AdminComplianceCalendar from "./pages/compliance/AdminComplianceCalendar";
+import AdminComplianceSettings from "./pages/compliance/AdminComplianceSettings";
+import OwnerCompliance from "./pages/compliance/OwnerCompliance";
+import OwnerComplianceUpload from "./pages/compliance/OwnerComplianceUpload";
 
 const queryClient = new QueryClient();
 
@@ -133,6 +154,168 @@ const AppShell = () => {
         <Route path="/staff/dashboard" element={<StaffDashboard />} />
         <Route path="/reviews" element={<Reviews />} />
         <Route path="/notification" element={<Notification />} />
+
+        {/* Driver & Crew Management (Admin + Bus Owner) */}
+        <Route
+          path="/admin/overview"
+          element={
+            <ProtectedRoute requireAdminOrBusOwner>
+              <CrewManagementLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<CrewDashboard />} />
+        </Route>
+        <Route
+          path="/admin/drivers"
+          element={
+            <ProtectedRoute requireAdminOrBusOwner>
+              <CrewManagementLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<DriversPage />} />
+        </Route>
+        <Route
+          path="/admin/crew"
+          element={
+            <ProtectedRoute requireAdminOrBusOwner>
+              <CrewManagementLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<CrewPage />} />
+        </Route>
+        <Route
+          path="/admin/assignments"
+          element={
+            <ProtectedRoute requireAdminOrBusOwner>
+              <CrewManagementLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<AssignmentsPage />} />
+        </Route>
+
+        {/* Customer Support & Helpdesk */}
+        <Route
+          path="/support"
+          element={
+            <ProtectedRoute>
+              <SupportDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/support/create"
+          element={
+            <ProtectedRoute>
+              <CreateTicket />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/support/my-tickets"
+          element={
+            <ProtectedRoute>
+              <MyTickets />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/support/assigned"
+          element={
+            <ProtectedRoute requireAdminOrStaff>
+              <StaffSupport />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/support/:ticketId" element={<ProtectedRoute><TicketDetails /></ProtectedRoute>} />
+        <Route
+          path="/admin/support"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminSupport />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/support/categories"
+          element={
+            <ProtectedRoute requireAdmin>
+              <SupportCategories />
+            </ProtectedRoute>
+          }
+        />
+<Route
+          path="/admin/support/analytics"
+          element={
+            <ProtectedRoute requireAdmin>
+              <SupportAnalytics />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Compliance & Regulatory Management (Admin) */}
+        <Route
+          path="/admin/compliance"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminCompliance />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/compliance/documents"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminComplianceDocuments />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/compliance/reports"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminComplianceReports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/compliance/calendar"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminComplianceCalendar />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/compliance/settings"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminComplianceSettings />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Compliance & Regulatory Management (Bus Owner) */}
+        <Route
+          path="/owner/compliance"
+          element={
+            <ProtectedRoute requireBusOwner>
+              <OwnerCompliance />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/compliance/upload"
+          element={
+            <ProtectedRoute requireBusOwner>
+              <OwnerComplianceUpload />
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="*" element={<NotFound />} />
       </Routes>
 

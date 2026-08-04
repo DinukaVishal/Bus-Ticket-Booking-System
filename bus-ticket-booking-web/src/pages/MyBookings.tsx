@@ -18,10 +18,11 @@ import { useMyBookings, useUpdateBookingStatus } from '@/hooks/useBookings';
 import { useRoutes } from '@/hooks/useRoutes';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
-import { Ticket, Loader2, Calendar, Armchair, XCircle, Download, User, Trash2, Radio } from 'lucide-react';
+import { Ticket, Loader2, Calendar, Armchair, XCircle, Download, User, Trash2, Radio, LifeBuoy } from 'lucide-react';
 import { generateTicketPDF } from '@/lib/pdfTicketGenerator';
 import { Booking } from '@/types/booking';
 import { supabase } from '@/integrations/supabase/client';
+import { refundRequestTicket } from '@/lib/support/autoTicket';
 
 const MyBookings = () => {
   const { data: bookings = [], isLoading, refetch } = useMyBookings();
@@ -114,6 +115,17 @@ const MyBookings = () => {
         title: 'Booking Cancelled',
         description: 'Your bookings have been cancelled successfully.',
       });
+
+      // Auto-generate a refund request ticket for the cancelled booking
+      const cancelled = bookings.filter((b) => bookingIds.includes(b.id));
+      const first = cancelled[0];
+      await refundRequestTicket({
+        userId: user?.id || null,
+        bookingId: bookingIds[0],
+        routeName: first?.routeName,
+        seatNumbers: cancelled.map((b) => b.seatNumber) || undefined,
+      });
+
       refetch();
     } catch (error: any) {
       toast({
@@ -253,6 +265,15 @@ const MyBookings = () => {
                           >
                             <Download className="w-4 h-4 mr-2" />
                             Download Ticket
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => navigate(`/support/create?bookingId=${group.bookingIds[0]}`)}
+                          >
+                            <LifeBuoy className="w-4 h-4 mr-2" />
+                            Get Help
                           </Button>
                         </div>
 

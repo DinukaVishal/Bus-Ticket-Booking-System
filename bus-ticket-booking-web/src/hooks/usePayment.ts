@@ -4,6 +4,8 @@ import { Booking } from '@/types/booking';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAddMultipleBookings } from './useBookings';
+import { paymentFailureTicket, bookingErrorTicket } from '@/lib/support/autoTicket';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UsePaymentProps {
   bookingData: {
@@ -93,6 +95,15 @@ export const usePayment = ({ bookingData }: UsePaymentProps) => {
         description: 'Please try again or use a different card.',
         variant: 'destructive',
       });
+
+      // Auto-generate a support ticket for the failed payment
+      const { data: { user } } = await supabase.auth.getUser();
+      await paymentFailureTicket({
+        userId: user?.id || null,
+        routeName: bookingData.routeName,
+        amount: bookingData.totalAmount,
+      });
+
       return null;
     } finally {
       setLoading(false);
@@ -135,6 +146,15 @@ export const usePayment = ({ bookingData }: UsePaymentProps) => {
         description: error.message || 'Could not create booking after payment.',
         variant: 'destructive',
       });
+
+      // Auto-generate a support ticket for the booking error
+      const { data: { user } } = await supabase.auth.getUser();
+      await bookingErrorTicket({
+        userId: user?.id || null,
+        routeName: bookingData.routeName,
+        message: error?.message || 'Could not create booking after payment.',
+      });
+
       return null;
     }
   }, [bookingData, addBookingsMutation]);

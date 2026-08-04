@@ -7,6 +7,9 @@ interface Profile {
   userId: string;
   displayName: string | null;
   avatarUrl: string | null;
+  phoneNumber: string | null;
+  address: string | null;
+  city: string | null;
 }
 
 interface AuthContextType {
@@ -15,6 +18,7 @@ interface AuthContextType {
   profile: Profile | null;
   isAdmin: boolean;
   isBusOwner: boolean;
+  isStaff: boolean;
   isLoading: boolean;
   signUp: (email: string, password: string, displayName?: string) => Promise<any>;
   signIn: (email: string, password: string) => Promise<any>;
