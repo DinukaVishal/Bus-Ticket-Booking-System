@@ -44,6 +44,14 @@ import AdminSupport from "./pages/support/AdminSupport";
 import SupportCategories from "./pages/support/SupportCategories";
 import SupportAnalytics from "./pages/support/SupportAnalytics";
 
+// Compliance & Regulatory Management
+import AdminCompliance from "./pages/compliance/AdminCompliance";
+import AdminComplianceDocuments from "./pages/compliance/AdminComplianceDocuments";
+import AdminComplianceReports from "./pages/compliance/AdminComplianceReports";
+import AdminComplianceCalendar from "./pages/compliance/AdminComplianceCalendar";
+import AdminComplianceSettings from "./pages/compliance/AdminComplianceSettings";
+import OwnerCompliance from "./pages/compliance/OwnerCompliance";
+import OwnerComplianceUpload from "./pages/compliance/OwnerComplianceUpload";
 
 const queryClient = new QueryClient();
 
@@ -239,11 +247,71 @@ const AppShell = () => {
             </ProtectedRoute>
           }
         />
-        <Route
+<Route
           path="/admin/support/analytics"
           element={
             <ProtectedRoute requireAdmin>
               <SupportAnalytics />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Compliance & Regulatory Management (Admin) */}
+        <Route
+          path="/admin/compliance"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminCompliance />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/compliance/documents"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminComplianceDocuments />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/compliance/reports"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminComplianceReports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/compliance/calendar"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminComplianceCalendar />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/compliance/settings"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AdminComplianceSettings />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Compliance & Regulatory Management (Bus Owner) */}
+        <Route
+          path="/owner/compliance"
+          element={
+            <ProtectedRoute requireBusOwner>
+              <OwnerCompliance />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/owner/compliance/upload"
+          element={
+            <ProtectedRoute requireBusOwner>
+              <OwnerComplianceUpload />
             </ProtectedRoute>
           }
         />

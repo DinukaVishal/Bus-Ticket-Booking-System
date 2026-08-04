@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Bus, LayoutDashboard, LogOut, User, Ticket, Radio, Navigation, ChevronDown, UserCircle, ShieldCheck, Moon, Sun, LifeBuoy, Bell } from 'lucide-react';
+import { Bus, LayoutDashboard, LogOut, User, Ticket, Radio, Navigation, ChevronDown, UserCircle, ShieldCheck, Moon, Sun, LifeBuoy, Bell, FileCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -151,6 +151,21 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
                 >
                   <LayoutDashboard className="w-4 h-4" />
                   <span className="hidden sm:inline">Admin</span>
+                </Link>
+              )}
+
+              {isAdmin && (
+                <Link
+                  to="/admin/compliance"
+                  className={cn(
+                    'px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2',
+                    location.pathname.startsWith('/admin/compliance')
+                      ? 'bg-white/20'
+                      : 'hover:bg-white/10'
+                  )}
+                >
+                  <FileCheck className="w-4 h-4" />
+                  <span className="hidden sm:inline">Compliance</span>
                 </Link>
               )}
 
@@ -333,6 +348,19 @@ const Header = ({ isHomePage = false, isStaff = false }: HeaderProps) => {
                   )}
                 >
                   Admin Dashboard
+                </Link>
+              )}
+              {isAdmin && (
+                <Link
+                  to="/admin/compliance"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    'flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-medium transition-colors',
+                    location.pathname.startsWith('/admin/compliance') ? 'bg-white/10' : 'hover:bg-white/10'
+                  )}
+                >
+                  <FileCheck className="h-4 w-4" />
+                  Compliance
                 </Link>
               )}
               <button

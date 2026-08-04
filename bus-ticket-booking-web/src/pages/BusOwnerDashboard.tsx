@@ -17,6 +17,7 @@ import {
   Trash,
   Edit,
   Radio,
+  ShieldCheck,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -268,6 +269,10 @@ const BusOwnerDashboard = () => {
               <Button variant="outline" onClick={() => navigate('/admin/overview')}>
                 <Users className="w-4 h-4 mr-2" />
                 Drivers &amp; Crew
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/owner/compliance')}>
+                <ShieldCheck className="w-4 h-4 mr-2" />
+                Compliance
               </Button>
               <Button variant="outline" onClick={() => navigate('/bus-owner/profile')}>
                 <User className="w-4 h-4 mr-2" />
