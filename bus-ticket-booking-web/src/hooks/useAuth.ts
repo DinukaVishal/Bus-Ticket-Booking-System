@@ -7,6 +7,9 @@ interface Profile {
   userId: string;
   displayName: string | null;
   avatarUrl: string | null;
+  phoneNumber: string | null;
+  address: string | null;
+  city: string | null;
 }
 
 interface AuthState {
@@ -56,6 +59,9 @@ export function useAuth() {
         userId: profileData.user_id,
         displayName: profileData.display_name,
         avatarUrl: profileData.avatar_url,
+        phoneNumber: profileData.phone_number,
+        address: profileData.address,
+        city: profileData.city,
       } : null,
       isAdmin: isAdminData || false,
       isBusOwner: isBusOwnerData || false,

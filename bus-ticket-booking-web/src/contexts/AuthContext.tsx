@@ -7,6 +7,9 @@ interface Profile {
   userId: string;
   displayName: string | null;
   avatarUrl: string | null;
+  phoneNumber: string | null;
+  address: string | null;
+  city: string | null;
 }
 
 interface AuthContextType {
