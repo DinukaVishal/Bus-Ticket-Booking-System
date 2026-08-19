@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/booking_models.dart';
 import '../services/supabase_service.dart';
+import '../widgets/popup_bottom_nav_bar.dart';
 import 'search_page.dart';
 import 'my_bookings_page.dart';
 import 'profile_page.dart';
@@ -38,27 +39,41 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+
     return Scaffold(
-      body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
+      // The nav bar floats over the body so its popup zone stays transparent;
+      // pad the pages so the bar itself never covers their content.
+      body: MediaQuery(
+        data: mediaQuery.copyWith(
+          padding: mediaQuery.padding.copyWith(
+            bottom: mediaQuery.padding.bottom + PopupBottomNavBar.barHeight,
+          ),
+        ),
+        child: _pages[_selectedIndex],
+      ),
+      extendBody: true,
+      bottomNavigationBar: PopupBottomNavBar(
         currentIndex: _selectedIndex,
         onTap: _onNavTapped,
-        type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_filled),
+          PopupNavItem(
+            icon: Icons.home_outlined,
+            activeIcon: Icons.home_filled,
             label: 'Home',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
+          PopupNavItem(
+            icon: Icons.search,
             label: 'Search',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long),
+          PopupNavItem(
+            icon: Icons.receipt_long_outlined,
+            activeIcon: Icons.receipt_long,
             label: 'Bookings',
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
+          PopupNavItem(
+            icon: Icons.person_outline,
+            activeIcon: Icons.person,
             label: 'Profile',
           ),
         ],
