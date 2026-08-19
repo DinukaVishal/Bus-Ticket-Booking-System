@@ -18,6 +18,7 @@ class _SearchPageState extends State<SearchPage> {
   DateTime _travelDate = DateTime.now().add(const Duration(days: 1));
   bool _isLoading = true;
   String? _errorMessage;
+  bool _hasProcessedArgs = false;
 
   String get _formattedDate {
     return '${_travelDate.day.toString().padLeft(2, '0')} / ${_travelDate.month.toString().padLeft(2, '0')} / ${_travelDate.year}';
@@ -27,6 +28,23 @@ class _SearchPageState extends State<SearchPage> {
   void initState() {
     super.initState();
     _loadRoutes();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_hasProcessedArgs) {
+      _hasProcessedArgs = true;
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      if (args != null) {
+        _fromCity = args['from'] as String?;
+        _toCity = args['to'] as String?;
+        final date = args['date'] as DateTime?;
+        if (date != null) {
+          _travelDate = date;
+        }
+      }
+    }
   }
 
   Future<void> _loadRoutes() async {
@@ -46,6 +64,11 @@ class _SearchPageState extends State<SearchPage> {
         _cities.clear();
         _cities.addAll(cities.toList()..sort());
       });
+
+      // Auto-search if arguments were passed from Home page
+      if (_fromCity != null && _toCity != null) {
+        _searchRoutes();
+      }
     } catch (error) {
       setState(() {
         _errorMessage = 'Unable to load routes. Please try again.';
@@ -75,14 +98,18 @@ class _SearchPageState extends State<SearchPage> {
   void _searchRoutes() {
     if (_fromCity == null || _toCity == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please choose both departure and destination.')),
+        const SnackBar(
+          content: Text('Please choose both departure and destination.'),
+        ),
       );
       return;
     }
 
     if (_fromCity == _toCity) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Departure and destination cannot be the same.')),
+        const SnackBar(
+          content: Text('Departure and destination cannot be the same.'),
+        ),
       );
       return;
     }
@@ -111,14 +138,18 @@ class _SearchPageState extends State<SearchPage> {
       appBar: AppBar(
         title: Row(
           children: [
-            Icon(Icons.directions_bus_filled, color: colorScheme.primary, size: 28),
+            Icon(
+              Icons.directions_bus_filled,
+              color: colorScheme.primary,
+              size: 28,
+            ),
             const SizedBox(width: 12),
             Text(
               'Search Trips',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.primary,
-                  ),
+                fontWeight: FontWeight.bold,
+                color: colorScheme.primary,
+              ),
             ),
           ],
         ),
@@ -132,7 +163,9 @@ class _SearchPageState extends State<SearchPage> {
               padding: const EdgeInsets.all(20),
               child: Card(
                 elevation: 4,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
                 child: Padding(
                   padding: const EdgeInsets.all(18),
                   child: Column(
@@ -140,29 +173,38 @@ class _SearchPageState extends State<SearchPage> {
                     children: [
                       Text(
                         'Plan Your Next Trip',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 18),
                       DropdownButtonFormField<String>(
+                        isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'From',
                           prefixIcon: Icon(Icons.location_on_outlined),
                         ),
                         initialValue: _fromCity,
                         items: _cities.map((city) {
-                          return DropdownMenuItem(value: city, child: Text(city));
+                          return DropdownMenuItem(
+                            value: city,
+                            child: Text(city, overflow: TextOverflow.ellipsis),
+                          );
                         }).toList(),
                         onChanged: (value) => setState(() => _fromCity = value),
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
+                        isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'To',
                           prefixIcon: Icon(Icons.location_on),
                         ),
                         initialValue: _toCity,
                         items: _cities.map((city) {
-                          return DropdownMenuItem(value: city, child: Text(city));
+                          return DropdownMenuItem(
+                            value: city,
+                            child: Text(city, overflow: TextOverflow.ellipsis),
+                          );
                         }).toList(),
                         onChanged: (value) => setState(() => _toCity = value),
                       ),
@@ -206,76 +248,86 @@ class _SearchPageState extends State<SearchPage> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _errorMessage != null
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.error_outline, size: 56, color: colorScheme.error.withAlpha(179)),
-                              const SizedBox(height: 16),
-                              Text(
-                                _errorMessage!,
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                            ],
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 56,
+                            color: colorScheme.error.withAlpha(179),
                           ),
-                        )
-                      : _searchResults.isEmpty
-                          ? Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.search_off, size: 56, color: colorScheme.onSurface.withAlpha(127)),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'Search to see available buses',
-                                    style: Theme.of(context).textTheme.bodyMedium,
-                                    textAlign: TextAlign.center,
+                          const SizedBox(height: 16),
+                          Text(
+                            _errorMessage!,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                    )
+                  : _searchResults.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 56,
+                            color: colorScheme.onSurface.withAlpha(127),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Search to see available buses',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'between your chosen cities',
+                            style: Theme.of(context).textTheme.bodySmall,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${_searchResults.length} buses found',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 12),
+                          Expanded(
+                            child: ListView.separated(
+                              itemCount: _searchResults.length,
+                              separatorBuilder: (context, _) =>
+                                  const SizedBox(height: 14),
+                              itemBuilder: (context, index) {
+                                final pair = _searchResults[index];
+                                return _RouteCard(
+                                  route: pair.route,
+                                  trip: pair.trip,
+                                  onTap: () => Navigator.pushNamed(
+                                    context,
+                                    '/select-seat',
+                                    arguments: {
+                                      'route': pair.route,
+                                      'trip': pair.trip,
+                                      'date': _travelDate,
+                                    },
                                   ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'between your chosen cities',
-                                    style: Theme.of(context).textTheme.bodySmall,
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            )
-                          : Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${_searchResults.length} buses found',
-                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Expanded(
-                                    child: ListView.separated(
-                                      itemCount: _searchResults.length,
-                                      separatorBuilder: (context, _) => const SizedBox(height: 14),
-                                      itemBuilder: (context, index) {
-                                        final pair = _searchResults[index];
-                                        return _RouteCard(
-                                          route: pair.route,
-                                          trip: pair.trip,
-                                          onTap: () => Navigator.pushNamed(
-                                            context,
-                                            '/select-seat',
-                                            arguments: {
-                                              'route': pair.route,
-                                              'trip': pair.trip,
-                                              'date': _travelDate,
-                                            },
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                );
+                              },
                             ),
+                          ),
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),
@@ -292,7 +344,11 @@ class _RouteTripPair {
 }
 
 class _RouteCard extends StatelessWidget {
-  const _RouteCard({required this.route, required this.trip, required this.onTap});
+  const _RouteCard({
+    required this.route,
+    required this.trip,
+    required this.onTap,
+  });
 
   final RouteOption route;
   final TripOption trip;
@@ -313,13 +369,28 @@ class _RouteCard extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(route.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      route.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                  Text('LKR ${trip.price.toStringAsFixed(2)}', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold)),
+                  Text(
+                    'LKR ${trip.price.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 10),
-              Text('${route.from} → ${route.to}', style: const TextStyle(fontSize: 16)),
+              Text(
+                '${route.from} → ${route.to}',
+                style: const TextStyle(fontSize: 16),
+              ),
               const SizedBox(height: 10),
               Wrap(
                 spacing: 10,
@@ -334,8 +405,14 @@ class _RouteCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('${trip.departureTime} - ${trip.arrivalTime}', style: const TextStyle(fontWeight: FontWeight.w500)),
-                  Text(route.duration, style: const TextStyle(color: Colors.grey)),
+                  Text(
+                    '${trip.departureTime} - ${trip.arrivalTime}',
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  Text(
+                    route.duration,
+                    style: const TextStyle(color: Colors.grey),
+                  ),
                 ],
               ),
             ],

@@ -60,6 +60,8 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -177,7 +179,16 @@ class _LoginPageState extends State<LoginPage> {
                               return null;
                             },
                           ),
-                          const SizedBox(height: 24),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: () {
+                                Navigator.pushNamed(context, '/forgot-password');
+                              },
+                              child: const Text('Forgot Password?'),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(

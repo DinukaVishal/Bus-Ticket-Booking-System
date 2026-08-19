@@ -1,1 +1,12 @@
 project_id = "qiuuchynzecmblfgzdvo"
+
+# ---------------------------------------------------------------------
+# Compliance Monitor - scheduled expiry check.
+# Runs every 6 hours; the edge function calls run_compliance_expiry_check()
+# which updates document statuses and fires notifications.
+# ---------------------------------------------------------------------
+[functions.monitor-compliance]
+verify_jwt = false
+
+[functions.monitor-compliance.cron]
+schedule = "0 */6 * * *"

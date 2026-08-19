@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Booking } from '@/types/booking';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { bookingErrorTicket } from '@/lib/support/autoTicket';
 
 export function useBookings() {
   const queryClient = useQueryClient();
@@ -258,6 +259,13 @@ export function useAddMultipleBookings() {
       queryClient.invalidateQueries({ queryKey: ['booked-seats'] });
       queryClient.invalidateQueries({ queryKey: ['my-bookings'] });
     },
+    onError: (error, input) => {
+      // Auto-generate a support ticket when a booking cannot be created
+      bookingErrorTicket({
+        routeName: input.routeName,
+        message: error?.message || 'Booking creation failed.',
+      });
+    },
   });
 }
 
@@ -315,6 +323,13 @@ export function useAddBooking() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] });
       queryClient.invalidateQueries({ queryKey: ['booked-seats'] });
+    },
+    onError: (error, booking) => {
+      // Auto-generate a support ticket when a booking cannot be created
+      bookingErrorTicket({
+        routeName: booking.routeName,
+        message: error?.message || 'Booking creation failed.',
+      });
     },
   });
 }

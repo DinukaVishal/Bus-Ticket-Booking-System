@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'models/booking_models.dart';
 import 'pages/booking_summary_page.dart';
 import 'pages/bus_owner_login_page.dart';
+import 'pages/forgot_password_page.dart';
 import 'pages/bus_owner_signup_page.dart';
 import 'pages/bus_owner_dashboard_page.dart';
 import 'pages/staff_dashboard_page.dart';
@@ -144,6 +145,7 @@ class _MyAppState extends State<MyApp> {
       routes: {
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignupPage(),
+        '/forgot-password': (context) => const ForgotPasswordPage(),
         '/owner-login': (context) => const BusOwnerLoginPage(),
         '/owner-signup': (context) => const BusOwnerSignupPage(),
         '/owner-dashboard': (context) => const BusOwnerDashboardPage(),

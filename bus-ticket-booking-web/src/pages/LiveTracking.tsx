@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { createBusDelayTicketIfExceeded } from '@/lib/support/autoTicket';
 
 // Fix default marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -474,6 +475,49 @@ function LiveTracking() {
       setReviewPassengerName(user.user_metadata.full_name);
     }
   }, [user]);
+
+  // Auto-create a Bus Delay support ticket when the scheduled departure has
+  // passed by more than the configured threshold while a passenger is
+  // tracking their own confirmed booking for today.
+  const delayCheckedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!paramBookingId || !bookingDetails || !user?.id) return;
+    if (bookingDetails.status !== 'confirmed') return;
+
+    const today = new Date().toISOString().slice(0, 10);
+    if (bookingDetails.date !== today) return;
+    if (!selectedRoute) return;
+
+    const trip =
+      selectedRoute.trips?.find((t) => t.id === bookingDetails.trip_id) ||
+      selectedRoute.trips?.[0];
+    const scheduled = trip?.departureTime || selectedRoute.departureTime;
+    if (!scheduled) return;
+
+    const [hh, mm] = scheduled.split(':').map((n) => Number(n));
+    if (Number.isNaN(hh) || Number.isNaN(mm)) return;
+
+    const scheduledDateTime = new Date(`${today}T${scheduled}:00`);
+    const now = new Date();
+    const delayMinutes = Math.floor((now.getTime() - scheduledDateTime.getTime()) / 60000);
+    if (delayMinutes <= 0) return;
+
+    // Check once per booking per session to avoid spamming the same issue.
+    const guardKey = `${paramBookingId}-${today}`;
+    if (delayCheckedRef.current === guardKey) return;
+    delayCheckedRef.current = guardKey;
+
+    createBusDelayTicketIfExceeded({
+      bookingId: paramBookingId,
+      userId: user.id,
+      routeName: selectedRoute.name || `${selectedRoute.from} → ${selectedRoute.to}`,
+      scheduledDeparture: scheduled,
+      delayMinutes,
+    }).catch((err) => {
+      console.error('[LiveTracking] Bus delay ticket check failed:', err);
+    });
+  }, [paramBookingId, bookingDetails, selectedRoute, user?.id, bookingDetails?.date]);
 
   const currentRouteReviewId = selectedRoute?.id || routeReviewId;
   const currentRouteReviewName = selectedRoute?.name || routeReviewName || selectedRoute?.from + ' → ' + selectedRoute?.to;
