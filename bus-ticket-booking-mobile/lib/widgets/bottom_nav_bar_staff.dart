@@ -4,9 +4,9 @@ class BottomNavBarStaff extends StatefulWidget {
   final Function(int) onTabChanged;
 
   const BottomNavBarStaff({
-    Key? key,
+    super.key,
     required this.onTabChanged,
-  }) : super(key: key);
+  });
 
   @override
   State<BottomNavBarStaff> createState() => _BottomNavBarStaffState();

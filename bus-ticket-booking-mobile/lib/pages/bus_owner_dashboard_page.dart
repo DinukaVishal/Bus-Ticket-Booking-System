@@ -7,7 +7,7 @@ import 'bus_owner_home_page.dart';
 import '../services/supabase_service.dart';
 
 class BusOwnerDashboardPage extends StatefulWidget {
-  const BusOwnerDashboardPage({Key? key}) : super(key: key);
+  const BusOwnerDashboardPage({super.key});
 
   @override
   State<BusOwnerDashboardPage> createState() => _BusOwnerDashboardPageState();

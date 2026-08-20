@@ -37,6 +37,8 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyBuAslffxG-Ox1I_h-Jcarc_Ao4c96AyZ4"/>
     </application>
+    <!-- Camera permission for QR code scanning -->
+    <uses-permission android:name="android.permission.CAMERA" />
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.

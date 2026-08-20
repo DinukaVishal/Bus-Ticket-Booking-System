@@ -5,10 +5,9 @@ class BottomNavBarOwner extends StatelessWidget {
   final Function(int) onTabChanged;
 
   const BottomNavBarOwner({
-    Key? key,
-    required this.currentIndex,
+    super.key,
     required this.onTabChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
