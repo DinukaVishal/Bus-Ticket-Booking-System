@@ -1,5 +1,6 @@
-import 'package:bus_ticket_booking_mobile/pages/bus_owner_page_one.dart';
-import 'package:bus_ticket_booking_mobile/pages/bus_owner_page_two.dart';
+import 'package:bus_ticket_booking_mobile/pages/bus_owner_bus_detail_page.dart';
+import 'package:bus_ticket_booking_mobile/pages/bus_owner_crew_detail_page.dart';
+import 'package:bus_ticket_booking_mobile/pages/bus_owner_profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:bus_ticket_booking_mobile/widgets/bottom_nav_bar_owner.dart';
 import 'bus_owner_home_page.dart';
@@ -17,8 +18,9 @@ class _BusOwnerDashboardPageState extends State<BusOwnerDashboardPage> {
 
   final List<Widget> _pages = [
     const BusOwnerHomePage(),
-    const BusOwnerPageOne(),
-    const BusOwnerPageTwo(),
+    const BusOwnerBusDetailPage(),
+    const BusOwnerCrewDetailPage(),
+    const BusOwnerProfilePage(),
   ];
 
   
@@ -43,6 +45,7 @@ class _BusOwnerDashboardPageState extends State<BusOwnerDashboardPage> {
       ),
       body: _pages[_currentIndex],
       bottomNavigationBar: BottomNavBarOwner(
+        currentIndex: _currentIndex,
         onTabChanged: (index) {
           setState(() {
             _currentIndex = index;
