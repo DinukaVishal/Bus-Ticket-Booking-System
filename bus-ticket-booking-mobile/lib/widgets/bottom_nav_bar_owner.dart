@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-class BottomNavBarOwner extends StatefulWidget {
+class BottomNavBarOwner extends StatelessWidget {
+  final int currentIndex;
   final Function(int) onTabChanged;
 
   const BottomNavBarOwner({
@@ -9,34 +10,35 @@ class BottomNavBarOwner extends StatefulWidget {
   });
 
   @override
-  State<BottomNavBarOwner> createState() => _BottomNavBarOwnerState();
-}
-
-class _BottomNavBarOwnerState extends State<BottomNavBarOwner> {
-  int _selectedIndex = 0;
-
-  @override
   Widget build(BuildContext context) {
     return BottomNavigationBar(
-      currentIndex: _selectedIndex,
-      onTap: (int index) {
-        setState(() {
-          _selectedIndex = index;
-        });
-        widget.onTabChanged(index);
-      },
+      currentIndex: currentIndex,
+      onTap: onTabChanged,
+
+      // Make the colors explicit
+      backgroundColor: Colors.white,
+      selectedItemColor: Colors.purple,
+      unselectedItemColor: Colors.grey,
+
+      // Prevent the selected item from moving/zooming
+      type: BottomNavigationBarType.fixed,
+
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.home),
           label: 'Home',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.favorite),
-          label: 'Test 1',
+          icon: Icon(Icons.directions_bus),
+          label: 'Bus Details',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.settings),
-          label: 'Test 2',
+          icon: Icon(Icons.groups),
+          label: 'Crew Details',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person),
+          label: 'Profile',
         ),
       ],
     );
