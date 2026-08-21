@@ -1,0 +1,239 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Booking, Route, Trip } from '@/types/booking';
+import { Button } from '@/components/ui/button';
+import { CheckCircle, Home, Ticket, Download, Mail, LifeBuoy } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+
+import { generateTicketPDF } from '@/lib/pdfTicketGenerator';
+<<<<<<< HEAD:src/components/booking/BookingConfirmation.tsx
+import { useLanguageContext } from '@/contexts/LanguageContext';
+=======
+import { supabase } from '@/integrations/supabase/client';
+>>>>>>> origin/dev:bus-ticket-booking-web/src/components/booking/BookingConfirmation.tsx
+
+interface BookingConfirmationProps {
+  bookings: Booking[];
+  route: Route;
+  trip: Trip;
+  onNewBooking: () => void;
+}
+
+<<<<<<< HEAD:src/components/booking/BookingConfirmation.tsx
+const BookingConfirmation = ({ bookings, route, onNewBooking }: BookingConfirmationProps) => {
+  const { t } = useLanguageContext();
+=======
+const BookingConfirmation = ({ bookings, route, trip, onNewBooking }: BookingConfirmationProps) => {
+  const navigate = useNavigate();
+>>>>>>> origin/dev:bus-ticket-booking-web/src/components/booking/BookingConfirmation.tsx
+  const firstBooking = bookings[0];
+
+  const seatNumbers = bookings.map(b => b.seatNumber).sort((a, b) => a - b);
+  const totalPrice = trip.price * bookings.length;
+  const [routeReviewCount, setRouteReviewCount] = useState(0);
+  const [routeReviewAverage, setRouteReviewAverage] = useState(0);
+  const [routeReviewLoading, setRouteReviewLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRouteReviews = async () => {
+      setRouteReviewLoading(true);
+      const { data, error } = await supabase
+        .from('trip_reviews')
+        .select('rating')
+        .eq('route_id', route.id);
+
+      if (!error && data) {
+        const count = data.length;
+        const average = count > 0 ? data.reduce((sum, item) => sum + Number(item.rating), 0) / count : 0;
+        setRouteReviewCount(count);
+        setRouteReviewAverage(average);
+      } else {
+        setRouteReviewCount(0);
+        setRouteReviewAverage(0);
+      }
+      setRouteReviewLoading(false);
+    };
+
+    if (route?.id) {
+      fetchRouteReviews();
+    }
+  }, [route?.id]);
+
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center p-4">
+      <div className="bg-card rounded-2xl shadow-card p-8 max-w-md w-full text-center animate-scale-in">
+        {/* Success Icon */}
+        <div className="w-20 h-20 bg-seat-available/10 rounded-full flex items-center justify-center mx-auto mb-6">
+          <CheckCircle className="w-12 h-12 text-seat-available" />
+        </div>
+
+        <h2 className="text-2xl font-display font-bold text-foreground mb-2">
+          {t('booking.confirmed')}
+        </h2>
+        <p className="text-muted-foreground mb-6">
+          {bookings.length === 1 ? t('booking.successOne') : t('booking.successMany')}
+        </p>
+
+        {/* Ticket Card */}
+        <div className="bg-primary/5 rounded-xl p-6 mb-6 relative overflow-hidden">
+          {/* Decorative circles */}
+          <div className="absolute -left-3 top-1/2 w-6 h-6 bg-background rounded-full" />
+          <div className="absolute -right-3 top-1/2 w-6 h-6 bg-background rounded-full" />
+          
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Ticket className="w-5 h-5 text-primary" />
+            <span className="text-sm font-medium text-muted-foreground">
+              {bookings.length === 1 ? 'Booking ID' : 'Booking IDs'}
+            </span>
+          </div>
+          
+          {bookings.length === 1 ? (
+            <p className="text-2xl font-mono font-bold text-primary mb-4">{firstBooking.id}</p>
+          ) : (
+            <div className="flex flex-wrap justify-center gap-2 mb-4">
+              {bookings.map(b => (
+                <span key={b.id} className="text-sm font-mono font-bold text-primary bg-primary/10 px-2 py-1 rounded">
+                  {b.id}
+                </span>
+              ))}
+            </div>
+          )}
+          
+          <div className="border-t border-dashed border-border pt-4 space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Passenger</span>
+              <span className="font-medium">{firstBooking.passengerName}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Phone</span>
+              <span className="font-medium">{firstBooking.phoneNumber}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Route</span>
+              <span className="font-medium">{firstBooking.routeName}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Date</span>
+              <span className="font-medium">
+                {new Date(firstBooking.date).toLocaleDateString('en-US', {
+                  weekday: 'short',
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                })}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Departure</span>
+              <span className="font-medium">{trip.departureTime}</span>
+            </div>
+            {trip.arrivalTime && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Arrival</span>
+                <span className="font-medium">{trip.arrivalTime}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm items-start">
+              <span className="text-muted-foreground">
+                {bookings.length === 1 ? 'Seat' : 'Seats'}
+              </span>
+              <span className="font-bold text-primary text-lg text-right">
+                #{seatNumbers.join(', #')}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Number of Seats</span>
+              <span className="font-medium">{bookings.length}</span>
+            </div>
+            <div className="border-t border-border pt-3 mt-3">
+              <div className="flex justify-between">
+                <span className="font-medium">Total Amount</span>
+                <span className="font-bold text-xl text-primary">LKR {totalPrice.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-2xl p-5 mb-6 border border-border text-left">
+          <p className="text-sm text-muted-foreground mb-2">Route reviews</p>
+          {routeReviewLoading ? (
+            <p className="text-sm text-foreground">Loading route feedback…</p>
+          ) : routeReviewCount > 0 ? (
+            <p className="text-sm text-foreground font-medium">
+              Average rating {routeReviewAverage.toFixed(1)} / 5 from {routeReviewCount} review{routeReviewCount !== 1 ? 's' : ''}
+            </p>
+          ) : (
+            <p className="text-sm text-foreground font-medium">No reviews yet for this route. Share your experience after the trip.</p>
+          )}
+          <button
+            type="button"
+            onClick={() => window.location.href = `/reviews?routeId=${route.id}&routeName=${encodeURIComponent(route.name)}`}
+            className="mt-4 inline-flex items-center justify-center rounded-xl border border-border px-4 py-2 text-sm font-medium transition hover:bg-muted"
+          >
+            View all reviews for this route
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <Button 
+            onClick={() => {
+              const tickets = bookings.map(booking => ({ booking, route, trip }));
+              generateTicketPDF(tickets);
+            }} 
+            className="w-full h-12"
+            variant="default"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {t('booking.download')}{bookings.length > 1 ? 's' : ''} (PDF)
+          </Button>
+
+          <Button
+            onClick={() => {
+              const first = bookings[0];
+              navigate('/notification', {
+                state: {
+                  bookingDetails: {
+                    ticket_id: first?.id ? String(first.id) : '',
+                    seat_no: bookings.length === 1 ? String(first?.seatNumber ?? '') : bookings.map(b => String(b.seatNumber)).join(', '),
+                    route: first?.routeName ?? route?.name ?? '',
+                    travel_date: first?.date ?? '',
+                    payment_amount: String(trip?.price * bookings.length),
+                    to_name: first?.passengerName ?? '',
+                  },
+                },
+              });
+            }}
+            className="w-full h-12"
+            variant="outline"
+          >
+            <Mail className="w-4 h-4 mr-2" />
+            Send Ticket Email
+          </Button>
+
+          <Button
+            onClick={() => {
+              const first = bookings[0];
+              navigate(`/support/create?bookingId=${first?.id || ''}`);
+            }}
+            variant="outline"
+            className="w-full h-12"
+          >
+            <LifeBuoy className="w-4 h-4 mr-2" />
+            Contact Support
+          </Button>
+
+          <Button onClick={onNewBooking} variant="outline" className="w-full h-12">
+            <Home className="w-4 h-4 mr-2" />
+            {t('booking.bookAnother')}
+          </Button>
+        </div>
+
+
+        <p className="text-xs text-muted-foreground mt-6">
+          {t('booking.saveId')}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default BookingConfirmation;

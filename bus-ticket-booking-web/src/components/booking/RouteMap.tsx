@@ -1,0 +1,446 @@
+import { useEffect, useRef, useMemo, useState } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { Route, Trip } from '@/types/booking';
+import { findCityCoordinates, SRI_LANKA_CENTER, SRI_LANKA_ZOOM, CityCoordinate } from '@/lib/sriLankaCoordinates';
+import { MapPin, Navigation, Clock, MapPinned } from 'lucide-react';
+import { useBusAnimation } from '@/hooks/useBusAnimation';
+
+interface RouteMapProps {
+  route: Route | null;
+  selectedTrip?: Trip | null;
+  className?: string;
+}
+
+// Haversine formula to calculate distance between two coordinates
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
+// Calculate total route distance through all points
+const calculateTotalRouteDistance = (points: CityCoordinate[]): number => {
+  let total = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    total += calculateDistance(points[i].lat, points[i].lng, points[i + 1].lat, points[i + 1].lng);
+  }
+  return total;
+};
+
+// Estimate travel time based on distance and average bus speed
+const estimateTravelTime = (distanceKm: number, busType: string): { hours: number; minutes: number } => {
+  const avgSpeed = busType === 'normal' ? 35 : 40;
+  const totalMinutes = (distanceKm / avgSpeed) * 60;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = Math.round(totalMinutes % 60);
+  return { hours, minutes };
+};
+
+const decodePolyline = (encoded: string, precision = 6): [number, number][] => {
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  const coordinates: [number, number][] = [];
+  const factor = 10 ** precision;
+
+  while (index < encoded.length) {
+    let result = 1;
+    let shift = 0;
+    let byte = 0;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result += (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    const deltaLat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+    lat += deltaLat;
+
+    result = 1;
+    shift = 0;
+
+    do {
+      byte = encoded.charCodeAt(index++) - 63;
+      result += (byte & 0x1f) << shift;
+      shift += 5;
+    } while (byte >= 0x20);
+
+    const deltaLng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+    lng += deltaLng;
+
+    coordinates.push([lat / factor, lng / factor]);
+  }
+
+  return coordinates;
+};
+
+// Fix for default marker icons in Leaflet with bundlers
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
+
+const RouteMap = ({ route, selectedTrip, className = '' }: RouteMapProps) => {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<L.Marker[]>([]);
+  const polylineRef = useRef<L.Polyline | null>(null);
+  const busMarkerRef = useRef<L.Marker | null>(null);
+  const [viaPoints, setViaPoints] = useState<CityCoordinate[]>([]);
+  const [showLiveTracking, setShowLiveTracking] = useState(!!route);
+  const [allRoutePoints, setAllRoutePoints] = useState<CityCoordinate[]>([]);
+  const stopArrivalTimes = selectedTrip?.stopArrivalTimes || [];
+
+  // Bus animation hook
+  const busPosition = useBusAnimation({
+    routePoints: allRoutePoints,
+    departureTime: selectedTrip?.departureTime || route?.departureTime || '06:00',
+    busType: route?.busType || 'normal',
+    isSimulation: true,
+  });
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    if (!mapInstanceRef.current) {
+      mapInstanceRef.current = L.map(mapRef.current, {
+        center: SRI_LANKA_CENTER,
+        zoom: SRI_LANKA_ZOOM,
+        zoomControl: true,
+        scrollWheelZoom: true,
+      });
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19,
+      }).addTo(mapInstanceRef.current);
+    }
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+
+    // Clear existing markers and polyline
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
+    if (polylineRef.current) {
+      polylineRef.current.remove();
+      polylineRef.current = null;
+    }
+
+    if (!route) {
+      mapInstanceRef.current.setView(SRI_LANKA_CENTER, SRI_LANKA_ZOOM);
+      setViaPoints([]);
+      return;
+    }
+
+    const fromCity = findCityCoordinates(route.from);
+    const toCity = findCityCoordinates(route.to);
+
+    if (!fromCity || !toCity) return;
+
+    // ONLY use custom via points from route - do NOT fall back to predefined paths
+    // This ensures admin-defined routes show exactly what was configured
+    const viaPointNames = route.viaPoints && route.viaPoints.length > 0 
+      ? route.viaPoints 
+      : [];  // Empty array - no fallback to predefined paths
+    
+    const viaCoords = viaPointNames
+      .map(name => findCityCoordinates(name))
+      .filter((coord): coord is CityCoordinate => coord !== undefined);
+    
+    setViaPoints(viaCoords);
+    setAllRoutePoints([fromCity, ...viaCoords, toCity]);
+
+    const departureLabel = selectedTrip?.departureTime || route.departureTime || 'Scheduled';
+    const arrivalLabel = selectedTrip?.arrivalTime || route.arrivalTime || 'Scheduled';
+    
+    // Create custom icons
+    const startIcon = L.divIcon({
+      className: 'custom-marker',
+      html: `<div class="flex items-center justify-center w-10 h-10 bg-primary rounded-full border-3 border-white shadow-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </div>`,
+      iconSize: [40, 40],
+      iconAnchor: [20, 40],
+    });
+
+    const endIcon = L.divIcon({
+      className: 'custom-marker',
+      html: `<div class="flex items-center justify-center w-10 h-10 bg-destructive rounded-full border-3 border-white shadow-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+      </div>`,
+      iconSize: [40, 40],
+      iconAnchor: [20, 40],
+    });
+
+    const viaIcon = L.divIcon({
+      className: 'custom-marker',
+      html: `<div class="flex items-center justify-center w-6 h-6 bg-amber-500 rounded-full border-2 border-white shadow-md">
+        <div class="w-2 h-2 bg-white rounded-full"></div>
+      </div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 24],
+    });
+
+    // Add start marker
+    const startMarker = L.marker([fromCity.lat, fromCity.lng], { icon: startIcon })
+      .bindPopup(`<div class="text-center"><strong class="text-primary">🚌 Departure</strong><br/>${fromCity.name}<br/><span class="text-xs">${departureLabel}</span></div>`)
+      .addTo(mapInstanceRef.current);
+    
+    markersRef.current.push(startMarker);
+
+    // Add via point markers
+    viaCoords.forEach((coord, index) => {
+      const timeLabel = stopArrivalTimes[index] ? `<br/><span class="text-xs">Arrives: ${stopArrivalTimes[index]}</span>` : '';
+      const marker = L.marker([coord.lat, coord.lng], { icon: viaIcon })
+        .bindPopup(`<div class="text-center"><strong class="text-amber-600">📍 Stop ${index + 1}</strong><br/>${coord.name}${timeLabel}</div>`)
+        .addTo(mapInstanceRef.current!);
+      markersRef.current.push(marker);
+    });
+
+    // Add end marker
+    const endMarker = L.marker([toCity.lat, toCity.lng], { icon: endIcon })
+      .bindPopup(`<div class="text-center"><strong class="text-destructive">🏁 Arrival</strong><br/>${toCity.name}<br/><span class="text-xs">${arrivalLabel}</span></div>`)
+      .addTo(mapInstanceRef.current);
+    
+    markersRef.current.push(endMarker);
+
+    // Build route points array with via points
+    const allPoints: [number, number][] = [
+      [fromCity.lat, fromCity.lng],
+      ...viaCoords.map(coord => [coord.lat, coord.lng] as [number, number]),
+      [toCity.lat, toCity.lng],
+    ];
+
+    const coordinatePairs = allPoints.map(([lat, lng]) => `${lng},${lat}`).join(';');
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordinatePairs}?overview=full&geometries=polyline6`;
+    const controller = new AbortController();
+
+    const drawRouteLine = async () => {
+      if (allPoints.length < 2) return;
+
+      try {
+        const response = await fetch(osrmUrl, { signal: controller.signal });
+        const data = await response.json();
+        const encodedGeometry = data?.routes?.[0]?.geometry;
+        const routePoints = encodedGeometry
+          ? decodePolyline(encodedGeometry, 6)
+          : allPoints;
+
+        polylineRef.current = L.polyline(routePoints, {
+          color: '#22c55e',
+          weight: 5,
+          opacity: 0.85,
+          lineJoin: 'round',
+          lineCap: 'round',
+        }).addTo(mapInstanceRef.current);
+      } catch (error) {
+        polylineRef.current = L.polyline(allPoints, {
+          color: '#22c55e',
+          weight: 5,
+          opacity: 0.85,
+          lineJoin: 'round',
+          lineCap: 'round',
+        }).addTo(mapInstanceRef.current);
+      }
+    };
+
+    drawRouteLine();
+
+    // Fit map to show all points using underlying road tiles
+    const bounds = L.latLngBounds(allPoints);
+    mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
+
+    return () => {
+      controller.abort();
+    };
+
+  }, [route, selectedTrip]);
+
+  // Update live tracking when route changes
+  useEffect(() => {
+    setShowLiveTracking(!!route);
+  }, [route, selectedTrip]);
+
+  // Bus marker animation effect
+  useEffect(() => {
+    if (!mapInstanceRef.current || !showLiveTracking || !busPosition || !route) {
+      if (busMarkerRef.current) {
+        busMarkerRef.current.remove();
+        busMarkerRef.current = null;
+      }
+      return;
+    }
+
+    const busIcon = L.divIcon({
+      className: 'custom-marker bus-pulse',
+      html: `<div class="relative flex items-center justify-center">
+        <div class="absolute w-12 h-12 rounded-full bg-emerald-500/20 animate-ping"></div>
+        <div class="relative w-10 h-10 bg-emerald-500 rounded-full border-3 border-white shadow-lg flex items-center justify-center" style="transform: rotate(${busPosition.bearing - 90}deg)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="0">
+            <path d="M4 16V6a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10M6 20h12M6 14h12M8 20v-2M16 20v-2M7 10h2M15 10h2"/>
+            <rect x="4" y="6" width="16" height="8" rx="2" fill="white" opacity="0.9"/>
+            <text x="12" y="12" text-anchor="middle" fill="#10b981" font-size="6" font-weight="bold">🚌</text>
+          </svg>
+        </div>
+      </div>`,
+      iconSize: [48, 48],
+      iconAnchor: [24, 24],
+    });
+
+    if (!busMarkerRef.current) {
+      busMarkerRef.current = L.marker([busPosition.lat, busPosition.lng], { icon: busIcon, zIndexOffset: 1000 })
+        .bindPopup(`<div class="text-center">
+          <strong class="text-emerald-600">🚌 Live Bus</strong><br/>
+          <span class="text-xs">Progress: ${Math.round(busPosition.progress * 100)}%</span><br/>
+          ${busPosition.nextStop ? `<span class="text-xs">Next: ${busPosition.nextStop}</span>` : ''}
+        </div>`)
+        .addTo(mapInstanceRef.current);
+    } else {
+      busMarkerRef.current.setLatLng([busPosition.lat, busPosition.lng]);
+      busMarkerRef.current.setIcon(busIcon);
+      busMarkerRef.current.setPopupContent(`<div class="text-center">
+        <strong class="text-emerald-600">🚌 Live Bus</strong><br/>
+        <span class="text-xs">Progress: ${Math.round(busPosition.progress * 100)}%</span><br/>
+        ${busPosition.nextStop ? `<span class="text-xs">Next: ${busPosition.nextStop}</span>` : ''}
+      </div>`);
+    }
+  }, [busPosition, showLiveTracking, route]);
+
+  // Calculate distance and travel time through all points
+  const routeInfo = useMemo(() => {
+    if (!route) return null;
+    
+    const fromCity = findCityCoordinates(route.from);
+    const toCity = findCityCoordinates(route.to);
+    
+    if (!fromCity || !toCity) return null;
+
+    const viaPointNames = route.viaPoints && route.viaPoints.length > 0 
+      ? route.viaPoints 
+      : [];
+    
+    const viaCoords = viaPointNames
+      .map(name => findCityCoordinates(name))
+      .filter((coord): coord is CityCoordinate => coord !== undefined);
+
+    const allCityPoints = [fromCity, ...viaCoords, toCity];
+    const routeDistance = calculateTotalRouteDistance(allCityPoints);
+    const roadDistance = routeDistance * 1.1;
+    const travelTime = estimateTravelTime(roadDistance, route.busType);
+    
+    return {
+      distance: Math.round(roadDistance),
+      travelTime,
+      stops: viaCoords.length,
+    };
+  }, [route]);
+
+  return (
+    <>
+      <div className={`relative rounded-xl overflow-hidden border border-border ${className}`}>
+        <div ref={mapRef} className="w-full h-full min-h-[280px]" />
+
+        {!route && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+            <div className="text-center">
+              <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
+              <p className="text-muted-foreground">Route එකක් select කරන්න map බලන්න</p>
+            </div>
+          </div>
+        )}
+
+        
+        {/* Distance, Time & Stops Info - Top Right */}
+        {route && routeInfo && (
+          <div className="absolute top-3 right-3 z-[1100] bg-card/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg border border-border/50">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <Navigation className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-medium">Distance</p>
+                  <p className="text-sm font-bold text-foreground">{routeInfo.distance} km</p>
+                </div>
+              </div>
+              <div className="w-px h-8 bg-border" />
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <Clock className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-medium">Est. Time</p>
+                  <p className="text-sm font-bold text-foreground">
+                    {routeInfo.travelTime.hours > 0 && `${routeInfo.travelTime.hours}h `}
+                    {routeInfo.travelTime.minutes}m
+                  </p>
+                </div>
+              </div>
+              {routeInfo.stops > 0 && (
+                <>
+                  <div className="w-px h-8 bg-border" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                      <MapPinned className="w-3.5 h-3.5 text-amber-500" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-muted-foreground font-medium">Stops</p>
+                      <p className="text-sm font-bold text-foreground">{routeInfo.stops}</p>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+        
+      </div>
+
+      {route && selectedTrip && route.viaPoints?.length > 0 && (
+        <div className="mt-3 rounded-xl border border-border bg-card/95 backdrop-blur-sm p-4 shadow-sm">
+          <div className="space-y-3">
+            <div className="font-semibold text-foreground text-sm">Intermediate stop times</div>
+            <div className="space-y-2 rounded-lg border border-border/70 bg-background/50 p-3">
+              {route.viaPoints.map((stop, index) => (
+                <div key={stop} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="text-foreground font-medium truncate">{stop}</span>
+                  <span className="font-bold text-primary bg-primary/10 px-2 py-1 rounded text-xs">
+                    {stopArrivalTimes[index] || 'TBA'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+export default RouteMap;
