@@ -6,6 +6,7 @@ class BottomNavBarOwner extends StatelessWidget {
 
   const BottomNavBarOwner({
     super.key,
+    required this.currentIndex,
     required this.onTabChanged,
   });
 

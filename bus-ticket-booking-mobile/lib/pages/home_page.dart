@@ -28,8 +28,8 @@ class _HomePageState extends State<HomePage> {
       _HomeContent(onToggleTheme: widget.onToggleTheme),
       const SearchPage(),
       const MyBookingsPage(),
-      const ProfilePage(),
       const GoogleMapWidget(),
+      const ProfilePage(),
     ];
   }
 
@@ -71,14 +71,14 @@ class _HomePageState extends State<HomePage> {
             label: 'Bookings',
           ),
           PopupNavItem(
-            icon: Icons.person_outline,
-            activeIcon: Icons.person,
-            label: 'Profile',
-          ),
-          PopupNavItem(
             icon: Icons.map_outlined,
             activeIcon: Icons.map,
             label: 'Map',
+          ),
+          PopupNavItem(
+            icon: Icons.person_outline,
+            activeIcon: Icons.person,
+            label: 'Profile',
           ),
         ],
       ),
