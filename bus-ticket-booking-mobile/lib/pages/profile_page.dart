@@ -35,6 +35,10 @@ class _ProfilePageState extends State<ProfilePage> {
   late String _name = widget.fullName ?? '';
   late String _phone = widget.phone ?? '';
 
+  bool _pushNotifications = true;
+  bool _tripReminders = true;
+  bool _seatAlerts = false;
+
   bool _busy = false;
 
   String get _email => widget.email ?? 'Not signed in';
@@ -172,7 +176,46 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ],
             ),
-            // ↑ methanata
+
+            const SizedBox(height: 24),
+
+            const _SectionLabel('Notifications'),
+            _TileGroup(
+              children: [
+                _SwitchTile(
+                  icon: Icons.notifications_none_rounded,
+                  title: 'Push notifications',
+                  value: _pushNotifications,
+                  onChanged: (value) => setState(() {
+                    _pushNotifications = value;
+                    if (!value) {
+                      _tripReminders = false;
+                      _seatAlerts = false;
+                    }
+                  }),
+                ),
+                _SwitchTile(
+                  icon: Icons.alarm_outlined,
+                  title: 'Trip reminders',
+                  subtitle: 'One hour before departure',
+                  value: _tripReminders,
+                  onChanged: _pushNotifications
+                      ? (value) => setState(() => _tripReminders = value)
+                      : null,
+                ),
+                _SwitchTile(
+                  icon: Icons.event_seat_outlined,
+                  title: 'Seat availability alerts',
+                  subtitle: 'When a full bus frees up',
+                  value: _seatAlerts,
+                  onChanged: _pushNotifications
+                      ? (value) => setState(() => _seatAlerts = value)
+                      : null,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 32),
 
             const SizedBox(height: 32),
 
@@ -598,6 +641,63 @@ class _SettingTile extends StatelessWidget {
           Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
         ],
       ),
+    );
+  }
+}
+
+/// A row with a switch instead of a chevron.
+///
+/// Pass `onChanged: null` to disable the row — Flutter greys it out
+/// and blocks taps for us.
+class _SwitchTile extends StatelessWidget {
+  const _SwitchTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.onChanged,
+    this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final enabled = onChanged != null;
+
+    return SwitchListTile.adaptive(
+      value: value,
+      onChanged: onChanged,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      secondary: Icon(
+        icon,
+        size: 22,
+        color: enabled
+            ? scheme.onSurfaceVariant
+            : scheme.onSurfaceVariant.withValues(alpha: 0.4),
+      ),
+      title: Text(
+        title,
+        style: theme.textTheme.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w500,
+          color: enabled ? null : scheme.onSurface.withValues(alpha: 0.4),
+        ),
+      ),
+      subtitle: subtitle == null
+          ? null
+          : Text(
+              subtitle!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant.withValues(
+                  alpha: enabled ? 1.0 : 0.4,
+                ),
+              ),
+            ),
     );
   }
 }
