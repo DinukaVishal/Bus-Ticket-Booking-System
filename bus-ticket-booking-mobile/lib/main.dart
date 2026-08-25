@@ -14,6 +14,7 @@ import 'pages/search_page.dart';
 import 'pages/select_seat_page.dart';
 import 'pages/staff_login_page.dart';
 import 'pages/signup_page.dart';
+import 'pages/splash_gate.dart';
 import 'services/supabase_service.dart';
 
 Future<void> main() async {
@@ -141,7 +142,7 @@ class _MyAppState extends State<MyApp> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         ),
       ),
-      initialRoute: SupabaseService.currentUser != null ? '/home' : '/login',
+      home: SplashGate(onToggleTheme: _toggleTheme),
       routes: {
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignupPage(),
