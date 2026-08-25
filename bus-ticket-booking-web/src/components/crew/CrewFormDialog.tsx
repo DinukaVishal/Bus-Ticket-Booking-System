@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useAddCrewMember, useUpdateCrewMember } from '@/hooks/useCrewMembers';
 import { validateCrewMember, FieldErrors } from '@/lib/crewValidation';
@@ -41,7 +41,7 @@ const CrewFormDialog = ({ open, onOpenChange, crew }: CrewFormDialogProps) => {
 
   const [form, setForm] = useState({
     fullName: crew?.full_name || '',
-    nic: crew?.nic || '',
+    nic: crew?.nic === 'Registered' ? '' : crew?.nic || '',
     phone: crew?.phone || '',
     email: crew?.email || '',
     address: crew?.address || '',
@@ -52,11 +52,11 @@ const CrewFormDialog = ({ open, onOpenChange, crew }: CrewFormDialogProps) => {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (open) {
       setForm({
         fullName: crew?.full_name || '',
-        nic: crew?.nic || '',
+        nic: crew?.nic === 'Registered' ? '' : crew?.nic || '',
         phone: crew?.phone || '',
         email: crew?.email || '',
         address: crew?.address || '',
@@ -73,9 +73,11 @@ const CrewFormDialog = ({ open, onOpenChange, crew }: CrewFormDialogProps) => {
   };
 
   const handleSubmit = async () => {
+    const effectiveNic = form.nic.trim() || 'Registered';
+
     const validationErrors = validateCrewMember({
       fullName: form.fullName,
-      nic: form.nic,
+      nic: effectiveNic,
       phone: form.phone,
       email: form.email || null,
       crewRole: form.crewRole,
@@ -91,23 +93,23 @@ const CrewFormDialog = ({ open, onOpenChange, crew }: CrewFormDialogProps) => {
       if (isEditing && crew) {
         await updateCrew.mutateAsync({
           id: crew.id,
-          fullName: form.fullName,
-          nic: form.nic,
-          phone: form.phone,
-          email: form.email || null,
-          address: form.address || null,
-          emergencyContact: form.emergencyContact || null,
+          fullName: form.fullName.trim(),
+          nic: effectiveNic,
+          phone: form.phone.trim(),
+          email: form.email.trim() || null,
+          address: form.address.trim() || null,
+          emergencyContact: form.emergencyContact.trim() || null,
           crewRole: form.crewRole as 'conductor' | 'inspector' | 'assistant',
           status: form.status,
         });
       } else {
         await addCrew.mutateAsync({
-          fullName: form.fullName,
-          nic: form.nic,
-          phone: form.phone,
-          email: form.email || null,
-          address: form.address || null,
-          emergencyContact: form.emergencyContact || null,
+          fullName: form.fullName.trim(),
+          nic: effectiveNic,
+          phone: form.phone.trim(),
+          email: form.email.trim() || null,
+          address: form.address.trim() || null,
+          emergencyContact: form.emergencyContact.trim() || null,
           crewRole: form.crewRole as 'conductor' | 'inspector' | 'assistant',
           status: form.status,
         });
@@ -129,8 +131,7 @@ const CrewFormDialog = ({ open, onOpenChange, crew }: CrewFormDialogProps) => {
             {isEditing ? 'Edit Crew Member' : 'Add New Crew Member'}
           </DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update crew member details.' : 'Register a new crew member (conductor, inspector or assistant).'}
-            {isAdmin && !isEditing && ' Admins can create crew for any owner.'}
+            {isEditing ? 'Update crew member details.' : 'Register a new conductor, inspector, or assistant.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -146,32 +147,33 @@ const CrewFormDialog = ({ open, onOpenChange, crew }: CrewFormDialogProps) => {
             {errors.fullName && <p className="text-xs text-destructive">{errors.fullName}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="nic">NIC *</Label>
-              <Input
-                id="nic"
-                value={form.nic}
-                onChange={(e) => handleChange('nic', e.target.value)}
-                placeholder="882345678V"
-              />
-              {errors.nic && <p className="text-xs text-destructive">{errors.nic}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone *</Label>
+              <Label htmlFor="phone">Phone Number *</Label>
               <Input
                 id="phone"
                 value={form.phone}
                 onChange={(e) => handleChange('phone', e.target.value)}
-                placeholder="+94771234567"
+                placeholder="0771234567 or +94771234567"
               />
               {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="nic">NIC (National ID)</Label>
+              <Input
+                id="nic"
+                value={form.nic}
+                onChange={(e) => handleChange('nic', e.target.value)}
+                placeholder="e.g. 882345678V"
+              />
+              {errors.nic && <p className="text-xs text-destructive">{errors.nic}</p>}
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="crewRole">Role *</Label>
+              <Label htmlFor="crewRole">Crew Role *</Label>
               <Select value={form.crewRole} onValueChange={(v) => handleChange('crewRole', v)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -184,40 +186,7 @@ const CrewFormDialog = ({ open, onOpenChange, crew }: CrewFormDialogProps) => {
               </Select>
               {errors.crewRole && <p className="text-xs text-destructive">{errors.crewRole}</p>}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={form.email}
-                onChange={(e) => handleChange('email', e.target.value)}
-                placeholder="crew@example.com"
-              />
-              {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
-            </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="address">Address</Label>
-            <Input
-              id="address"
-              value={form.address}
-              onChange={(e) => handleChange('address', e.target.value)}
-              placeholder="123 Main St, Colombo"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="emergencyContact">Emergency Contact</Label>
-            <Input
-              id="emergencyContact"
-              value={form.emergencyContact}
-              onChange={(e) => handleChange('emergencyContact', e.target.value)}
-              placeholder="+94771234568"
-            />
-          </div>
-
-          {isEditing && (
             <div className="space-y-2">
               <Label htmlFor="status">Status</Label>
               <Select value={form.status} onValueChange={(v) => handleChange('status', v)}>
@@ -230,7 +199,41 @@ const CrewFormDialog = ({ open, onOpenChange, crew }: CrewFormDialogProps) => {
                 </SelectContent>
               </Select>
             </div>
-          )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email (Optional)</Label>
+              <Input
+                id="email"
+                type="email"
+                value={form.email}
+                onChange={(e) => handleChange('email', e.target.value)}
+                placeholder="crew@example.com"
+              />
+              {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="emergencyContact">Emergency Contact</Label>
+              <Input
+                id="emergencyContact"
+                value={form.emergencyContact}
+                onChange={(e) => handleChange('emergencyContact', e.target.value)}
+                placeholder="+94771234568"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="address">Address (Optional)</Label>
+            <Input
+              id="address"
+              value={form.address}
+              onChange={(e) => handleChange('address', e.target.value)}
+              placeholder="e.g. 123 Main St, Colombo"
+            />
+          </div>
 
           {errors.submit && (
             <p className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
@@ -245,7 +248,7 @@ const CrewFormDialog = ({ open, onOpenChange, crew }: CrewFormDialogProps) => {
           </Button>
           <Button onClick={handleSubmit} disabled={submitting}>
             {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-            {isEditing ? 'Update Crew' : 'Add Crew'}
+            {isEditing ? 'Update Crew Member' : 'Add Crew Member'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -254,4 +257,3 @@ const CrewFormDialog = ({ open, onOpenChange, crew }: CrewFormDialogProps) => {
 };
 
 export default CrewFormDialog;
-

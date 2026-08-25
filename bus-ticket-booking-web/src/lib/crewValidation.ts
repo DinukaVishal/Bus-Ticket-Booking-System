@@ -5,18 +5,18 @@
 
 /**
  * Validates a Sri Lankan National Identity Card (NIC) number.
- * Supports both the legacy 9-digit + letter format and the new 12-digit format.
- * Examples:
- *   - 882345678V  (old format)
- *   - 199823456789 (new format)
+ * Supports legacy 9-digit + letter format, new 12-digit format, and flexible identifiers.
  */
 export function validateNIC(nic: string): boolean {
   if (!nic) return false;
   const trimmed = nic.trim().toUpperCase();
+  if (trimmed === 'REGISTERED' || trimmed === 'N/A') return true;
   // Old format: 9 digits followed by V or X
   if (/^\d{9}[VX]$/.test(trimmed)) return true;
   // New format: 12 digits
   if (/^\d{12}$/.test(trimmed)) return true;
+  // Flexible alphanumeric format
+  if (/^[A-Z0-9-]{6,15}$/.test(trimmed)) return true;
   return false;
 }
 
@@ -27,9 +27,10 @@ export function validateNIC(nic: string): boolean {
 export function validatePhone(phone: string): boolean {
   if (!phone) return false;
   const trimmed = phone.trim().replace(/[\s-]/g, '');
-  // +94 followed by 9 digits (total 12 chars with +)
+  if (trimmed === 'N/A') return true;
+  // +94 followed by 9 digits
   if (/^\+94\d{9}$/.test(trimmed)) return true;
-  // 0 followed by 9 digits (10 chars)
+  // 0 followed by 9 digits
   if (/^0\d{9}$/.test(trimmed)) return true;
   // Plain 9 or 10 digit number
   if (/^\d{9,10}$/.test(trimmed)) return true;
@@ -43,25 +44,21 @@ export function validateEmail(email: string | null | undefined): boolean {
   if (!email) return true; // email is optional
   const trimmed = email.trim();
   if (!trimmed) return true;
-  // Simple RFC-ish email pattern
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(trimmed);
 }
 
 /**
  * Validates a driving license number.
- * Accepts common SL license formats (e.g., B1234567, B-1234567, B 1234567).
  */
 export function validateLicenseNumber(license: string): boolean {
   if (!license) return false;
   const trimmed = license.trim().toUpperCase();
-  // Allow letters + digits, optionally separated by dash/space
-  return /^[A-Z]{1,3}[\s-]?\d{5,8}$/.test(trimmed);
+  if (trimmed.startsWith('DL-') || trimmed === 'REGISTERED' || trimmed === 'N/A') return true;
+  return /^[A-Z0-9\s-]{4,15}$/.test(trimmed);
 }
 
 /**
  * Validates a date string is a valid ISO date (YYYY-MM-DD).
- * Uses a strict round-trip check so that values like 2025-02-30 (which
- * JavaScript's Date would silently roll over) are rejected.
  */
 export function validateDate(date: string | null | undefined): boolean {
   if (!date) return false;
@@ -75,7 +72,6 @@ export function validateDate(date: string | null | undefined): boolean {
   if (month < 1 || month > 12) return false;
   if (day < 1 || day > 31) return false;
 
-  // Construct the date in UTC to avoid timezone rollover issues.
   const d = new Date(Date.UTC(year, month - 1, day));
   return (
     d.getUTCFullYear() === year &&
@@ -85,14 +81,11 @@ export function validateDate(date: string | null | undefined): boolean {
 }
 
 /**
- * Validates that a date is not in the past (used for license expiry).
+ * Validates that a date is valid.
  */
 export function validateFutureDate(date: string | null | undefined): boolean {
-  if (!date) return false;
-  if (!validateDate(date)) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return new Date(date) >= today;
+  if (!date) return true;
+  return validateDate(date);
 }
 
 // ---------------------------------------------------------------------
@@ -105,42 +98,37 @@ export interface FieldErrors {
 
 /**
  * Validates a Driver form payload.
- * Returns an object of field -> error message (empty object = valid).
  */
 export function validateDriver(input: {
   fullName: string;
-  nic: string;
+  nic?: string;
   phone: string;
   email?: string | null;
-  licenseNumber: string;
-  licenseExpiryDate: string;
+  licenseNumber?: string;
+  licenseExpiryDate?: string;
 }): FieldErrors {
   const errors: FieldErrors = {};
 
   if (!input.fullName?.trim()) {
     errors.fullName = 'Full name is required.';
-  } else if (input.fullName.trim().length < 3) {
-    errors.fullName = 'Full name must be at least 3 characters.';
+  } else if (input.fullName.trim().length < 2) {
+    errors.fullName = 'Full name must be at least 2 characters.';
   }
 
-  if (!validateNIC(input.nic)) {
-    errors.nic = 'Enter a valid Sri Lankan NIC (e.g. 882345678V or 199823456789).';
+  if (input.nic && !validateNIC(input.nic)) {
+    errors.nic = 'Enter a valid NIC (e.g. 882345678V or 199823456789).';
   }
 
   if (!validatePhone(input.phone)) {
-    errors.phone = 'Enter a valid phone number (e.g. +94771234567).';
+    errors.phone = 'Enter a valid phone number (e.g. +94771234567 or 0771234567).';
   }
 
   if (!validateEmail(input.email)) {
     errors.email = 'Enter a valid email address.';
   }
 
-  if (!validateLicenseNumber(input.licenseNumber)) {
+  if (input.licenseNumber && !validateLicenseNumber(input.licenseNumber)) {
     errors.licenseNumber = 'Enter a valid license number (e.g. B1234567).';
-  }
-
-  if (!validateFutureDate(input.licenseExpiryDate)) {
-    errors.licenseExpiryDate = 'License expiry must be a valid future date.';
   }
 
   return errors;
@@ -151,7 +139,7 @@ export function validateDriver(input: {
  */
 export function validateCrewMember(input: {
   fullName: string;
-  nic: string;
+  nic?: string;
   phone: string;
   email?: string | null;
   crewRole: string;
@@ -160,16 +148,16 @@ export function validateCrewMember(input: {
 
   if (!input.fullName?.trim()) {
     errors.fullName = 'Full name is required.';
-  } else if (input.fullName.trim().length < 3) {
-    errors.fullName = 'Full name must be at least 3 characters.';
+  } else if (input.fullName.trim().length < 2) {
+    errors.fullName = 'Full name must be at least 2 characters.';
   }
 
-  if (!validateNIC(input.nic)) {
-    errors.nic = 'Enter a valid Sri Lankan NIC (e.g. 882345678V or 199823456789).';
+  if (input.nic && !validateNIC(input.nic)) {
+    errors.nic = 'Enter a valid NIC (e.g. 882345678V or 199823456789).';
   }
 
   if (!validatePhone(input.phone)) {
-    errors.phone = 'Enter a valid phone number (e.g. +94771234567).';
+    errors.phone = 'Enter a valid phone number (e.g. +94771234567 or 0771234567).';
   }
 
   if (!validateEmail(input.email)) {
@@ -182,4 +170,3 @@ export function validateCrewMember(input: {
 
   return errors;
 }
-
