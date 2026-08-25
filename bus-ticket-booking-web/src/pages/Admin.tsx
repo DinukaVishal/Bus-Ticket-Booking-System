@@ -12,6 +12,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -28,22 +35,26 @@ import { useRoutes } from '@/hooks/useRoutes';
 import { useBookings, useUpdateBookingStatus } from '@/hooks/useBookings';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { 
   LayoutDashboard, 
   XCircle, 
   Search, 
   Loader2, 
-  QrCode,
-  Trash2,
-  RefreshCw,
-  Ticket,
-  CheckCircle,
-  Route as RouteIcon,
-  Users,
-  Bus as BusIcon,
-  Check,
-  X,
-  ShieldCheck
+  QrCode, 
+  Trash2, 
+  RefreshCw, 
+  Ticket, 
+  CheckCircle, 
+  Route as RouteIcon, 
+  Users, 
+  Bus as BusIcon, 
+  Check, 
+  X, 
+  ShieldCheck,
+  ArrowRight,
+  UserCheck,
+  UserX
 } from 'lucide-react';
 import RouteCard from '@/components/admin/RouteCard';
 import { Route, BusType } from '@/types/booking';
@@ -62,13 +73,16 @@ const Admin = () => {
   const [buses, setBuses] = useState<any[]>([]);
   const [busOwners, setBusOwners] = useState<any[]>([]);
   const [driversLoading, setDriversLoading] = useState(true);
+  const [staffSearch, setStaffSearch] = useState('');
+  const [staffFilter, setStaffFilter] = useState<'all' | 'driver' | 'conductor' | 'active' | 'inactive'>('all');
+  const [updatingStaffId, setUpdatingStaffId] = useState<string | null>(null);
 
   // Fetch drivers, conductors and buses on mount
   const fetchDriversAndBuses = async () => {
     try {
       setDriversLoading(true);
       
-      // Fetch bus drivers with bus details
+      // Fetch bus drivers with bus details (both active and inactive)
       const { data: driverData, error: driverError } = await supabase
         .from('bus_drivers')
         .select(`
@@ -78,13 +92,14 @@ const Admin = () => {
           assignment_date,
           is_active,
           bus_id,
+          created_at,
           owner_buses(bus_number, bus_type, bus_owner_id)
         `)
-        .eq('is_active', true);
+        .order('created_at', { ascending: false });
       
       if (driverError) throw driverError;
 
-      // Fetch bus conductors with bus details
+      // Fetch bus conductors with bus details (both active and inactive)
       const { data: conductorData, error: conductorError } = await supabase
         .from('bus_conductors')
         .select(`
@@ -94,9 +109,10 @@ const Admin = () => {
           assignment_date,
           is_active,
           bus_id,
+          created_at,
           owner_buses(bus_number, bus_type, bus_owner_id)
         `)
-        .eq('is_active', true);
+        .order('created_at', { ascending: false });
       
       if (conductorError) throw conductorError;
 
@@ -187,6 +203,90 @@ const Admin = () => {
   useEffect(() => {
     fetchDriversAndBuses();
   }, []);
+
+  const handleStaffStatusChange = async (staff: any, newStatus: boolean) => {
+    try {
+      setUpdatingStaffId(staff.id);
+      const table = staff.staff_type === 'driver' ? 'bus_drivers' : 'bus_conductors';
+      const { error } = await supabase
+        .from(table)
+        .update({ is_active: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', staff.id);
+
+      if (error) throw error;
+
+      // Also sync modern drivers / crew_members if available
+      if (staff.staff_type === 'driver') {
+        try {
+          await supabase
+            .from('drivers')
+            .update({ status: newStatus ? 'available' : 'inactive', updated_at: new Date().toISOString() })
+            .eq('id', staff.id);
+        } catch (e) {
+          console.warn('drivers sync notice:', e);
+        }
+      } else {
+        try {
+          await supabase
+            .from('crew_members')
+            .update({ status: newStatus ? 'active' : 'inactive', updated_at: new Date().toISOString() })
+            .eq('id', staff.id);
+        } catch (e) {
+          console.warn('crew_members sync notice:', e);
+        }
+      }
+
+      setDrivers((prev) =>
+        prev.map((s) => (s.id === staff.id ? { ...s, is_active: newStatus } : s))
+      );
+
+      toast({
+        title: 'Staff status updated',
+        description: `${staff.staff_type === 'driver' ? staff.driver_name : staff.conductor_name} is now marked as ${newStatus ? 'Active' : 'Inactive'}.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Error updating status',
+        description: err.message || 'Failed to update staff status.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingStaffId(null);
+    }
+  };
+
+  const staffCounts = useMemo(() => {
+    return {
+      all: drivers.length,
+      drivers: drivers.filter((s) => s.staff_type === 'driver').length,
+      conductors: drivers.filter((s) => s.staff_type === 'conductor').length,
+      active: drivers.filter((s) => s.is_active !== false).length,
+      inactive: drivers.filter((s) => s.is_active === false).length,
+    };
+  }, [drivers]);
+
+  const filteredStaff = useMemo(() => {
+    let list = drivers;
+
+    if (staffFilter === 'driver') list = list.filter((s) => s.staff_type === 'driver');
+    else if (staffFilter === 'conductor') list = list.filter((s) => s.staff_type === 'conductor');
+    else if (staffFilter === 'active') list = list.filter((s) => s.is_active !== false);
+    else if (staffFilter === 'inactive') list = list.filter((s) => s.is_active === false);
+
+    const term = staffSearch.trim().toLowerCase();
+    if (!term) return list;
+
+    return list.filter((s) => {
+      const name = (s.staff_type === 'driver' ? s.driver_name : s.conductor_name) || '';
+      const phone = (s.staff_type === 'driver' ? s.driver_phone : s.conductor_phone) || '';
+      const busNumber = s.owner_buses?.bus_number || '';
+      return (
+        name.toLowerCase().includes(term) ||
+        phone.toLowerCase().includes(term) ||
+        busNumber.toLowerCase().includes(term)
+      );
+    });
+  }, [drivers, staffSearch, staffFilter]);
 
   // --- 1. GROUPING LOGIC ---
   const groupedBookings = useMemo(() => {
@@ -439,59 +539,206 @@ const Admin = () => {
                     </TabsTrigger>
                   </TabsList>
 
-                  {/* Drivers Tab */}
+                  {/* Drivers / Bus Staff Tab */}
                   <TabsContent value="drivers" className="space-y-4">
                     <div className="floating-window hover-card overflow-hidden border">
-                      <div className="p-6 border-b">
-                        <h2 className="text-lg font-bold">Bus Staff</h2>
-                        <p className="text-sm text-muted-foreground mt-1">View drivers and conductors assigned to buses</p>
+                      <div className="p-6 border-b space-y-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h2 className="text-lg font-bold">Bus Staff</h2>
+                              <Badge variant="secondary" className="font-mono text-xs">
+                                {drivers.length} registered
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              View and change driver and conductor active/inactive status across all buses
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            <div className="relative flex-1 sm:w-64">
+                              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                              <Input
+                                placeholder="Search staff, phone, bus..."
+                                value={staffSearch}
+                                onChange={(e) => setStaffSearch(e.target.value)}
+                                className="pl-9 pr-8"
+                              />
+                              {staffSearch && (
+                                <button
+                                  onClick={() => setStaffSearch('')}
+                                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate('/admin/drivers')}
+                              className="shadow-sm"
+                            >
+                              Manage Fleet Staff <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Filter Pills */}
+                        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs scrollbar-none">
+                          {[
+                            { id: 'all', label: 'All Staff', count: staffCounts.all },
+                            { id: 'active', label: 'Active', count: staffCounts.active },
+                            { id: 'inactive', label: 'Inactive', count: staffCounts.inactive },
+                            { id: 'driver', label: 'Drivers', count: staffCounts.drivers },
+                            { id: 'conductor', label: 'Conductors', count: staffCounts.conductors },
+                          ].map((tab) => (
+                            <button
+                              key={tab.id}
+                              onClick={() => setStaffFilter(tab.id as any)}
+                              className={cn(
+                                'px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all border flex items-center gap-1.5',
+                                staffFilter === tab.id
+                                  ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                                  : 'bg-muted/40 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
+                              )}
+                            >
+                              <span>{tab.label}</span>
+                              <span
+                                className={cn(
+                                  'px-1.5 py-0.2 rounded-full text-[10px]',
+                                  staffFilter === tab.id
+                                    ? 'bg-primary-foreground/20 text-primary-foreground'
+                                    : 'bg-muted text-foreground'
+                                )}
+                              >
+                                {tab.count}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
+
                       <div className="overflow-x-auto">
                         <Table>
                           <TableHeader className="bg-muted/50">
                             <TableRow>
-                              <TableHead>Name</TableHead>
-                              <TableHead>Phone</TableHead>
-                              <TableHead>Role</TableHead>
-                              <TableHead>Bus</TableHead>
-                              <TableHead>Status</TableHead>
+                              <TableHead className="min-w-[160px]">Name</TableHead>
+                              <TableHead className="min-w-[130px]">Phone</TableHead>
+                              <TableHead className="min-w-[110px]">Role</TableHead>
+                              <TableHead className="min-w-[150px]">Assigned Bus</TableHead>
+                              <TableHead className="min-w-[130px]">Status</TableHead>
+                              <TableHead className="text-center w-[130px]">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {drivers.length === 0 ? (
+                            {filteredStaff.length === 0 ? (
                               <TableRow>
-                                <TableCell colSpan={5} className="text-center py-8">
+                                <TableCell colSpan={6} className="text-center py-10">
                                   <p className="text-muted-foreground">No bus staff found</p>
                                 </TableCell>
                               </TableRow>
                             ) : (
-                              drivers.map((staff: any) => (
-                                <TableRow key={staff.id} className="transition-colors hover:bg-muted/70">
-                                  <TableCell className="font-medium">
+                              filteredStaff.map((staff: any) => (
+                                <TableRow key={staff.id} className="transition-colors hover:bg-muted/70 group">
+                                  <TableCell className="font-medium text-foreground">
                                     {staff.staff_type === 'driver' ? staff.driver_name : staff.conductor_name}
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell className="text-sm font-mono">
                                     {staff.staff_type === 'driver' ? staff.driver_phone : staff.conductor_phone}
                                   </TableCell>
                                   <TableCell>
-                                    <Badge variant={staff.staff_type === 'driver' ? 'default' : 'secondary'}>
+                                    <Badge
+                                      variant="outline"
+                                      className={cn(
+                                        staff.staff_type === 'driver'
+                                          ? 'bg-primary/10 text-primary border-primary/20'
+                                          : 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800'
+                                      )}
+                                    >
                                       {staff.staff_type === 'driver' ? 'Driver' : 'Conductor'}
                                     </Badge>
                                   </TableCell>
                                   <TableCell className="text-sm text-muted-foreground">
                                     {staff.owner_buses ? (
                                       <div>
-                                        <div className="font-mono">{staff.owner_buses.bus_number}</div>
-                                        <div className="text-xs capitalize">{staff.owner_buses.bus_type.replace('_', ' ')}</div>
+                                        <div className="font-mono font-medium text-foreground">{staff.owner_buses.bus_number}</div>
+                                        <div className="text-xs capitalize">{staff.owner_buses.bus_type?.replace('_', ' ')}</div>
                                       </div>
                                     ) : (
-                                      'Not assigned'
+                                      <span className="italic text-muted-foreground">Not assigned</span>
                                     )}
                                   </TableCell>
                                   <TableCell>
-                                    <Badge variant={staff.is_active ? 'default' : 'secondary'}>
-                                      {staff.is_active ? 'Active' : 'Inactive'}
-                                    </Badge>
+                                    <Select
+                                      value={staff.is_active !== false ? 'active' : 'inactive'}
+                                      onValueChange={(val) => handleStaffStatusChange(staff, val === 'active')}
+                                      disabled={updatingStaffId === staff.id}
+                                    >
+                                      <SelectTrigger
+                                        className={cn(
+                                          'h-7 px-2.5 rounded-full text-xs font-semibold border transition-all w-[115px] shadow-none focus:ring-1',
+                                          staff.is_active !== false
+                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800'
+                                            : 'bg-zinc-100 text-zinc-600 border-zinc-200 dark:bg-zinc-900/60 dark:text-zinc-400 dark:border-zinc-800'
+                                        )}
+                                      >
+                                        <div className="flex items-center gap-1.5 truncate">
+                                          {updatingStaffId === staff.id ? (
+                                            <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                                          ) : (
+                                            <span
+                                              className={cn(
+                                                'w-1.5 h-1.5 rounded-full shrink-0',
+                                                staff.is_active !== false ? 'bg-emerald-500' : 'bg-zinc-400'
+                                              )}
+                                            />
+                                          )}
+                                          <SelectValue />
+                                        </div>
+                                      </SelectTrigger>
+                                      <SelectContent align="start" className="min-w-[115px]">
+                                        <SelectItem value="active">
+                                          <div className="flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                            <span>Active</span>
+                                          </div>
+                                        </SelectItem>
+                                        <SelectItem value="inactive">
+                                          <div className="flex items-center gap-2">
+                                            <span className="w-2 h-2 rounded-full bg-zinc-400" />
+                                            <span>Inactive</span>
+                                          </div>
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => handleStaffStatusChange(staff, !staff.is_active)}
+                                      disabled={updatingStaffId === staff.id}
+                                      className={cn(
+                                        'h-7 px-2 text-xs font-medium',
+                                        staff.is_active !== false
+                                          ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+                                          : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+                                      )}
+                                      title={staff.is_active !== false ? 'Deactivate staff' : 'Activate staff'}
+                                    >
+                                      {staff.is_active !== false ? (
+                                        <>
+                                          <UserX className="w-3.5 h-3.5 mr-1" />
+                                          Deactivate
+                                        </>
+                                      ) : (
+                                        <>
+                                          <UserCheck className="w-3.5 h-3.5 mr-1" />
+                                          Activate
+                                        </>
+                                      )}
+                                    </Button>
                                   </TableCell>
                                 </TableRow>
                               ))

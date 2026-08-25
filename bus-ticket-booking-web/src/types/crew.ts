@@ -1,6 +1,6 @@
 export type DriverStatus = 'available' | 'assigned' | 'on_leave' | 'inactive';
 export type CrewRole = 'conductor' | 'inspector' | 'assistant';
-export type CrewStatus = 'active' | 'inactive';
+export type CrewStatus = 'active' | 'available' | 'assigned' | 'on_leave' | 'inactive';
 export type AssignmentStatus = 'active' | 'completed' | 'cancelled';
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'leave';
 

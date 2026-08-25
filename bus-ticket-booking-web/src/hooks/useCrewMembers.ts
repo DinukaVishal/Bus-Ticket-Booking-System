@@ -350,6 +350,127 @@ export function useUpdateCrewMember() {
   });
 }
 
+export function useUpdateCrewStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    onMutate: async ({ id, status }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['crew-members'] });
+
+      // Snapshot the previous data
+      const previousData = queryClient.getQueriesData<CrewMemberRow[]>({ queryKey: ['crew-members'] });
+
+      // Optimistically update
+      queryClient.setQueriesData<CrewMemberRow[]>({ queryKey: ['crew-members'] }, (old) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((c) => (c.id === id ? { ...c, status } : c));
+      });
+
+      return { previousData };
+    },
+    mutationFn: async ({
+      id,
+      status,
+      source,
+    }: {
+      id: string;
+      status: 'active' | 'available' | 'assigned' | 'on_leave' | 'inactive';
+      source?: string;
+    }) => {
+      let updated = false;
+      const isActive = status !== 'inactive';
+
+      // 1. Update in 'crew_members' table
+      try {
+        const { error, data } = await supabase
+          .from('crew_members')
+          .update({ status, updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .select();
+
+        if (!error && data && data.length > 0) {
+          updated = true;
+        }
+      } catch (err) {
+        console.warn('crew_members status update notice:', err);
+      }
+
+      // 2. Update in 'bus_conductors' table
+      try {
+        const { error, data: bcData } = await supabase
+          .from('bus_conductors')
+          .update({ is_active: isActive, updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .select();
+
+        if (!error && bcData && bcData.length > 0) {
+          updated = true;
+
+          // Sync into crew_members table if not already present
+          const bc = bcData[0];
+          try {
+            const cleanPhone = bc.conductor_phone ? bc.conductor_phone.replace(/\D/g, '') : '';
+            const nicVal = `CRW-${cleanPhone.slice(-8) || id.slice(0, 8)}`;
+
+            await supabase.from('crew_members').upsert({
+              id: bc.id,
+              owner_id: bc.bus_owner_id,
+              full_name: bc.conductor_name,
+              phone: bc.conductor_phone || 'N/A',
+              nic: nicVal,
+              crew_role: 'conductor',
+              status: status,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'id' });
+          } catch (syncErr) {
+            console.warn('crew_members table sync notice:', syncErr);
+          }
+        }
+      } catch (err) {
+        console.warn('bus_conductors status update notice:', err);
+      }
+
+      // 3. If synthesized trip crew
+      if (id.startsWith('trip_crew_')) {
+        const tripId = id.replace('trip_crew_', '');
+        try {
+          const { error } = await supabase
+            .from('trips')
+            .update({ is_active: isActive })
+            .eq('id', tripId);
+          if (!error) {
+            updated = true;
+          }
+        } catch (err) {
+          console.warn('trips crew status update notice:', err);
+        }
+      }
+
+      if (!updated) {
+        const { error: bcErr } = await supabase
+          .from('bus_conductors')
+          .update({ is_active: isActive })
+          .eq('id', id);
+        if (!bcErr) updated = true;
+      }
+
+      return { id, status };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousData) {
+        for (const [queryKey, data] of context.previousData) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['crew-members'] });
+      queryClient.invalidateQueries({ queryKey: ['crew-dashboard-stats'] });
+    },
+  });
+}
+
 export function useDeleteCrewMember() {
   const queryClient = useQueryClient();
 
@@ -373,3 +494,4 @@ export function useDeleteCrewMember() {
     },
   });
 }
+

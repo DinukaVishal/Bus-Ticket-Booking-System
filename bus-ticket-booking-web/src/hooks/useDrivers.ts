@@ -114,12 +114,11 @@ export function useDrivers() {
                 assigned_bus: busNumber || existing.assigned_bus,
                 bus_id: bd.bus_id || existing.bus_id,
                 bus_number: busNumber || existing.bus_number,
+                // Preserve the status from drivers table if set, otherwise reflect active/inactive
                 status:
-                  existing.status === 'available' && busNumber
-                    ? 'assigned'
-                    : bd.is_active === false
+                  bd.is_active === false
                     ? 'inactive'
-                    : existing.status,
+                    : existing.status || (busNumber ? 'assigned' : 'available'),
               });
             } else {
               driversMap.set(bd.id, {
@@ -180,7 +179,6 @@ export function useDrivers() {
                   ...existing,
                   assigned_bus: trip.bus_number,
                   bus_number: trip.bus_number,
-                  status: existing.status === 'available' ? 'assigned' : existing.status,
                 });
               }
             } else if (isAdmin) {
@@ -386,6 +384,131 @@ export function useUpdateDriver() {
   });
 }
 
+export function useUpdateDriverStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    onMutate: async ({ id, status }) => {
+      // Cancel any outgoing refetches so they don't overwrite optimistic update
+      await queryClient.cancelQueries({ queryKey: ['drivers'] });
+
+      // Get all current driver queries in cache
+      const previousData = queryClient.getQueriesData<DriverRow[]>({ queryKey: ['drivers'] });
+
+      // Optimistically update all matching caches
+      queryClient.setQueriesData<DriverRow[]>({ queryKey: ['drivers'] }, (old) => {
+        if (!Array.isArray(old)) return old;
+        return old.map((d) => (d.id === id ? { ...d, status } : d));
+      });
+
+      return { previousData };
+    },
+    mutationFn: async ({
+      id,
+      status,
+      source,
+    }: {
+      id: string;
+      status: 'available' | 'assigned' | 'on_leave' | 'inactive';
+      source?: string;
+    }) => {
+      let updated = false;
+      const isActive = status !== 'inactive';
+
+      // 1. Update in 'drivers' table
+      try {
+        const { error, data } = await supabase
+          .from('drivers')
+          .update({ status, updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .select();
+
+        if (!error && data && data.length > 0) {
+          updated = true;
+        }
+      } catch (err) {
+        console.warn('drivers status update notice:', err);
+      }
+
+      // 2. Update in 'bus_drivers' table
+      try {
+        const { error, data: bdData } = await supabase
+          .from('bus_drivers')
+          .update({ is_active: isActive, updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .select();
+
+        if (!error && bdData && bdData.length > 0) {
+          updated = true;
+
+          // Sync into drivers table if not already present
+          const bd = bdData[0];
+          try {
+            const cleanPhone = bd.driver_phone ? bd.driver_phone.replace(/\D/g, '') : '';
+            const nicVal = `DRV-${cleanPhone.slice(-8) || id.slice(0, 8)}`;
+            const licVal = `DL-${cleanPhone.slice(-6) || id.slice(0, 6)}`;
+            const nextYear = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+            await supabase.from('drivers').upsert({
+              id: bd.id,
+              owner_id: bd.bus_owner_id,
+              full_name: bd.driver_name,
+              phone: bd.driver_phone || 'N/A',
+              nic: nicVal,
+              license_number: licVal,
+              license_expiry_date: nextYear,
+              status: status,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'id' });
+          } catch (syncErr) {
+            console.warn('drivers table sync notice:', syncErr);
+          }
+        }
+      } catch (err) {
+        console.warn('bus_drivers status update notice:', err);
+      }
+
+      // 3. If synthesized trip driver
+      if (id.startsWith('trip_')) {
+        const tripId = id.replace('trip_', '');
+        try {
+          const { error } = await supabase
+            .from('trips')
+            .update({ is_active: isActive })
+            .eq('id', tripId);
+          if (!error) {
+            updated = true;
+          }
+        } catch (err) {
+          console.warn('trips driver status update notice:', err);
+        }
+      }
+
+      if (!updated) {
+        const { error: bdErr } = await supabase
+          .from('bus_drivers')
+          .update({ is_active: isActive })
+          .eq('id', id);
+        if (!bdErr) updated = true;
+      }
+
+      return { id, status };
+    },
+    onError: (_err, _variables, context) => {
+      // Revert if error
+      if (context?.previousData) {
+        for (const [queryKey, data] of context.previousData) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['drivers'] });
+      queryClient.invalidateQueries({ queryKey: ['crew-dashboard-stats'] });
+    },
+  });
+}
+
 export function useDeleteDriver() {
   const queryClient = useQueryClient();
 
@@ -411,3 +534,4 @@ export function useDeleteDriver() {
     },
   });
 }
+

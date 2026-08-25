@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useDrivers, useDeleteDriver } from '@/hooks/useDrivers';
+import { useDrivers, useDeleteDriver, useUpdateDriverStatus } from '@/hooks/useDrivers';
 import { useCrewDashboardStats } from '@/hooks/useCrewDashboardStats';
 import CrewStatCards from '@/components/crew/CrewStatCards';
 import DriverFormDialog from '@/components/crew/DriverFormDialog';
@@ -15,6 +15,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -28,7 +35,7 @@ import {
 import { Plus, Search, Loader2, Pencil, Trash2, UserRound, Bus, Phone, CreditCard, X, ShieldCheck } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { DriverRow } from '@/types/crew';
+import type { DriverRow, DriverStatus } from '@/types/crew';
 
 const STATUS_CONFIG: Record<
   string,
@@ -68,11 +75,37 @@ const DriversPage = () => {
   const { data: drivers = [], isLoading } = useDrivers();
   const { data: stats, isLoading: statsLoading } = useCrewDashboardStats();
   const deleteDriver = useDeleteDriver();
+  const updateDriverStatus = useUpdateDriverStatus();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'assigned' | 'on_leave' | 'inactive'>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDriver, setEditingDriver] = useState<DriverRow | null>(null);
+  const [updatingDriverId, setUpdatingDriverId] = useState<string | null>(null);
+
+  const handleQuickStatusChange = async (driver: DriverRow, newStatus: DriverStatus) => {
+    if (driver.status === newStatus) return;
+    try {
+      setUpdatingDriverId(driver.id);
+      await updateDriverStatus.mutateAsync({
+        id: driver.id,
+        status: newStatus,
+        source: driver.source,
+      });
+      toast({
+        title: 'Status updated',
+        description: `${driver.full_name}'s status changed to ${STATUS_CONFIG[newStatus]?.label || newStatus}.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to update driver status.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingDriverId(null);
+    }
+  };
 
   // Status counts
   const counts = useMemo(() => {
@@ -357,17 +390,57 @@ const DriversPage = () => {
 
                       {/* Status */}
                       <TableCell>
-                        <span
-                          className={cn(
-                            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border',
-                            statusConf.bg,
-                            statusConf.text,
-                            statusConf.border
-                          )}
+                        <Select
+                          value={driver.status || 'available'}
+                          onValueChange={(newStatus) =>
+                            handleQuickStatusChange(driver, newStatus as DriverStatus)
+                          }
+                          disabled={updatingDriverId === driver.id}
                         >
-                          <span className={cn('w-1.5 h-1.5 rounded-full', statusConf.dot)} />
-                          {statusConf.label}
-                        </span>
+                          <SelectTrigger
+                            className={cn(
+                              'h-7 px-2.5 rounded-full text-xs font-semibold border transition-all w-[130px] shadow-none focus:ring-1',
+                              statusConf.bg,
+                              statusConf.text,
+                              statusConf.border
+                            )}
+                          >
+                            <div className="flex items-center gap-1.5 truncate">
+                              {updatingDriverId === driver.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                              ) : (
+                                <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', statusConf.dot)} />
+                              )}
+                              <SelectValue />
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent align="start" className="min-w-[130px]">
+                            <SelectItem value="available">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                <span>Available</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="assigned">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                                <span>Assigned</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="on_leave">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                <span>On Leave</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="inactive">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-zinc-400" />
+                                <span>Inactive</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
 
                       {/* Actions */}
