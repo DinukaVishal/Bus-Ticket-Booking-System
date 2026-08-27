@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'my_bookings_page.dart';
 import 'forgot_password_page.dart'; 
+import 'package:flutter/services.dart';
 
 /// Profile screen for QuickBus.
-///
-/// STAGE 1 — header only.
-/// Next up: account + travel sections, notification switches,
-/// edit-profile sheet, sign-out dialog.
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
     super.key,
@@ -71,8 +68,23 @@ class _ProfilePageState extends State<ProfilePage> {
       );
   }
 
-  // TODO(stage 4): replace with the edit-profile bottom sheet.
-  void _openEditProfile() => _toast('Edit profile — coming next');
+  /// Opens a bottom sheet for editing the name and phone number.
+  Future<void> _openEditProfile() async {
+    final edited = await showModalBottomSheet<({String name, String phone})>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _EditProfileSheet(name: _name, phone: _phone),
+    );
+
+    if (edited == null || !mounted) return;
+
+    setState(() {
+      _name = edited.name;
+      _phone = edited.phone;
+    });
+    _toast('Profile updated');
+  }
 
   /// Pushes a page if one is wired up, otherwise shows a placeholder toast.
   void _go(String label, {Widget? page}) {
@@ -214,10 +226,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ],
             ),
-
-            const SizedBox(height: 32),
-
-            const SizedBox(height: 32),
 
             const SizedBox(height: 32),
 
@@ -412,15 +420,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
 /// Cuts two half-circle notches out of the card so it reads as a torn ticket.
 class _TicketClipper extends CustomClipper<Path> {
-  const _TicketClipper({
-    required this.notchY,
-    this.notchRadius = 14,
-    this.corner = 24,
-  });
+  const _TicketClipper({required this.notchY});
 
   final double notchY;
-  final double notchRadius;
-  final double corner;
+
+  static const double notchRadius = 14;
+  static const double corner = 24;
 
   @override
   Path getClip(Size size) {
@@ -451,10 +456,7 @@ class _TicketClipper extends CustomClipper<Path> {
   }
 
   @override
-  bool shouldReclip(_TicketClipper oldClipper) =>
-      oldClipper.notchY != notchY ||
-      oldClipper.notchRadius != notchRadius ||
-      oldClipper.corner != corner;
+  bool shouldReclip(_TicketClipper oldClipper) => oldClipper.notchY != notchY;
 }
 
 /// A horizontal dashed rule that fills whatever width it is given.
@@ -570,12 +572,13 @@ class _TileGroup extends StatelessWidget {
       }
     }
 
-    return Container(
+    // A Material, not a decorated Container: ListTile paints its background
+    // and ink splashes on the nearest Material ancestor, so a coloured box in
+    // between would hide both.
+    return Material(
+      color: scheme.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(18),
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(18),
-      ),
       child: Column(children: rows),
     );
   }
@@ -698,6 +701,129 @@ class _SwitchTile extends StatelessWidget {
                 ),
               ),
             ),
+    );
+  }
+}
+
+/// Bottom sheet that edits the name and phone number.
+///
+/// The controllers live here rather than in [_ProfilePageState] so they are
+/// disposed with the sheet's own element, after the closing animation has
+/// finished. Disposing them right after `showModalBottomSheet` returns tears
+/// them down while the fields are still painting the exit transition, which
+/// throws "A TextEditingController was used after being disposed".
+class _EditProfileSheet extends StatefulWidget {
+  const _EditProfileSheet({required this.name, required this.phone});
+
+  final String name;
+  final String phone;
+
+  @override
+  State<_EditProfileSheet> createState() => _EditProfileSheetState();
+}
+
+class _EditProfileSheetState extends State<_EditProfileSheet> {
+  late final TextEditingController _nameController =
+      TextEditingController(text: widget.name);
+  late final TextEditingController _phoneController =
+      TextEditingController(text: widget.phone);
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    Navigator.pop(context, (
+      name: _nameController.text.trim(),
+      phone: _phoneController.text.trim(),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      // viewInsets pushes the sheet above the keyboard as it opens.
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SingleChildScrollView(
+        // Scrolls instead of overflowing once the keyboard eats the height.
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Personal details',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'This is the name shown on your tickets.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _nameController,
+                textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Full name',
+                  prefixIcon: Icon(Icons.badge_outlined),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => (value == null || value.trim().length < 2)
+                    ? 'Enter your full name'
+                    : null,
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _submit(),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9+]')),
+                  LengthLimitingTextInputFormatter(13),
+                ],
+                decoration: const InputDecoration(
+                  labelText: 'Mobile number',
+                  hintText: '07XXXXXXXX',
+                  prefixIcon: Icon(Icons.phone_outlined),
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  final phone = value?.trim() ?? '';
+                  if (phone.isEmpty) return 'Enter your mobile number';
+                  if (phone.length < 9) return 'That number looks too short';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: _submit,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                ),
+                child: const Text('Save changes'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

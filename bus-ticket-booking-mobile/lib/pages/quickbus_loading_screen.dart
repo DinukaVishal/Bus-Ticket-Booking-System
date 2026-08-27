@@ -23,6 +23,9 @@ const Color kAccent = Color(0xFF416180); // Industry steel accent
 const double kTile = 120; // world spacing between streets
 const double kLoop = 3.6; // seconds per loop
 
+/// Vertical space the splash layout is authored against.
+const double _kDesignHeight = 640;
+
 class QuickBusLoadingScreen extends StatefulWidget {
   const QuickBusLoadingScreen({
     super.key,
@@ -54,54 +57,84 @@ class _QuickBusLoadingScreenState extends State<QuickBusLoadingScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kPaper,
-      body: AnimatedBuilder(
-        animation: _c,
-        builder: (context, _) {
-          final t = _c.value * kLoop; // authored seconds
-          final u = _c.value; // 0..1 through the loop
-          final dots = ((u * 3) % 1 * 3).floor() + 1;
-          final sweep = (u * 2) % 1;
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Spacer(flex: 2),
-              AspectRatio(
-                aspectRatio: 1,
-                child: CustomPaint(
-                  painter: _StreetsPainter(accent: widget.accent, t: t, u: u),
-                ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          // The splash has a fixed vertical rhythm, so lay it out at no less
+          // than the design height and scale the whole thing down on shorter
+          // viewports. Sizing straight off the incoming constraints let the
+          // Column overflow — badly so on the first frames after a reload,
+          // when the engine can hand us a nonsense viewport.
+          final width = constraints.maxWidth;
+          final height = math.max(constraints.maxHeight, _kDesignHeight);
+          // Bound the map square on BOTH axes. An AspectRatio in a Column is
+          // driven by the width alone, which makes it as tall as the viewport
+          // is wide.
+          final art = math.min(width * 0.68, height * 0.42);
+
+          return Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: SizedBox(
+                width: width,
+                height: height,
+                child: _body(art),
               ),
-              const SizedBox(height: 8),
-              _Wordmark(accent: widget.accent),
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 48),
-                child: Text(
-                  widget.tagline,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15,
-                    height: 1.45,
-                    color: kText.withOpacity(0.52),
-                  ),
-                ),
-              ),
-              const Spacer(flex: 2),
-              _Progress(accent: widget.accent, sweep: sweep),
-              const SizedBox(height: 14),
-              Text(
-                'FINDING BUSES NEAR YOU${'.' * dots}',
-                style: TextStyle(
-                  fontSize: 12,
-                  letterSpacing: 2.4,
-                  color: kText.withOpacity(0.52),
-                ),
-              ),
-              const SizedBox(height: 48),
-            ],
+            ),
           );
         },
       ),
+    );
+  }
+
+  Widget _body(double art) {
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) {
+        final t = _c.value * kLoop; // authored seconds
+        final u = _c.value; // 0..1 through the loop
+        final dots = ((u * 3) % 1 * 3).floor() + 1;
+        final sweep = (u * 2) % 1;
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Spacer(flex: 2),
+            SizedBox(
+              width: art,
+              height: art,
+              child: CustomPaint(
+                painter: _StreetsPainter(accent: widget.accent, t: t, u: u),
+              ),
+            ),
+            const SizedBox(height: 8),
+            _Wordmark(accent: widget.accent),
+            const SizedBox(height: 14),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 48),
+              child: Text(
+                widget.tagline,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.45,
+                  color: kText.withOpacity(0.52),
+                ),
+              ),
+            ),
+            const Spacer(flex: 2),
+            _Progress(accent: widget.accent, sweep: sweep),
+            const SizedBox(height: 14),
+            Text(
+              'FINDING BUSES NEAR YOU${'.' * dots}',
+              style: TextStyle(
+                fontSize: 12,
+                letterSpacing: 2.4,
+                color: kText.withOpacity(0.52),
+              ),
+            ),
+            const SizedBox(height: 48),
+          ],
+        );
+      },
     );
   }
 }
