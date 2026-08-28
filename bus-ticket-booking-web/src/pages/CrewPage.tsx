@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useCrewMembers, useDeleteCrewMember, useUpdateCrewStatus } from '@/hooks/useCrewMembers';
+import { useAuth } from '@/hooks/useAuth';
 import { useCrewDashboardStats } from '@/hooks/useCrewDashboardStats';
 import CrewStatCards from '@/components/crew/CrewStatCards';
 import CrewFormDialog from '@/components/crew/CrewFormDialog';
@@ -33,7 +34,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Plus, Search, Loader2, Pencil, Trash2, CalendarCheck, Users, X } from 'lucide-react';
+import { Plus, Search, Loader2, Pencil, Trash2, CalendarCheck, Users, X, Lock } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { CrewMemberRow, CrewStatus } from '@/types/crew';
@@ -88,6 +89,7 @@ const STATUS_CONFIG: Record<
 const CrewPage = () => {
   const { data: crewMembers = [], isLoading } = useCrewMembers();
   const { data: stats, isLoading: statsLoading } = useCrewDashboardStats();
+  const { isAdmin } = useAuth();
   const deleteCrew = useDeleteCrewMember();
   const updateCrewStatus = useUpdateCrewStatus();
 
@@ -346,57 +348,73 @@ const CrewPage = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Select
-                        value={crew.status || 'active'}
-                        onValueChange={(newStatus) =>
-                          handleQuickStatusChange(crew, newStatus as CrewStatus)
-                        }
-                        disabled={updatingCrewId === crew.id}
-                      >
-                        <SelectTrigger
+                      {isAdmin ? (
+                        <Select
+                          value={crew.status || 'active'}
+                          onValueChange={(newStatus) =>
+                            handleQuickStatusChange(crew, newStatus as CrewStatus)
+                          }
+                          disabled={updatingCrewId === crew.id}
+                        >
+                          <SelectTrigger
+                            className={cn(
+                              'h-7 px-2.5 rounded-full text-xs font-semibold border transition-all w-[130px] shadow-none focus:ring-1',
+                              statusConf.bg,
+                              statusConf.text,
+                              statusConf.border
+                            )}
+                          >
+                            <div className="flex items-center gap-1.5 truncate">
+                              {updatingCrewId === crew.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                              ) : (
+                                <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', statusConf.dot)} />
+                              )}
+                              <SelectValue />
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent align="start" className="min-w-[130px]">
+                            <SelectItem value="active">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                <span>Active</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="assigned">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                                <span>Assigned</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="on_leave">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                <span>On Leave</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="inactive">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-zinc-400" />
+                                <span>Inactive</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <div
                           className={cn(
-                            'h-7 px-2.5 rounded-full text-xs font-semibold border transition-all w-[130px] shadow-none focus:ring-1',
+                            'h-7 px-2.5 rounded-full text-xs font-semibold border flex items-center gap-1.5 w-fit',
                             statusConf.bg,
                             statusConf.text,
                             statusConf.border
                           )}
+                          title="Only admins can change crew status"
                         >
-                          <div className="flex items-center gap-1.5 truncate">
-                            {updatingCrewId === crew.id ? (
-                              <Loader2 className="w-3 h-3 animate-spin shrink-0" />
-                            ) : (
-                              <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', statusConf.dot)} />
-                            )}
-                            <SelectValue />
-                          </div>
-                        </SelectTrigger>
-                        <SelectContent align="start" className="min-w-[130px]">
-                          <SelectItem value="active">
-                            <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                              <span>Active</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="assigned">
-                            <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-blue-500" />
-                              <span>Assigned</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="on_leave">
-                            <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-amber-500" />
-                              <span>On Leave</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="inactive">
-                            <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-zinc-400" />
-                              <span>Inactive</span>
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
+                          <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', statusConf.dot)} />
+                          <span>{statusConf.label}</span>
+                          <Lock className="w-3 h-3 ml-0.5 opacity-50" />
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex justify-center items-center gap-1 opacity-90 group-hover:opacity-100">
