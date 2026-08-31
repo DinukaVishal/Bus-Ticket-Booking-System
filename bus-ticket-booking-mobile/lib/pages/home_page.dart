@@ -42,6 +42,9 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final bottomInset = MediaQuery.of(context).padding.bottom; 
 
     return Scaffold(
       // The nav bar floats over the body so its popup zone stays transparent;
