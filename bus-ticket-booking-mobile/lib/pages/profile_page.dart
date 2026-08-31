@@ -118,15 +118,13 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    // SafeArea skips the bottom edge, so pad the list manually. HomePage
-    // already folds the floating nav bar's height into padding.bottom.
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-
     return Scaffold(
       body: SafeArea(
-        bottom: false,
+        // Keep the bottom inset: HomePage folds the floating nav bar's height
+        // into padding.bottom, so this stops the list scrolling under the bar
+        // and showing through its rounded corners, like the other tabs do.
         child: ListView(
-          padding: EdgeInsets.fromLTRB(16, 8, 16, bottomInset + 32),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 8, 4, 20),
