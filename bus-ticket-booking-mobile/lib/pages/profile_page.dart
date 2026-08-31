@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'my_bookings_page.dart';
 import 'forgot_password_page.dart'; 
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Profile screen for QuickBus.
 class ProfilePage extends StatefulWidget {
@@ -97,9 +98,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
   // TODO(stage 5): wrap this in a confirmation dialog.
   Future<void> _signOut() async {
-    setState(() => _busy = true);
+        setState(() => _busy = true);
     try {
-      await widget.onSignOut?.call();
+      if (widget.onSignOut != null) {
+        await widget.onSignOut!();
+      } else {
+        await Supabase.instance.client.auth.signOut();
+      }
     } catch (_) {
       if (mounted) _toast('Could not sign out. Check your connection.');
     } finally {
@@ -113,10 +118,11 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-
     return Scaffold(
       body: SafeArea(
-        bottom: false,
+        // Keep the bottom inset: HomePage folds the floating nav bar's height
+        // into padding.bottom, so this stops the list scrolling under the bar
+        // and showing through its rounded corners, like the other tabs do.
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
