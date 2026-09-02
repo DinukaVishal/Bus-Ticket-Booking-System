@@ -3,6 +3,7 @@ import 'my_bookings_page.dart';
 import 'forgot_password_page.dart'; 
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Profile screen for QuickBus.
 class ProfilePage extends StatefulWidget {
@@ -38,6 +39,48 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _seatAlerts = false;
 
   bool _busy = false;
+  bool _loadingPrefs = true;        // ← aluthin
+
+  // Keys for the values we keep on the device.
+  static const _kPush = 'notify_push';
+  static const _kTrip = 'notify_trip_reminders';
+  static const _kSeat = 'notify_seat_alerts';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  /// Reads the saved switch states off the device.
+  Future<void> _loadPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!mounted) return;
+      setState(() {
+        _pushNotifications = prefs.getBool(_kPush) ?? true;
+        _tripReminders = prefs.getBool(_kTrip) ?? true;
+        _seatAlerts = prefs.getBool(_kSeat) ?? false;
+        _loadingPrefs = false;
+      });
+    } catch (_) {
+      // Falling back to the defaults is fine — nothing critical is stored here.
+      if (mounted) setState(() => _loadingPrefs = false);
+    }
+  }
+
+  /// Writes the current switch states back to the device.
+  Future<void> _savePreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kPush, _pushNotifications);
+      await prefs.setBool(_kTrip, _tripReminders);
+      await prefs.setBool(_kSeat, _seatAlerts);
+    } catch (_) {
+      if (mounted) _toast('Could not save your notification settings');
+    }
+  }
+    // ───────────────────────── derived values ─────────────────────────
 
   String get _email => widget.email ?? 'Not signed in';
 
@@ -59,6 +102,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return (parts[0][0] + parts[1][0]).toUpperCase();
   }
 
+  // ─────────────────────────── actions ───────────────────────────
   // ─────────────────────────── actions ───────────────────────────
 
   void _toast(String message) {
@@ -200,25 +244,33 @@ class _ProfilePageState extends State<ProfilePage> {
             const _SectionLabel('Notifications'),
             _TileGroup(
               children: [
-                _SwitchTile(
+                                _SwitchTile(
                   icon: Icons.notifications_none_rounded,
                   title: 'Push notifications',
                   value: _pushNotifications,
-                  onChanged: (value) => setState(() {
-                    _pushNotifications = value;
-                    if (!value) {
-                      _tripReminders = false;
-                      _seatAlerts = false;
-                    }
-                  }),
+                  onChanged: _loadingPrefs
+                      ? null
+                      : (value) {
+                          setState(() {
+                            _pushNotifications = value;
+                            if (!value) {
+                              _tripReminders = false;
+                              _seatAlerts = false;
+                            }
+                          });
+                          _savePreferences();
+                        },
                 ),
                 _SwitchTile(
                   icon: Icons.alarm_outlined,
                   title: 'Trip reminders',
                   subtitle: 'One hour before departure',
                   value: _tripReminders,
-                  onChanged: _pushNotifications
-                      ? (value) => setState(() => _tripReminders = value)
+                  onChanged: (_pushNotifications && !_loadingPrefs)
+                      ? (value) {
+                          setState(() => _tripReminders = value);
+                          _savePreferences();
+                        }
                       : null,
                 ),
                 _SwitchTile(
@@ -226,8 +278,11 @@ class _ProfilePageState extends State<ProfilePage> {
                   title: 'Seat availability alerts',
                   subtitle: 'When a full bus frees up',
                   value: _seatAlerts,
-                  onChanged: _pushNotifications
-                      ? (value) => setState(() => _seatAlerts = value)
+                  onChanged: (_pushNotifications && !_loadingPrefs)
+                      ? (value) {
+                          setState(() => _seatAlerts = value);
+                          _savePreferences();
+                        }
                       : null,
                 ),
               ],
