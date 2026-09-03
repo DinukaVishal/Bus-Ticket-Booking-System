@@ -142,12 +142,19 @@ class _ProfilePageState extends State<ProfilePage> {
 
   // TODO(stage 5): wrap this in a confirmation dialog.
   Future<void> _signOut() async {
-        setState(() => _busy = true);
+    setState(() => _busy = true);
     try {
       if (widget.onSignOut != null) {
+        // The host wired up its own sign-out, so it owns the navigation too.
         await widget.onSignOut!();
       } else {
         await Supabase.instance.client.auth.signOut();
+        if (!mounted) return;
+        // This page is one of HomePage's tabs, so clearing the session on its
+        // own leaves the user sitting here. Drop the stack back to login, the
+        // same way the home app bar's logout does.
+        Navigator.of(context, rootNavigator: true)
+            .pushNamedAndRemoveUntil('/login', (route) => false);
       }
     } catch (_) {
       if (mounted) _toast('Could not sign out. Check your connection.');
